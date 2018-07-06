@@ -26,6 +26,7 @@ library:
   source-dirs: src
   dependencies:
   - bv-sized
+  - cereal
 
 executables:
   pp-besm-exe:

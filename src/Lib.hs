@@ -14,13 +14,13 @@ data Programme
   , programme :: [Operator]
   }
 
-data Operator -- Arithmetic, Logical, Non-Standard
+data ArithOperator -- Arithmetic, Logical, Non-Standard
   = LParen
-  | NLParen
+  | NLParen Word8
   | Plus
   | Minus
   | RParen
-  | NRParen
+  | NRParen Word8
   | AssignNoNormalize -- ?
   | Print -- F
   | Assign
@@ -41,22 +41,25 @@ data Operator -- Arithmetic, Logical, Non-Standard
   | E
   | ExtractExponenent
   | Mod
-  | ChangeExponent -- n x
-  | ShiftMantissa -- n x
+  | ChangeExponent Word8
+  | ShiftMantissa Word8
   | Sign
-  | Parameter QuantityAddr
+
+data Operator
+  = Arith ArithOperator
+  | Parameter Quantity
   | LogicalOperator LogicalOperator
   | OperatorSign OperatorSign -- should this be 8 bits? not 11?? ?? ? ? ? ?
-  | LoopOpen QuantityAddr
+  | LoopOpen Quantity
   | LoopClose
 
-newtype QuantityAddr = QA { unAddr :: Word8 }
+newtype Quantity = QA { unQ :: Char }
 newtype OperatorSign = OS { getOperator :: BitVector 11 }
 
 data LogicalOperator = Op
-  { x :: QuantityAddr
+  { x :: Quantity
   , defaultOp :: OperatorSign
-  , choices :: [(OperatorSign, RangeType, QuantityAddr, Maybe QuantityAddr)]
+  , choices :: [(OperatorSign, RangeType, Quantity, Maybe Quantity)]
   }
 
 data RangeType
@@ -103,31 +106,31 @@ data VariableAddress
     }
 
 data LoopParameter = LP
-  { i0 :: QuantityAddr
-  , lpA  :: QuantityAddr
-  , lpB  :: QuantityAddr
-  , i :: QuantityAddr
-  , k :: QuantityAddr
+  { i0 :: Quantity
+  , lpA  :: Quantity
+  , lpB  :: Quantity
+  , i :: Quantity
+  , k :: Quantity
   }
 
 newtype Opcode = OpC { getCode :: BitVector 6 }
-newtype Addr = { unAddr :: BitVector 11 }
+newtype Addr = Addr { unAddr :: BitVector 11 }
 
 data Parameter
   = InFin
-    { inP :: QuantityAddr
-    , finP :: QuantityAddr
+    { inP :: Quantity
+    , finP :: Quantity
     }
   | CharacteristicLoop
     { theta :: Opcode
-    , inP :: QuantityAddr
-    , loopA :: QuantityAddr
-    , loopB :: QuantityAddr
+    , inP :: Quantity
+    , loopA :: Quantity
+    , loopB :: Quantity
     }
   | LogicalLoop
     { theta :: Opcode
-    , loopA :: Addr
-    , loopB :: Addr
+    , loopAddr :: Addr
+    , loopBddr :: Addr
     , loopStart :: Addr
     }
 
