@@ -14,6 +14,25 @@ import Data.Function
 import GHC.TypeNats (KnownNat)
 import qualified Data.List.NonEmpty as NonEmpty
 
+{-
+  A programme has to be prepared for the PP by being coded in binary.
+
+  It will have the following layout after coding:
+
+  +--------------+
+  | Header Table |
+  |--------------|
+  |    Block V   |
+  |--------------| <-- begins immediately after V
+  |    Block P   |
+  |--------------| <-- begins immediately after C
+  |    Block C   |
+  |--------------| <-- the last address of C has to be less than 0xEF
+  |    Block K   |
+  +--------------+
+-}
+
+
 encodeProgramme :: Programme -> [BitVector 39]
 encodeProgramme p@(PP {..}) = let
   qa = calculateQuantityAddresses p

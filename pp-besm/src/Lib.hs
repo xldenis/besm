@@ -6,6 +6,24 @@ import Data.Word
 
 import Data.List.NonEmpty
 
+{-
+  """
+  All information on the problem is always divided into the following four groups:
+
+  1. Information on variable addresses.
+  2. Information on parameters.
+  3. A list of constants and variable quantities, termed below
+     formally information on constants
+  4. Information on the logical scheme or, as it will be also
+     termed, information on the programme.
+  """
+
+  There are additional blocks of information that are introduced:
+
+  - Alpha, Beta, Gamma: Related to coding loops
+  - Zero (0): Reserved for 'standard-routines'
+-}
+
 data Programme
   = PP
   { variableAddresses :: BlockV
