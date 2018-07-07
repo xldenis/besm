@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds, RecordWildCards #-}
 module Put where
 
 import Lib
@@ -7,18 +7,118 @@ import Data.Word
 import Data.Serialize.Put
 import Data.BitVector.Sized.BitLayout
 import Data.BitVector.Sized
+import Data.List (mapAccumL)
 
 import Data.Maybe (fromJust)
 import Data.Function
 import GHC.TypeNats (KnownNat)
+import qualified Data.List.NonEmpty as NonEmpty
 
-blockV = undefined
+encodeProgramme :: Programme -> [BitVector 39]
+encodeProgramme p@(PP {..}) = let
+  qa = calculateQuantityAddresses p
+  vCells = blockV qa variableAddresses
+  pCells = blockP qa parameters
+  cCells = blockC constants
+  kCells = blockK qa programme
+  headerTable = programmeSummaryTable (fromIntegral block0Len) (length vCells) (length cCells)
+    (length pCells) (length kCells) (fromIntegral blockGammaLen) (fromIntegral blockAlphaLen)
+  in headerTable ++ vCells ++ pCells ++ cCells ++ kCells
 
-blockP = undefined
+{-
+  After preparing the programme, we also prepare a summary table will be prepended.
 
-blockC = undefined
+  These values are stored in the third address of each cell (viewed as an instruction).
 
-blockK codes = undefined
+  +------+----------------------------------------------+
+  | Cell | Purpose                                      |
+  |------|----------------------------------------------|
+  | 0007 | Number of cells in block 0                   |
+  | 0008 | Address of last cell in block V              |
+  | 0009 | Address of first cell in block C             |
+  | 000A | Address of last cell in block C              | <---- unclear whether this is really meant to be C or if it's a typo (P).
+  | 000B | Address of first cell in block K minus 1     |
+  | 000C | Address of last cell in block K              |
+  | 000D | Address of first cell in block gamma minus 1 |
+  | 000E | Address of first cell in block alpha minus 1 |
+  | 000F | Address of first cell in block beta minus 1  |
+  +------+----------------------------------------------+
+
+-}
+
+programmeSummaryTable :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> [BitVector 39]
+programmeSummaryTable olen vlen clen plen klen gammalen alphalen =
+    buildInstruction 0 0 0 (bitVector' $ olen)
+  : buildInstruction 0 0 0 (bitVector' $ lastVAddr)
+  : buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + 1)
+  : buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen)
+  : buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen - 1)
+  : buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen)
+  : buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen)
+  : buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen + gammalen - 1)
+  :[buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen + gammalen + alphalen - 1)]
+
+  where
+  lastVAddr = 0x0010 + vlen - 1
+
+{-
+  """
+  After this layout it is precisely defined in whcih cell will be
+  located information on one or another letter symbol. This permits
+  coding all symbols for quantities according to the following rule:
+  each letter symbol is coded by the two successive sexadecimal numerals
+  of the address of information on this symbol (for i_sigma, dependent on
+  higher-order parameters, the address of the first cell with information
+  on it is taken as the code). By this each quantity enters into a
+  one-to-one correspondence to a given eight-place binary number.
+
+  After coding the letter symbols of the quantity it is possible to
+  code informatio non the symbols and information on the operators in
+  the logical scheme. Everywhere below the expression "n" will denote
+  the code of the quantity 𝔑.
+  """ p 25.
+
+  Before much of the programme can be coded, we need to get the offsets
+  of all the quantities (variables & constants) in the program. We build
+  a map which is used to convert from the name in the token-stream to the
+  offset.
+-}
+
+calculateQuantityAddresses :: Programme -> QuantityAddresses
+calculateQuantityAddresses (PP {..}) = let
+  (offV, vMap) = offsetsInV variableAddresses 0x0010
+  (offP, pMap) = offsetsInP parameters    offV
+  (offC, cMap) = offsetsInC constants     offP
+
+  {- The address of the last cell of block C should not exceed 00EF. p25 -}
+
+  in if offC > 0xEF
+  then error "The last constant can't exceed 0x45"
+  else vMap ++ pMap ++ cMap
+  where
+  offsetsInV :: BlockV -> Word8 -> (Word8, [(Char, Word8)])
+  offsetsInV (V {..}) offset = let
+    (off',  map1)  = concat <$> mapAccumL variableAddrMap offset variableAddrs
+    (off'', map2)  = mapAccumL loopParamMap off' loopParameters
+    in (off'', map1 ++ map2)
+
+  offsetsInC :: [Constant] -> Word8 -> (Word8, [(Char, Word8)])
+  offsetsInC constants offset = mapAccumL (\off c -> (off + 1, (cName c, off))) offset constants
+
+  offsetsInP :: [Parameter] -> Word8 -> (Word8, [(Char, Word8)])
+  offsetsInP params offset = mapAccumL (\off p -> (off + 1, (pName p, off))) offset params
+
+  variableAddrMap :: Word8 -> AddressBlock -> (Word8, QuantityAddresses)
+  variableAddrMap offset (MainHead {..}) = concat <$> mapAccumL headMap (offset+1) (NonEmpty.toList heads)
+
+  headMap :: Word8 -> BlockHead -> (Word8, QuantityAddresses)
+  headMap offset (Head {..}) = mapAccumL varMap (offset+1) (NonEmpty.toList vars)
+
+  varMap :: Word8 -> VariableAddress -> (Word8, (Char, Word8))
+  varMap offset va = (offset + 1, (vaName va, offset))
+
+  loopParamMap :: Word8 -> LoopParameter -> (Word8, (Char, Word8))
+  loopParamMap offset lp = (offset+2, (lpName lp, offset))
 
 {-
   The BESM uses 39-bit words which can be of two categories: floating point numbers or instructions.
@@ -100,6 +200,86 @@ b0 :: KnownNat k => BitVector k
 b0 = bitVector 0
 
 {-
+  Block V: Variable Addresses
+
+-}
+
+blockV :: QuantityAddresses -> BlockV -> [BitVector 39]
+blockV pa (V varAddrs loopParams) = (varAddrs >>= encodeMainHead) ++ (loopParams  >>= encodeLoopParams pa)
+
+encodeMainHead :: AddressBlock -> [BitVector 39]
+encodeMainHead (MainHead size heads) =
+  (buildInstruction 0x01F 0x0 (unWord11 size) 0x0)
+  : (encodeHead =<< (NonEmpty.toList heads))
+
+encodeHead :: BlockHead -> [BitVector 39]
+encodeHead (Head a b c vars) =
+  buildInstruction 0x0 (unWord11 a) (unWord11 b) (unWord11 c)
+  : zipWith encodeVariable [1..] (NonEmpty.toList vars)
+
+encodeVariable :: Integer -> VariableAddress -> BitVector 39
+encodeVariable ix (Var _ p1 p2 p3 off dir) =
+
+  buildNumber (bitVector' ix) (signBit dir) (packArithCodes p1 p2 p3 off)
+  where signBit FromStart = b0
+        signBit FromEnd   = bitVector 1
+
+
+encodeLoopParams :: QuantityAddresses -> LoopParameter -> [BitVector 39]
+encodeLoopParams pa (LP {..}) =
+    buildInstruction 0x0 (quantityOffset pa i0) (quantityOffset pa lpA) (quantityOffset pa lpB)
+  : [buildInstruction 0x0 0x0 (quantityOffset pa j) (quantityOffset pa k)]
+
+{-
+  Block P: Parameters
+
+  """
+  The order of information on parameters in block P is of major
+  importance in laying out this block for the PP. To determine this
+  order the loops in the logical scehme of the problem are ordered.
+  The loops in the scheme are ordered from left to right according
+  to their open-brackets. Information on the corresponding parameters
+  in block P is locatted in this same order. For example, if the logical
+  scheme, in which for simplicity only the boundaries of the loops ares
+  shown, has the form
+
+      [ ] [ [ [ ] ] [ ] ] [ [ ] ]
+      i   k l m     r     s t
+
+  the parameters in the block will be ordered in the following manner:
+  i,m,l,r,k,t,s.
+  """
+
+  Note: In practice this seems like they are ordered left-to-right by **closing** bracket.
+
+  Here, it is assumed that the parameters are already arragned in the correct order.
+-}
+
+blockP :: QuantityAddresses -> [Parameter] -> [BitVector 39]
+blockP qa params = map (encodeParameter qa) params
+
+encodeParameter qa (InFin {..}) = buildInstruction 0x0 (quantityOffset qa inP) (quantityOffset qa finP) 0
+encodeParameter qa (CharacteristicLoop {..}) = buildInstruction (getCode theta) (quantityOffset qa inP) (quantityOffset qa loopA) (quantityOffset qa loopB)
+encodeParameter qa (LogicalLoop {..}) = buildInstruction (getCode theta) (unAddr loopAddr) (unAddr loopBddr) (unAddr loopStart)
+
+{-
+  Block C: Constants
+-}
+
+blockC :: [Constant] -> [BitVector 39]
+blockC constants = map toCell constants
+  where
+  toCell (Vacant{}) = b0
+  toCell (Cell _ v) = v
+
+{-
+  Block K: Programme
+-}
+
+blockK :: QuantityAddresses -> [Operator] -> [BitVector 39]
+blockK pa codes = packCells $ encodeCode pa codes
+
+{-
   """
   Coding an arithmetical operator consists in substituting its code
   for each symbol in the formula. The forumla-symbol codes are
@@ -124,9 +304,9 @@ packArithCodes a b c d = bitVector 0
 buildArithCodes :: BitVector 32 -> BitVector 39
 buildArithCodes codes = inject mantissa (bitVector 0) codes
 
-type ParameterAddresses = [(Char, Word8)]
+type QuantityAddresses = [(Char, Word8)]
 
-parameterToBits pa p = bitVector . fromIntegral . fromJust $ unQ p `lookup` pa
+quantityOffset pa p = bitVector . fromIntegral . fromJust $ unQ p `lookup` pa
 
 bitVector' :: (KnownNat k, Integral a) => a -> BitVector k
 bitVector' = bitVector . fromIntegral
@@ -152,13 +332,13 @@ packCells (Long ab           : Long cd : others) = buildArithCodes ((bitVector' 
 packCells (Full o                      :  thers) = o : packCells thers
 packCells [] = []
 
-encodeCode :: ParameterAddresses -> [Operator] -> [IntermediateValue]
+encodeCode :: QuantityAddresses -> [Operator] -> [IntermediateValue]
 encodeCode pa (Arith op : ops)        = arithOpcode op : encodeCode pa ops
 encodeCode pa (Parameter p : ops)     = Short (fromJust $ (unQ p) `lookup` pa) : encodeCode pa ops
 encodeCode pa (OperatorSign os : LogicalOperator lo : o : ops) = encodeLogicalOp pa (Just os) lo o
 encodeCode pa (LogicalOperator lo : o : ops)                   = encodeLogicalOp pa  Nothing  lo o
 encodeCode pa (OperatorSign os : ops) = Full (buildInstruction operatorSign (getOperator os)       b0 b0) : encodeCode pa ops
-encodeCode pa (LoopOpen p : ops)      = Full (buildInstruction operatorSign (parameterToBits pa p) b0 b0) : encodeCode pa ops
+encodeCode pa (LoopOpen p : ops)      = Full (buildInstruction operatorSign (quantityOffset pa p) b0 b0) : encodeCode pa ops
 encodeCode pa (LoopClose : ops)       = Full (buildInstruction (bitVector 0x01F) b13FF b13FF b13FF)       : encodeCode pa ops
   where b13FF = bitVector 0x13FF
 
@@ -200,12 +380,12 @@ encodeCode pa (LoopClose : ops)       = Full (buildInstruction (bitVector 0x01F)
   """
 -}
 
-encodeLogicalOp :: ParameterAddresses -> Maybe OperatorSign -> LogicalOperator -> Operator -> [IntermediateValue]
+encodeLogicalOp :: QuantityAddresses -> Maybe OperatorSign -> LogicalOperator -> Operator -> [IntermediateValue]
 encodeLogicalOp pa opSign (Op x defaultOp branches) following = let
   followingOperator = encodeCode pa [following]
   thirdAddress      = extract instAddr3 (head $ packCells followingOperator)
   padding           = if thirdAddress == b0 then [] else [Full b0]
-  operatorHead = Full $ buildInstruction operatorSign (maybe b0 getOperator opSign) (parameterToBits pa x) (getOperator defaultOp)
+  operatorHead = Full $ buildInstruction operatorSign (maybe b0 getOperator opSign) (quantityOffset pa x) (getOperator defaultOp)
 
   in operatorHead : map encodeBranch branches ++ padding ++ followingOperator
   where
@@ -218,8 +398,8 @@ encodeLogicalOp pa opSign (Op x defaultOp branches) following = let
     """
   -}
   encodeBranch (op, rangeType, lowerBound, upperBound) =
-    let secondBound = maybe b0 (parameterToBits pa) upperBound
-    in Full $ buildInstruction (rangeCode rangeType) (parameterToBits pa lowerBound) (secondBound) (getOperator op)
+    let secondBound = maybe b0 (quantityOffset pa) upperBound
+    in Full $ buildInstruction (rangeCode rangeType) (quantityOffset pa lowerBound) (secondBound) (getOperator op)
 
 
 

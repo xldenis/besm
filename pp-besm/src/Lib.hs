@@ -12,6 +12,10 @@ data Programme
   , parameters :: [Parameter]
   , constants :: [Constant]
   , programme :: [Operator]
+  , block0Len :: Word16
+  , blockAlphaLen :: Word16
+  , blockGammaLen :: Word16
+  -- , blockBetLen -- Beta block takes remaining space to addr 02FF
   }
 
 data ArithOperator -- Arithmetic, Logical, Non-Standard
@@ -90,15 +94,15 @@ data BlockHead
   { a :: Word11 -- 10 bits + sign bit
   , b :: Word11
   , c :: Word11
-  , vars :: [VariableAddress]
+  , vars :: NonEmpty VariableAddress
   }
 
 data Dir = FromStart | FromEnd
 
 data VariableAddress
-  = Constant { offset :: Word8, direction :: Dir }
-  | Var
-    { param1 :: Word8
+  = Var
+    { vaName :: Char
+    , param1 :: Word8
     , param2 :: Word8
     , param3 :: Word8
     , offset :: Word8
@@ -106,10 +110,11 @@ data VariableAddress
     }
 
 data LoopParameter = LP
-  { i0 :: Quantity
+  { lpName :: Char
+  , i0 :: Quantity
   , lpA  :: Quantity
   , lpB  :: Quantity
-  , i :: Quantity
+  , j :: Quantity
   , k :: Quantity
   }
 
@@ -118,22 +123,25 @@ newtype Addr = Addr { unAddr :: BitVector 11 }
 
 data Parameter
   = InFin
-    { inP :: Quantity
+    { pName :: Char
+    , inP :: Quantity
     , finP :: Quantity
     }
   | CharacteristicLoop
-    { theta :: Opcode
+    { pName :: Char
+    , theta :: Opcode
     , inP :: Quantity
     , loopA :: Quantity
     , loopB :: Quantity
     }
   | LogicalLoop
-    { theta :: Opcode
+    { pName :: Char
+    , theta :: Opcode
     , loopAddr :: Addr
     , loopBddr :: Addr
     , loopStart :: Addr
     }
 
 data Constant
-  = Cell (BitVector 39)
-  | Vacant
+  = Cell { cName :: Char, val :: (BitVector 39) }
+  | Vacant { cName :: Char }
