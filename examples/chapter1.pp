@@ -1,4 +1,4 @@
-Below is given an example of the assembly of the logical scheme for the problem of calculating the elements of a tenth-order matrix and inversion of the matrix obtained with checking of the inversion.
+# Below is given an example of the assembly of the logical scheme for the problem of calculating the elements of a tenth-order matrix and inversion of the matrix obtained with checking of the inversion.
 
 
 
@@ -19,13 +19,13 @@ Below is given an example of the assembly of the logical scheme for the problem 
 <b_α> = 1 * α
 <b_s> = 1 * s
 
-(c) Block d (10 cells)
+(d) Block d (10 cells)
 
 <d_k> = 1 * k
 <d_m> = 1 * m
 <d_j> = 1 * j
 
-(d) Block e (10 cells)
+(e) Block e (10 cells)
 
 <e_s> = 1 * s
 <e_r> = 1 * r
@@ -52,4 +52,4 @@ s : s_in = 0, s_fin = 10
 [α 0 => b_α [β α - β => a; P(β, 0101; 0102 / (-∞, α)); L0101 a + 10 => a L0102 Form a ,=> 0
   b_α + a => b_α; a => a_αβ]] [l a_ll - 1 => a_ll][m[k a_mk => d_k; 0 => a_mk]
   1 => a_mm; d_m + 1 => c; Form c, => 0 [i a_im : c => f[j a_ij - j * d_j => a_ij]]]
-  [r 0 => e_r [p e_r + a_pr => e_r]] 0 => R[s R+ b_s * e_s => R]FormR, => 0; stop
+  [r 0 => e_r [p e_r + a_pr => e_r]] 0 => R[s R+ b_s * e_s => R]Form R, => 0; stop

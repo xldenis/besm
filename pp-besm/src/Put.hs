@@ -279,7 +279,6 @@ blockP qa params = map (encodeParameter qa) params
 
 encodeParameter qa (InFin {..}) = buildInstruction 0x0 (quantityOffset qa inP) (quantityOffset qa finP) 0
 encodeParameter qa (CharacteristicLoop {..}) = buildInstruction (getCode theta) (quantityOffset qa inP) (quantityOffset qa loopA) (quantityOffset qa loopB)
-encodeParameter qa (LogicalLoop {..}) = buildInstruction (getCode theta) (unAddr loopAddr) (unAddr loopBddr) (unAddr loopStart)
 
 {-
   Block C: Constants

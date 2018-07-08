@@ -152,13 +152,6 @@ data Parameter
     , loopA :: Quantity
     , loopB :: Quantity
     }
-  | LogicalLoop
-    { pName :: Char
-    , theta :: Opcode
-    , loopAddr :: Addr
-    , loopBddr :: Addr
-    , loopStart :: Addr
-    }
 
 data Constant
   = Cell { cName :: Char, val :: (BitVector 39) }
