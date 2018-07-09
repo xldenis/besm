@@ -14,6 +14,9 @@ import Data.Function
 import GHC.TypeNats (KnownNat)
 import qualified Data.List.NonEmpty as NonEmpty
 
+import Lower
+import Data.Text (Text)
+
 {-
   A programme has to be prepared for the PP by being coded in binary.
 
@@ -103,6 +106,8 @@ programmeSummaryTable olen vlen clen plen klen gammalen alphalen =
   offset.
 -}
 
+type QuantityAddresses = [(Text, Word8)]
+
 calculateQuantityAddresses :: Programme -> QuantityAddresses
 calculateQuantityAddresses (PP {..}) = let
   (offV, vMap) = offsetsInV variableAddresses 0x0010
@@ -115,16 +120,16 @@ calculateQuantityAddresses (PP {..}) = let
   then error "The last constant can't exceed 0x45"
   else vMap ++ pMap ++ cMap
   where
-  offsetsInV :: BlockV -> Word8 -> (Word8, [(Char, Word8)])
+  offsetsInV :: BlockV -> Word8 -> (Word8, [(Text, Word8)])
   offsetsInV (V {..}) offset = let
     (off',  map1)  = concat <$> mapAccumL variableAddrMap offset variableAddrs
     (off'', map2)  = mapAccumL loopParamMap off' loopParameters
     in (off'', map1 ++ map2)
 
-  offsetsInC :: [Constant] -> Word8 -> (Word8, [(Char, Word8)])
+  offsetsInC :: [Constant] -> Word8 -> (Word8, [(Text, Word8)])
   offsetsInC constants offset = mapAccumL (\off c -> (off + 1, (cName c, off))) offset constants
 
-  offsetsInP :: [Parameter] -> Word8 -> (Word8, [(Char, Word8)])
+  offsetsInP :: [ParameterInfo] -> Word8 -> (Word8, [(Text, Word8)])
   offsetsInP params offset = mapAccumL (\off p -> (off + 1, (pName p, off))) offset params
 
   variableAddrMap :: Word8 -> AddressBlock -> (Word8, QuantityAddresses)
@@ -133,10 +138,10 @@ calculateQuantityAddresses (PP {..}) = let
   headMap :: Word8 -> BlockHead -> (Word8, QuantityAddresses)
   headMap offset (Head {..}) = mapAccumL varMap (offset+1) (NonEmpty.toList vars)
 
-  varMap :: Word8 -> VariableAddress -> (Word8, (Char, Word8))
+  varMap :: Word8 -> VariableAddress -> (Word8, (Text, Word8))
   varMap offset va = (offset + 1, (vaName va, offset))
 
-  loopParamMap :: Word8 -> LoopParameter -> (Word8, (Char, Word8))
+  loopParamMap :: Word8 -> LoopParameter -> (Word8, (Text, Word8))
   loopParamMap offset lp = (offset+2, (lpName lp, offset))
 
 {-
@@ -224,30 +229,30 @@ b0 = bitVector 0
 -}
 
 blockV :: QuantityAddresses -> BlockV -> [BitVector 39]
-blockV pa (V varAddrs loopParams) = (varAddrs >>= encodeMainHead) ++ (loopParams  >>= encodeLoopParams pa)
+blockV qa (V varAddrs loopParams) = (varAddrs >>= encodeMainHead qa) ++ (loopParams  >>= encodeLoopParams qa)
 
-encodeMainHead :: AddressBlock -> [BitVector 39]
-encodeMainHead (MainHead size heads) =
+encodeMainHead :: QuantityAddresses -> AddressBlock -> [BitVector 39]
+encodeMainHead qa (MainHead size heads) =
   (buildInstruction 0x01F 0x0 (unWord11 size) 0x0)
-  : (encodeHead =<< (NonEmpty.toList heads))
+  : (encodeHead qa =<< (NonEmpty.toList heads))
 
-encodeHead :: BlockHead -> [BitVector 39]
-encodeHead (Head a b c vars) =
+encodeHead :: QuantityAddresses -> BlockHead -> [BitVector 39]
+encodeHead qa (Head a b c vars) =
   buildInstruction 0x0 (unWord11 a) (unWord11 b) (unWord11 c)
-  : zipWith encodeVariable [1..] (NonEmpty.toList vars)
+  : zipWith (encodeVariable qa) [1..] (NonEmpty.toList vars)
 
-encodeVariable :: Integer -> VariableAddress -> BitVector 39
-encodeVariable ix (Var _ p1 p2 p3 off dir) =
+encodeVariable :: QuantityAddresses -> Integer -> VariableAddress -> BitVector 39
+encodeVariable qa ix (VaInfo _ p1 p2 p3 off dir) =
 
-  buildNumber (bitVector' ix) (signBit dir) (packArithCodes p1 p2 p3 off)
+  buildNumber (bitVector' ix) (signBit dir) (packArithCodes (quantityOffset qa p1) (quantityOffset qa p2) (quantityOffset qa p3) off)
   where signBit FromStart = b0
         signBit FromEnd   = bitVector 1
 
 
 encodeLoopParams :: QuantityAddresses -> LoopParameter -> [BitVector 39]
 encodeLoopParams pa (LP {..}) =
-    buildInstruction 0x0 (quantityOffset pa i0) (quantityOffset pa lpA) (quantityOffset pa lpB)
-  : [buildInstruction 0x0 0x0 (quantityOffset pa j) (quantityOffset pa k)]
+    buildInstruction 0x0 (quantityOffsetBits pa i0) (quantityOffsetBits pa lpA) (quantityOffsetBits pa lpB)
+  : [buildInstruction 0x0 0x0 (quantityOffsetBits pa j) (quantityOffsetBits pa k)]
 
 {-
   Block P: Parameters
@@ -274,11 +279,11 @@ encodeLoopParams pa (LP {..}) =
   Here, it is assumed that the parameters are already arragned in the correct order.
 -}
 
-blockP :: QuantityAddresses -> [Parameter] -> [BitVector 39]
+blockP :: QuantityAddresses -> [ParameterInfo] -> [BitVector 39]
 blockP qa params = map (encodeParameter qa) params
 
-encodeParameter qa (InFin {..}) = buildInstruction 0x0 (quantityOffset qa inP) (quantityOffset qa finP) 0
-encodeParameter qa (CharacteristicLoop {..}) = buildInstruction (getCode theta) (quantityOffset qa inP) (quantityOffset qa loopA) (quantityOffset qa loopB)
+encodeParameter qa (InFin {..}) = buildInstruction 0x0 (quantityOffsetBits qa inP) (quantityOffsetBits qa finP) 0
+encodeParameter qa (CharacteristicLoop {..}) = buildInstruction (getCode theta) (quantityOffsetBits qa inP) (quantityOffsetBits qa loopA) (quantityOffsetBits qa loopB)
 
 {-
   Block C: Constants
@@ -322,9 +327,10 @@ packArithCodes a b c d = bitVector 0
 buildArithCodes :: BitVector 32 -> BitVector 39
 buildArithCodes codes = inject mantissa (bitVector 0) codes
 
-type QuantityAddresses = [(Char, Word8)]
+quantityOffsetBits pa p = bitVector . fromIntegral . fromJust $ unQ p `lookup` pa
 
-quantityOffset pa p = bitVector . fromIntegral . fromJust $ unQ p `lookup` pa
+quantityOffset :: QuantityAddresses -> Quantity -> Word8
+quantityOffset pa p = fromIntegral . fromJust $ unQ p `lookup` pa
 
 bitVector' :: (KnownNat k, Integral a) => a -> BitVector k
 bitVector' = bitVector . fromIntegral
@@ -356,7 +362,7 @@ encodeCode pa (Parameter p : ops)     = Short (fromJust $ (unQ p) `lookup` pa) :
 encodeCode pa (OperatorSign os : LogicalOperator lo : o : ops) = encodeLogicalOp pa (Just os) lo o
 encodeCode pa (LogicalOperator lo : o : ops)                   = encodeLogicalOp pa  Nothing  lo o
 encodeCode pa (OperatorSign os : ops) = Full (buildInstruction operatorSign (getOperator os)       b0 b0) : encodeCode pa ops
-encodeCode pa (LoopOpen p : ops)      = Full (buildInstruction operatorSign (quantityOffset pa p) b0 b0) : encodeCode pa ops
+encodeCode pa (LoopOpen p : ops)      = Full (buildInstruction operatorSign (quantityOffsetBits pa p) b0 b0) : encodeCode pa ops
 encodeCode pa (LoopClose : ops)       = Full (buildInstruction (bitVector 0x01F) b13FF b13FF b13FF)       : encodeCode pa ops
   where b13FF = bitVector 0x13FF
 
@@ -403,7 +409,7 @@ encodeLogicalOp pa opSign (Op x defaultOp branches) following = let
   followingOperator = encodeCode pa [following]
   thirdAddress      = extract instAddr3 (head $ packCells followingOperator)
   padding           = if thirdAddress == b0 then [] else [Full b0]
-  operatorHead = Full $ buildInstruction operatorSign (maybe b0 getOperator opSign) (quantityOffset pa x) (getOperator defaultOp)
+  operatorHead = Full $ buildInstruction operatorSign (maybe b0 getOperator opSign) (quantityOffsetBits pa x) (getOperator defaultOp)
 
   in operatorHead : map encodeBranch branches ++ padding ++ followingOperator
   where
@@ -416,8 +422,8 @@ encodeLogicalOp pa opSign (Op x defaultOp branches) following = let
     """
   -}
   encodeBranch (op, rangeType, lowerBound, upperBound) =
-    let secondBound = maybe b0 (quantityOffset pa) upperBound
-    in Full $ buildInstruction (rangeCode rangeType) (quantityOffset pa lowerBound) (secondBound) (getOperator op)
+    let secondBound = maybe b0 (quantityOffsetBits pa) upperBound
+    in Full $ buildInstruction (rangeCode rangeType) (quantityOffsetBits pa lowerBound) (secondBound) (getOperator op)
 
 
 

@@ -6,6 +6,7 @@ module Parser
 ( module Parser
 , parse
 , parseTest'
+, parseErrorPretty'
 ) where
 
 import           Control.Monad
@@ -19,6 +20,7 @@ import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import           Text.Megaparsec.Expr
 import Syntax
+import qualified Data.List.NonEmpty as NL
 
 {-
 
@@ -48,7 +50,6 @@ parens = between (lexeme $ char '(') (lexeme $ char ')')
 angles :: Parser a -> Parser a
 angles = between (lexeme $ char '<') (lexeme $ char '>')
 
-
 -- | Top Level Parser for a PP program
 pp :: Parser ParsedProgramme
 pp = do
@@ -76,7 +77,7 @@ variableAddressBlock = do
   numCells <- parens (integer <* symbol "cells")
   scn
 
-  Block numCells <$> some variableAddress
+  (Block numCells . NL.fromList) <$> some variableAddress
 
 variableAddress :: Parser (Text, SimpleExpr)
 variableAddress = do
@@ -152,7 +153,11 @@ schemaSection = section "Logical Scheme"  $ do
   schemaParser
 
 schemaParser :: Parser LogicalSchema
-schemaParser = Seq <$> some (schemaTerm <* optional (symbol ";") <* scn)
+schemaParser = (Seq . concatTuples) <$> some ((,) <$> schemaTerm <*> optional (symbol ";" >> pure Semicolon) <* scn)
+  where
+  concatTuples ((term, Just s ) : ls) = term : s : concatTuples ls
+  concatTuples ((term, Nothing) : ls) = term : concatTuples ls
+  concatTuples [] = []
 
 schemaTerm :: Parser LogicalSchema
 schemaTerm = loop <|> printExpr <|> assign <|> logicalOperator <|> opSign <|> stop
