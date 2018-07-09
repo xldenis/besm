@@ -42,7 +42,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - pp-besm
-
+    - prettyclass
 tests:
   pp-besm-test:
     main:                Spec.hs

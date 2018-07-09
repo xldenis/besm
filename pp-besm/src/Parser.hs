@@ -142,7 +142,7 @@ characteristic = do
     <|> (symbol ",<"  >> return ModuliComparison)
   b <- variable
 
-  return $ Charateristic op init a b
+  return $ Charateristic var op init a b
 
 constantSection :: Parser [SimpleExpr]
 constantSection = do
@@ -200,17 +200,17 @@ logicalOperator = lexeme $ (*>) (char 'P') $ parens $ do
   var <- variable
   symbol ","
 
-  opSign <- lexeme $ some hexDigitChar
+  opSign <- operatorNumber
   symbol ";"
 
   branches <- some logicalBranch
-  return $ LogicalOperator var (T.pack opSign) branches
+  return $ LogicalOperator var opSign branches
   where
   logicalBranch = do
-    opSign <- lexeme $ some hexDigitChar
+    opSign <- operatorNumber
     symbol "/"
 
-    (,) <$> pure (T.pack opSign) <*> range
+    (,) <$> pure opSign <*> range
 
   range = do
     open <- symbol "(" <|> symbol "["
@@ -231,8 +231,11 @@ logicalOperator = lexeme $ (*>) (char 'P') $ parens $ do
       ("(",   a ,  b , "]") -> return $ SemiSegment a b
       ("(",   a ,  b , ")") -> return $ Interval a b
 
+operatorNumber :: Parser OperatorSign
+operatorNumber = lexeme $ OpSign <$> L.hexadecimal
+
 opSign :: Parser LogicalSchema
-opSign = char 'L' *> ((OpLabel . T.pack) <$> (lexeme $ some hexDigitChar))
+opSign = char 'L' *> (OpLabel <$> operatorNumber)
 
 stop :: Parser LogicalSchema
 stop = symbol "stop" *> return Stop

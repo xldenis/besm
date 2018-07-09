@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 module Lower where
 
-import Syntax
+import qualified Syntax as S
 
 import Data.BitVector.Sized
 import Data.Word
@@ -129,9 +129,9 @@ data Dir = FromStart | FromEnd
 
 data VariableAddress = VaInfo
   { vaName :: Text
-  , param1 :: Quantity
-  , param2 :: Quantity
-  , param3 :: Quantity
+  , param1 :: Maybe Quantity
+  , param2 :: Maybe Quantity
+  , param3 :: Maybe Quantity
   , offset :: Word8
   , direction :: Dir
   } deriving Show
@@ -171,8 +171,11 @@ data Constant
 toWord11 :: Int -> Word11
 toWord11 i = W $ bitVector (fromIntegral i)
 
-lowerProgramme :: ParsedProgramme -> Programme
-lowerProgramme (P va p c k) = PP
+lowerOpSign :: S.OperatorSign -> OperatorSign
+lowerOpSign = OS . unWord11 . toWord11 . S.fromOperatorSign
+
+lowerProgramme :: S.ParsedProgramme -> Programme
+lowerProgramme (S.P va p c k) = PP
   (lowerVariableAddresses va)
   (lowerParameters p)
   (lowerConstants c)
@@ -186,22 +189,22 @@ data VAIR = VAIR
   , irVars   :: [Char]
   } deriving Show
 
-lowerVariableAddresses (VA blocks) = V
+lowerVariableAddresses (S.VA blocks) = V
   { variableAddrs = map lowerVariableAddressBlock blocks
-  , loopParameters = []
+  , loopParameters = [] -- the high level AST doesnt even attempt to parse these!
   }
   where
-  lowerVariableAddressBlock (Block size vars) = MainHead (toWord11 size) groupedHeads
+  lowerVariableAddressBlock (S.Block size vars) = MainHead (toWord11 size) groupedHeads
     where
     groupedHeads = NL.fromList $ map (\group -> let
         [a, b, c] = take 3 $ (irSlopes $ NL.head group) ++ repeat 0
         in Head (toWord11 a) (toWord11 b) (toWord11 c) (NL.map (\(VAIR nm off _ vars) -> let
-          [p1, p2, p3] = take 3 $ vars ++ repeat '\NUL'
+          [p1, p2, p3] = take 3 $ (map (Just . QA . T.singleton) vars) ++ repeat Nothing
           (dir, diff) =
             if off < 255 then (FromStart, fromIntegral off)
             else if off > (size - 255) then (FromEnd, fromIntegral $ size - off)
             else error "error"
-          in VaInfo nm (QA $ T.singleton p1) (QA $ T.singleton p2) (QA $ T.singleton p3) diff dir
+          in VaInfo nm ( p1) ( p2) ( p3) diff dir
         ) group)
       ) groupedVars
 
@@ -210,29 +213,68 @@ lowerVariableAddresses (VA blocks) = V
 
     splitConstant eq = (vars, toInt c)
       where (c, vars) = partition isConstant eq
-            toInt [SConstant i] =  i
+            toInt [S.SConstant i] =  i
             toInt [] = 0
             toInt _ = error "omg no"
 
     unpackVariableAddress (name, eq) = VAIR name off slopes vars
       where ((slopes, vars), off) = xxx $ splitConstant $ unwrapVA eq
 
-    isConstant (SConstant _) = True
+    isConstant (S.SConstant _) = True
     isConstant _  = False
 
-    unwrapVA (SAdd l r) = unwrapVA l ++ unwrapVA r
+    unwrapVA (S.SAdd l r) = unwrapVA l ++ unwrapVA r
     unwrapVA l = [l]
 
-    vaConstant (STimes (SConstant c) (SExpVar v)) = (c, v)
+    vaConstant (S.STimes (S.SConstant c) (S.SExpVar v)) = (c, v)
 
     xxx (vars, c) = (unzip $ map vaConstant vars, c)
 
 
-lowerParameters = undefined
+lowerParameters ps = map lowerParameter ps
+  where
+  lowerParameter (S.InFin var init fin) = InFin (S.unVar var) (QA . T.pack $ show init) (QA . T.pack $ show fin)
+  lowerParameter (S.Charateristic var op init a b) = undefined
 
-lowerSchema = undefined
+lowerSchema :: S.LogicalSchema -> [Operator]
+lowerSchema (S.Loop var ls) = LoopOpen (QA $ T.singleton var) : lowerSchema ls ++ [LoopClose]
+lowerSchema (S.Seq lss) = concatMap lowerSchema lss
+lowerSchema (S.Assign exp var) = lowerExp exp ++ [Arith Assign, Parameter (lowerVariable var)]
+lowerSchema (S.LogicalOperator var op ranges) = [LogicalOperator (lowerLogicalOperator var op ranges)]
+lowerSchema (S.OpLabel op) = [OperatorSign (lowerOpSign op)]
+lowerSchema (S.Print exp) = lowerExp exp ++ [Arith Print]
+lowerSchema (S.Stop) = [] -- ?????
+lowerSchema (S.Semicolon) = []
+
+
+lowerVariable = QA . S.unVar
+
+lowerLogicalOperator :: S.Variable -> S.OperatorSign -> [(S.OperatorSign, S.Range)] -> LogicalOperator
+lowerLogicalOperator var op ranges = Op
+  { x = (lowerVariable var)
+  , defaultOp = lowerOpSign op
+  , choices = map lowerRange ranges
+  }
+  where
+  lowerRange (nm, S.LeftImproperInterval      r) = (lowerOpSign nm, LeftImproper, lowerVariable r, Nothing)
+  lowerRange (nm, S.LeftImproperSemiInterval  r) = undefined
+  lowerRange (nm, S.RightImproperInterval     r) = undefined
+  lowerRange (nm, S.RightImproperSemiInterval r) = undefined
+  lowerRange (nm, S.Interval      l r) = undefined
+  lowerRange (nm, S.SemiInterval  l r) = undefined
+  lowerRange (nm, S.SemiSegment   l r) = undefined
+  lowerRange (nm, S.Segment       l r) = undefined
+
+lowerExp :: S.SchemaExpr -> [Operator]
+lowerExp (S.Times l r) = lowerExp l ++ [Arith Times] ++ lowerExp r
+lowerExp (S.Add   l r) = lowerExp l ++ [Arith Plus] ++ lowerExp r
+lowerExp (S.Minus l r) = lowerExp l ++ [Arith Minus] ++ lowerExp r
+lowerExp (S.Div   l r) = lowerExp l ++ [Arith Colon] ++ lowerExp r
+lowerExp (S.Constant c) = [Parameter . QA $ T.pack $ show c]
+lowerExp (S.ExpVar v) = [Parameter $ lowerVariable v]
+lowerExp (S.Form v) = [Arith TransformToDecimal, Parameter (lowerVariable v)]
 
 lowerConstants = map lowerConstant
-  where lowerConstant (SConstant i) = undefined
-        lowerConstant (SExpVar v) = undefined
+  where lowerConstant (S.SConstant i) = Cell (T.pack $ show i) (bitVector $ fromIntegral i)
+        lowerConstant (S.SExpVar v) = Vacant $ T.singleton v
 

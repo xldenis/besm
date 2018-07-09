@@ -244,7 +244,8 @@ encodeHead qa (Head a b c vars) =
 encodeVariable :: QuantityAddresses -> Integer -> VariableAddress -> BitVector 39
 encodeVariable qa ix (VaInfo _ p1 p2 p3 off dir) =
 
-  buildNumber (bitVector' ix) (signBit dir) (packArithCodes (quantityOffset qa p1) (quantityOffset qa p2) (quantityOffset qa p3) off)
+  buildNumber (bitVector' ix) (signBit dir)
+    (packArithCodes (maybe 0 (quantityOffset qa) p1) (maybe 0 (quantityOffset qa) p2) (maybe 0 (quantityOffset qa) p3) off)
   where signBit FromStart = b0
         signBit FromEnd   = bitVector 1
 
@@ -327,11 +328,12 @@ packArithCodes a b c d = bitVector 0
 buildArithCodes :: BitVector 32 -> BitVector 39
 buildArithCodes codes = inject mantissa (bitVector 0) codes
 
-quantityOffsetBits pa p = bitVector . fromIntegral . fromJust $ unQ p `lookup` pa
+quantityOffsetBits pa p = bitVector $ quantityOffset pa p
 
-quantityOffset :: QuantityAddresses -> Quantity -> Word8
-quantityOffset pa p = fromIntegral . fromJust $ unQ p `lookup` pa
-
+quantityOffset :: Integral a => QuantityAddresses -> Quantity -> a
+quantityOffset pa p = fromIntegral . fromJust' $ unQ p `lookup` pa
+  where fromJust' (Just a) = a
+        fromJust' Nothing = error $ show p
 bitVector' :: (KnownNat k, Integral a) => a -> BitVector k
 bitVector' = bitVector . fromIntegral
 
@@ -365,7 +367,7 @@ encodeCode pa (OperatorSign os : ops) = Full (buildInstruction operatorSign (get
 encodeCode pa (LoopOpen p : ops)      = Full (buildInstruction operatorSign (quantityOffsetBits pa p) b0 b0) : encodeCode pa ops
 encodeCode pa (LoopClose : ops)       = Full (buildInstruction (bitVector 0x01F) b13FF b13FF b13FF)       : encodeCode pa ops
   where b13FF = bitVector 0x13FF
-
+encodeCode pa [] = []
 
 {-
   """

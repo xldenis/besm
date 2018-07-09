@@ -8,6 +8,11 @@ import Data.Text.IO as T
 import System.Environment
 import Parser
 import Lower
+import Put
+
+import Text.PrettyPrint.HughesPJClass
+
+
 
 main :: IO ()
 main = do
@@ -21,4 +26,5 @@ main = do
     Left err -> Prelude.putStrLn $ parseErrorPretty' f err
     Right pp -> do
       print $ prettyProgramme pp
-      print $ lowerProgramme pp
+
+      Prelude.putStrLn . prettyShow $ encodeProgramme (lowerProgramme pp)

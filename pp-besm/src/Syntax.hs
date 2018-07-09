@@ -31,7 +31,7 @@ data SimpleExpr
 
 data Parameter
   = InFin Variable Int Int
-  | Charateristic ComparisonOp Int Variable Variable
+  | Charateristic Variable ComparisonOp Int Variable Variable
   deriving Show
 
 data ComparisonOp
@@ -55,12 +55,15 @@ data LogicalSchema
   = Loop Char LogicalSchema
   | Seq [LogicalSchema]
   | Assign SchemaExpr Variable
-  | LogicalOperator Variable Text [(Text, Range)]
-  | OpLabel Text
+  | LogicalOperator Variable OperatorSign [(OperatorSign, Range)]
+  | OpLabel OperatorSign
   | Print SchemaExpr
   | Stop
   | Semicolon
   deriving Show
+
+newtype OperatorSign = OpSign { fromOperatorSign :: Int }
+  deriving (Show)
 
 data SchemaExpr
   = Times SchemaExpr SchemaExpr
@@ -133,11 +136,11 @@ prettySchema (Seq lss) = prettySchemaEl lss
 prettySchema (Assign exp var) = prettyExp exp <+> pretty "=>" <+> pretty (unVar var)
 prettySchema (LogicalOperator var op ranges) = pretty "P" <> (parens $ hsep
   [ pretty (unVar var)
-  , pretty op <> pretty ";"
+  , prettyOpSign op <> pretty ";"
   ] <+> concatWith (\a b -> a <+> pretty "," <+> b) (map prettyRange ranges))
   where
-  prettyRange (op, range) = pretty op <+> pretty "/" <+> pretty "()"
-prettySchema (OpLabel op) = pretty "L" <> pretty op
+  prettyRange (op, range) = prettyOpSign op <+> pretty "/" <+> pretty "()"
+prettySchema (OpLabel op) = pretty "L" <> prettyOpSign op
 prettySchema (Print exp)  = prettyExp exp <+> pretty ", => 0"
 prettySchema Semicolon = pretty ";"
 prettySchema Stop = pretty "Stop"
@@ -150,3 +153,5 @@ prettyExp (Minus l r) = prettyExp l <+> pretty "-" <+> prettyExp r
 prettyExp (Constant c) = pretty c
 prettyExp (ExpVar var) = pretty (unVar var)
 prettyExp (Form   var) = pretty "Form" <+> pretty (unVar var)
+
+prettyOpSign = pretty . fromOperatorSign
