@@ -1,21 +1,22 @@
-{-# LANGUAGE DataKinds, RecordWildCards #-}
+{-# LANGUAGE DataKinds       #-}
+{-# LANGUAGE RecordWildCards #-}
 module Put where
 
-import Lib
+import           Lib
 
-import Data.Word
-import Data.Serialize.Put
-import Data.BitVector.Sized.BitLayout
-import Data.BitVector.Sized
-import Data.List (mapAccumL)
+import           Data.BitVector.Sized
+import           Data.BitVector.Sized.BitLayout
+import           Data.List                      (mapAccumL)
+import           Data.Serialize.Put
+import           Data.Word
 
-import Data.Maybe (fromJust)
-import Data.Function
-import GHC.TypeNats (KnownNat)
-import qualified Data.List.NonEmpty as NonEmpty
+import           Data.Function
+import qualified Data.List.NonEmpty             as NonEmpty
+import           Data.Maybe                     (fromJust)
+import           GHC.TypeNats                   (KnownNat)
 
-import Lower
-import Data.Text (Text)
+import           Data.Text                      (Text)
+import           Lower
 
 {-
   A programme has to be prepared for the PP by being coded in binary.
@@ -178,7 +179,7 @@ instAddr2 :: BitLayout 39 11
 instAddr2 = (chunk 11 :: Chunk 11) <: emptyCell
 
 instAddr3 :: BitLayout 39 11
-instAddr3 = (chunk 11 :: Chunk 11) <: emptyCell
+instAddr3 = (chunk 0 :: Chunk 11) <: emptyCell
 
 buildInstruction :: BitVector 6 -> BitVector 11 -> BitVector 11 -> BitVector 11 -> BitVector 39
 buildInstruction op addr1 addr2 addr3 = (bitVector 0)
@@ -333,7 +334,7 @@ quantityOffsetBits pa p = bitVector $ quantityOffset pa p
 quantityOffset :: Integral a => QuantityAddresses -> Quantity -> a
 quantityOffset pa p = fromIntegral . fromJust' $ unQ p `lookup` pa
   where fromJust' (Just a) = a
-        fromJust' Nothing = error $ show p
+        fromJust' Nothing  = error $ show p
 bitVector' :: (KnownNat k, Integral a) => a -> BitVector k
 bitVector' = bitVector . fromIntegral
 
@@ -361,8 +362,8 @@ packCells [] = []
 encodeCode :: QuantityAddresses -> [Operator] -> [IntermediateValue]
 encodeCode pa (Arith op : ops)        = arithOpcode op : encodeCode pa ops
 encodeCode pa (Parameter p : ops)     = Short (fromJust $ (unQ p) `lookup` pa) : encodeCode pa ops
-encodeCode pa (OperatorSign os : LogicalOperator lo : o : ops) = encodeLogicalOp pa (Just os) lo o
-encodeCode pa (LogicalOperator lo : o : ops)                   = encodeLogicalOp pa  Nothing  lo o
+encodeCode pa (OperatorSign os : LogicalOperator lo : o : ops) = encodeLogicalOp pa (Just os) lo o ++ encodeCode pa ops
+encodeCode pa (LogicalOperator lo : o : ops)                   = encodeLogicalOp pa  Nothing  lo o ++ encodeCode pa ops
 encodeCode pa (OperatorSign os : ops) = Full (buildInstruction operatorSign (getOperator os)       b0 b0) : encodeCode pa ops
 encodeCode pa (LoopOpen p : ops)      = Full (buildInstruction operatorSign (quantityOffsetBits pa p) b0 b0) : encodeCode pa ops
 encodeCode pa (LoopClose : ops)       = Full (buildInstruction (bitVector 0x01F) b13FF b13FF b13FF)       : encodeCode pa ops
@@ -440,32 +441,32 @@ rangeCode (SemiSegment)       = bitVector 18
 rangeCode (Segment)           = bitVector 19
 
 arithOpcode :: ArithOperator -> IntermediateValue
-arithOpcode (NLParen n)           = Long (0x0200 + fromIntegral n)
-arithOpcode (NRParen n)           = Long (0x0600 + fromIntegral n)
-arithOpcode (ChangeExponent n)    = Long (0xFD00 + fromIntegral n)
-arithOpcode (ShiftMantissa n)     = Long (0xFE00 + fromIntegral n)
-arithOpcode (Print)               = Long  0x0700
-arithOpcode (LParen)              = Short 0x01
-arithOpcode (Plus)                = Short 0x03
-arithOpcode (Minus)               = Short 0x04
-arithOpcode (RParen)              = Short 0x05
-arithOpcode (AssignNoNormalize)   = Short 0x07
-arithOpcode (Assign)              = Short 0x08
-arithOpcode (Times)               = Short 0x09
-arithOpcode (Colon)               = Short 0x0A
-arithOpcode (Square)              = Short 0x0B
-arithOpcode (Cube)                = Short 0x0C
-arithOpcode (Cotan)               = Short 0xF0
-arithOpcode (Tan)                 = Short 0xF1
-arithOpcode (Ln)                  = Short 0xF2
-arithOpcode (SquareRoot)          = Short 0xF3
-arithOpcode (TransformToDecimal)  = Short 0xF4
-arithOpcode (Exp)                 = Short 0xF5
-arithOpcode (ArcSin)              = Short 0xF6
-arithOpcode (ArcTan)              = Short 0xF7
-arithOpcode (Sin)                 = Short 0xF8
-arithOpcode (Cos)                 = Short 0xF9
-arithOpcode (E)                   = Short 0xFA
-arithOpcode (ExtractExponenent)   = Short 0xFB
-arithOpcode (Mod)                 = Short 0xFC
-arithOpcode (Sign)                = Short 0xFF
+arithOpcode (NLParen n)          = Long (0x0200 + fromIntegral n)
+arithOpcode (NRParen n)          = Long (0x0600 + fromIntegral n)
+arithOpcode (ChangeExponent n)   = Long (0xFD00 + fromIntegral n)
+arithOpcode (ShiftMantissa n)    = Long (0xFE00 + fromIntegral n)
+arithOpcode (Print)              = Long  0x0700
+arithOpcode (LParen)             = Short 0x01
+arithOpcode (Plus)               = Short 0x03
+arithOpcode (Minus)              = Short 0x04
+arithOpcode (RParen)             = Short 0x05
+arithOpcode (AssignNoNormalize)  = Short 0x07
+arithOpcode (Assign)             = Short 0x08
+arithOpcode (Times)              = Short 0x09
+arithOpcode (Colon)              = Short 0x0A
+arithOpcode (Square)             = Short 0x0B
+arithOpcode (Cube)               = Short 0x0C
+arithOpcode (Cotan)              = Short 0xF0
+arithOpcode (Tan)                = Short 0xF1
+arithOpcode (Ln)                 = Short 0xF2
+arithOpcode (SquareRoot)         = Short 0xF3
+arithOpcode (TransformToDecimal) = Short 0xF4
+arithOpcode (Exp)                = Short 0xF5
+arithOpcode (ArcSin)             = Short 0xF6
+arithOpcode (ArcTan)             = Short 0xF7
+arithOpcode (Sin)                = Short 0xF8
+arithOpcode (Cos)                = Short 0xF9
+arithOpcode (E)                  = Short 0xFA
+arithOpcode (ExtractExponenent)  = Short 0xFB
+arithOpcode (Mod)                = Short 0xFC
+arithOpcode (Sign)               = Short 0xFF

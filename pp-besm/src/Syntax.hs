@@ -1,12 +1,12 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Syntax where
 
-import Data.Text (Text)
-import Data.String (IsString)
-import Data.Text.Prettyprint.Doc
-import Data.List (intersperse)
-import Data.List.NonEmpty (NonEmpty)
-import qualified Data.List.NonEmpty as NL
+import           Data.List                 (intersperse)
+import           Data.List.NonEmpty        (NonEmpty)
+import qualified Data.List.NonEmpty        as NL
+import           Data.String               (IsString)
+import           Data.Text                 (Text)
+import           Data.Text.Prettyprint.Doc
 
 data ParsedProgramme
   = P
@@ -146,10 +146,10 @@ prettySchema Semicolon = pretty ";"
 prettySchema Stop = pretty "Stop"
 
 prettyExp :: SchemaExpr -> Doc a
-prettyExp (Times l r) = prettyExp l <+> pretty "*" <+> prettyExp r
-prettyExp (Div   l r) = prettyExp l <+> pretty ":" <+> prettyExp r
-prettyExp (Add   l r) = prettyExp l <+> pretty "+" <+> prettyExp r
-prettyExp (Minus l r) = prettyExp l <+> pretty "-" <+> prettyExp r
+prettyExp (Times l r)  = prettyExp l <+> pretty "*" <+> prettyExp r
+prettyExp (Div   l r)  = prettyExp l <+> pretty ":" <+> prettyExp r
+prettyExp (Add   l r)  = prettyExp l <+> pretty "+" <+> prettyExp r
+prettyExp (Minus l r)  = prettyExp l <+> pretty "-" <+> prettyExp r
 prettyExp (Constant c) = pretty c
 prettyExp (ExpVar var) = pretty (unVar var)
 prettyExp (Form   var) = pretty "Form" <+> pretty (unVar var)

@@ -10,17 +10,17 @@ module Parser
 ) where
 
 import           Control.Monad
+import qualified Data.List.NonEmpty         as NL
 import           Data.Semigroup
 import           Data.String                (IsString)
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import           Data.Void
+import           Syntax
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import           Text.Megaparsec.Expr
-import Syntax
-import qualified Data.List.NonEmpty as NL
 
 {-
 
@@ -50,12 +50,18 @@ parens = between (lexeme $ char '(') (lexeme $ char ')')
 angles :: Parser a -> Parser a
 angles = between (lexeme $ char '<') (lexeme $ char '>')
 
+binary :: Parser Text -> (a -> a -> a) -> Operator Parser a
+binary op f = InfixL $ do
+  op
+  return f
+
 -- | Top Level Parser for a PP program
 pp :: Parser ParsedProgramme
 pp = do
   scn
   P <$> variableAddressSection <*> parameterSection <*> constantSection <*> schemaSection <* eof
 
+-- | Parses the header to a section
 section :: Text -> Parser a -> Parser a
 section sectionName sectionParser = do
     --       v--- enforce sequential section numbers?
@@ -63,6 +69,13 @@ section sectionName sectionParser = do
   forM (T.words sectionName) $ \word -> (symbol word)
   scn
   sectionParser
+
+{-
+  The variable address block contains a list of simple equations (+, *) with up to 3 variables and an offset.
+
+  It also contains a list of loop parameters dependent on 'higher order parameters', described by an equation
+  with two variables and an offset.
+-}
 
 variableAddressSection :: Parser VASection
 variableAddressSection = do
@@ -103,10 +116,6 @@ opTable =
     ]
   ]
 
-binary :: Parser Text -> (a -> a -> a) -> Operator Parser a
-binary op f = InfixL $ do
-  op
-  return f
 
 parameterSection :: Parser [Parameter]
 parameterSection = section "Parameters" (some parameterDecl)
@@ -114,6 +123,8 @@ parameterSection = section "Parameters" (some parameterDecl)
 parameterDecl :: Parser Parameter
 parameterDecl = inFin <|> characteristic
 
+
+-- | A parameter consisting only of upper and lower bounds.
 inFin :: Parser Parameter
 inFin = do
   var <- simpleVar
@@ -129,6 +140,7 @@ inFin = do
 
 -- This syntax is inferred from the book and context, no actual example of a so called 'characteristic loop'
 -- has been found
+-- It describes loops in which the upper bound is determined dynamically by a logical condition
 characteristic :: Parser Parameter
 characteristic = do
   var <- simpleVar
@@ -144,21 +156,32 @@ characteristic = do
 
   return $ Charateristic var op init a b
 
+-- The constant section contains a list of _every_ constant and undetermined variable not described in Block V
 constantSection :: Parser [SimpleExpr]
 constantSection = do
   section "List of Constants and Variable Quantities" (list (constant <|> expVar letterChar)) <* scn
 
+{-
+  Block K
+
+  Block K is the 'actual' program.
+
+
+-}
 schemaSection :: Parser LogicalSchema
 schemaSection = section "Logical Scheme"  $ do
   schemaParser
 
+
+-- | Parse a list of schematic statements
 schemaParser :: Parser LogicalSchema
 schemaParser = (Seq . concatTuples) <$> some ((,) <$> schemaTerm <*> optional (symbol ";" >> pure Semicolon) <* scn)
   where
   concatTuples ((term, Just s ) : ls) = term : s : concatTuples ls
   concatTuples ((term, Nothing) : ls) = term : concatTuples ls
-  concatTuples [] = []
+  concatTuples []                     = []
 
+-- | Parse one schema statement
 schemaTerm :: Parser LogicalSchema
 schemaTerm = loop <|> printExpr <|> assign <|> logicalOperator <|> opSign <|> stop
 

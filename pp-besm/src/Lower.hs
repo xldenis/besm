@@ -1,15 +1,15 @@
 {-# LANGUAGE DataKinds #-}
 module Lower where
 
-import qualified Syntax as S
+import qualified Syntax               as S
 
-import Data.BitVector.Sized
-import Data.Word
-import Data.Text (Text)
-import qualified Data.Text as T
-import Data.List
-import Data.List.NonEmpty (NonEmpty)
-import qualified Data.List.NonEmpty as NL
+import           Data.BitVector.Sized
+import           Data.List
+import           Data.List.NonEmpty   (NonEmpty)
+import qualified Data.List.NonEmpty   as NL
+import           Data.Text            (Text)
+import qualified Data.Text            as T
+import           Data.Word
 
 {-
   """
@@ -32,12 +32,12 @@ import qualified Data.List.NonEmpty as NL
 data Programme
   = PP
   { variableAddresses :: BlockV
-  , parameters :: [ParameterInfo]
-  , constants :: [Constant]
-  , programme :: [Operator]
-  , block0Len :: Word16
-  , blockAlphaLen :: Word16
-  , blockGammaLen :: Word16
+  , parameters        :: [ParameterInfo]
+  , constants         :: [Constant]
+  , programme         :: [Operator]
+  , block0Len         :: Word16
+  , blockAlphaLen     :: Word16
+  , blockGammaLen     :: Word16
   -- , blockBetLen -- Beta block takes remaining space to addr 02FF
   } deriving Show
 
@@ -86,9 +86,9 @@ newtype Quantity = QA { unQ :: Text } deriving Show
 newtype OperatorSign = OS { getOperator :: BitVector 11 } deriving Show
 
 data LogicalOperator = Op
-  { x :: Quantity
+  { x         :: Quantity
   , defaultOp :: OperatorSign
-  , choices :: [(OperatorSign, RangeType, Quantity, Maybe Quantity)]
+  , choices   :: [(OperatorSign, RangeType, Quantity, Maybe Quantity)]
   } deriving Show
 
 data RangeType
@@ -104,7 +104,7 @@ data RangeType
 
 data BlockV
   = V
-  { variableAddrs :: [AddressBlock]
+  { variableAddrs  :: [AddressBlock]
   , loopParameters :: [LoopParameter]
   } deriving Show
 
@@ -113,14 +113,14 @@ newtype Word11 = W { unWord11 :: BitVector 11 }
 
 data AddressBlock = MainHead
   { blockSize :: Word11
-  , heads :: NonEmpty BlockHead
+  , heads     :: NonEmpty BlockHead
   } deriving Show
 
 data BlockHead
   = Head
-  { a :: Word11 -- 10 bits + sign bit
-  , b :: Word11
-  , c :: Word11
+  { a    :: Word11 -- 10 bits + sign bit
+  , b    :: Word11
+  , c    :: Word11
   , vars :: NonEmpty VariableAddress
   } deriving Show
 
@@ -128,11 +128,11 @@ data Dir = FromStart | FromEnd
   deriving Show
 
 data VariableAddress = VaInfo
-  { vaName :: Text
-  , param1 :: Maybe Quantity
-  , param2 :: Maybe Quantity
-  , param3 :: Maybe Quantity
-  , offset :: Word8
+  { vaName    :: Text
+  , param1    :: Maybe Quantity
+  , param2    :: Maybe Quantity
+  , param3    :: Maybe Quantity
+  , offset    :: Word8
   , direction :: Dir
   } deriving Show
 
@@ -151,13 +151,13 @@ newtype Addr = Addr { unAddr :: BitVector 11 } deriving Show
 data ParameterInfo
   = InFin
     { pName :: Text
-    , inP :: Quantity
-    , finP :: Quantity
+    , inP   :: Quantity
+    , finP  :: Quantity
     }
   | CharacteristicLoop
     { pName :: Text
     , theta :: Opcode
-    , inP :: Quantity
+    , inP   :: Quantity
     , loopA :: Quantity
     , loopB :: Quantity
     }
@@ -214,17 +214,17 @@ lowerVariableAddresses (S.VA blocks) = V
     splitConstant eq = (vars, toInt c)
       where (c, vars) = partition isConstant eq
             toInt [S.SConstant i] =  i
-            toInt [] = 0
-            toInt _ = error "omg no"
+            toInt []              = 0
+            toInt _               = error "omg no"
 
     unpackVariableAddress (name, eq) = VAIR name off slopes vars
       where ((slopes, vars), off) = xxx $ splitConstant $ unwrapVA eq
 
     isConstant (S.SConstant _) = True
-    isConstant _  = False
+    isConstant _               = False
 
     unwrapVA (S.SAdd l r) = unwrapVA l ++ unwrapVA r
-    unwrapVA l = [l]
+    unwrapVA l            = [l]
 
     vaConstant (S.STimes (S.SConstant c) (S.SExpVar v)) = (c, v)
 

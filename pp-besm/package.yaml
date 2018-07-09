@@ -43,6 +43,9 @@ executables:
     dependencies:
     - pp-besm
     - prettyclass
+    - bv-sized
+    - optparse-simple
+
 tests:
   pp-besm-test:
     main:                Spec.hs
