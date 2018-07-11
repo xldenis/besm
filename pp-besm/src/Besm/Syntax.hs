@@ -7,6 +7,11 @@ import qualified Data.List.NonEmpty        as NL
 import           Data.String               (IsString)
 import           Data.Text                 (Text)
 import           Data.Text.Prettyprint.Doc
+import           Text.Printf
+
+{-
+  Source level syntax tree for the PP-BESM language suitable for pretty printing.
+-}
 
 data ParsedProgramme
   = P
@@ -139,7 +144,16 @@ prettySchema (LogicalOperator var op ranges) = pretty "P" <> (parens $ hsep
   , prettyOpSign op <> pretty ";"
   ] <+> concatWith (\a b -> a <+> pretty "," <+> b) (map prettyRange ranges))
   where
-  prettyRange (op, range) = prettyOpSign op <+> pretty "/" <+> pretty "()"
+  prettyRange (op, range) = prettyOpSign op <+> pretty "/" <+> go range
+  go (LeftImproperInterval      up) = parens $ pretty "-∞" <+> pretty "," <+> pretty (unVar up)
+  go (LeftImproperSemiInterval  up) = pretty "(" <> pretty "-∞" <+> pretty "," <+> pretty (unVar up) <> pretty "]"
+  go (RightImproperInterval     low) = parens $ pretty (unVar low) <+> pretty "," <+> pretty "∞"
+  go (RightImproperSemiInterval low) = pretty "[" <> pretty (unVar low) <+> pretty "," <+> pretty "∞" <> pretty ")"
+  go (Interval      low up) = parens $ pretty (unVar low) <+> pretty "," <+> pretty (unVar up)
+  go (SemiInterval  low up) = pretty "[" <> pretty (unVar low) <+> pretty "," <+> pretty (unVar up) <> pretty ")"
+  go (SemiSegment   low up) = pretty "(" <> pretty (unVar low) <+> pretty "," <+> pretty (unVar up) <> pretty "]"
+  go (Segment       low up) = brackets $  pretty (unVar low) <+> pretty "," <+> pretty (unVar up)
+
 prettySchema (OpLabel op) = pretty "L" <> prettyOpSign op
 prettySchema (Print exp)  = prettyExp exp <+> pretty ", => 0"
 prettySchema Semicolon = pretty ";"
@@ -154,4 +168,7 @@ prettyExp (Constant c) = pretty c
 prettyExp (ExpVar var) = pretty (unVar var)
 prettyExp (Form   var) = pretty "Form" <+> pretty (unVar var)
 
-prettyOpSign = pretty . fromOperatorSign
+prettyOpSign = pretty . toHex . fromOperatorSign
+  where
+  toHex :: Int -> String
+  toHex i = printf "%04x" i
