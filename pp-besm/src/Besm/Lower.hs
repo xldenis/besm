@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
-module Lower where
+module Besm.Lower where
 
-import qualified Syntax               as S
+import qualified Besm.Syntax               as S
 
 import           Data.BitVector.Sized
 import           Data.List

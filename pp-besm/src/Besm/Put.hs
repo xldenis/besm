@@ -1,8 +1,6 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE RecordWildCards #-}
-module Put where
-
-import           Lib
+module Besm.Put where
 
 import           Data.BitVector.Sized
 import           Data.BitVector.Sized.BitLayout
@@ -16,7 +14,7 @@ import           Data.Maybe                     (fromJust)
 import           GHC.TypeNats                   (KnownNat)
 
 import           Data.Text                      (Text)
-import           Lower
+import           Besm.Lower
 
 {-
   A programme has to be prepared for the PP by being coded in binary.

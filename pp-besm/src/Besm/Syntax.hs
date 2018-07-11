@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Syntax where
+module Besm.Syntax where
 
 import           Data.List                 (intersperse)
 import           Data.List.NonEmpty        (NonEmpty)

@@ -2,18 +2,20 @@
 
 module Main where
 
-import           Lib
-import           Syntax
 
 import           Data.Text.IO                   as T
 
 import           Control.Monad
 import           Data.BitVector.Sized.BitLayout
 import           Data.Semigroup
-import           Lower
 import           Options.Applicative.Simple     as S
-import           Parser
-import           Put
+import           Besm.Parser
+import           Besm.Put
+import           Besm
+import           Besm.Syntax
+import           Besm.Lower
+
+
 import           System.Environment
 import           Text.PrettyPrint.HughesPJClass (pPrint, vcat, (<+>))
 

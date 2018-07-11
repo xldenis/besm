@@ -2,8 +2,8 @@
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
-module Parser
-( module Parser
+module Besm.Parser
+( module Besm.Parser
 , parse
 , parseTest'
 , parseErrorPretty'
@@ -16,7 +16,7 @@ import           Data.String                (IsString)
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import           Data.Void
-import           Syntax
+import           Besm.Syntax
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L

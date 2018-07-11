@@ -1,3 +1,3 @@
 {-# LANGUAGE DataKinds #-}
-module Lib where
+module Besm where
 
