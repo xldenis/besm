@@ -10,7 +10,7 @@ import qualified Data.List.NonEmpty   as NL
 import           Data.Text            (Text)
 import qualified Data.Text            as T
 import           Data.Word
-
+import           Data.Function (on)
 {-
   """
   All information on the problem is always divided into the following four groups:
@@ -27,6 +27,10 @@ import           Data.Word
 
   - Alpha, Beta, Gamma: Related to coding loops
   - Zero (0): Reserved for 'standard-routines'
+
+  This module converts a programme from the source level AST to a linear IR token stream
+  which makes it simpler to encode into the binary input format that the BESM uses.
+
 -}
 
 data Programme
@@ -43,16 +47,16 @@ data Programme
 
 data ArithOperator -- Arithmetic, Logical, Non-Standard
   = LParen
-  | NLParen Word8
+  | NLParen Word8 -- N left parentheses, saves space for N > 2
   | Plus
   | Minus
   | RParen
   | NRParen Word8
-  | AssignNoNormalize -- ?
-  | Print -- F
+  | AssignNoNormalize
+  | Print
   | Assign
   | Times
-  | Colon
+  | Colon -- Division
   | Square
   | Cube
   | Cotan
@@ -65,7 +69,7 @@ data ArithOperator -- Arithmetic, Logical, Non-Standard
   | ArcTan
   | Sin
   | Cos
-  | E
+  | E -- Exponent of FP number
   | ExtractExponenent
   | Mod
   | ChangeExponent Word8
@@ -189,46 +193,60 @@ data VAIR = VAIR
   , irVars   :: [Char]
   } deriving Show
 
+lowerVariableAddresses :: S.VASection -> BlockV
 lowerVariableAddresses (S.VA blocks) = V
   { variableAddrs = map lowerVariableAddressBlock blocks
   , loopParameters = [] -- the high level AST doesnt even attempt to parse these!
   }
   where
-  lowerVariableAddressBlock (S.Block size vars) = MainHead (toWord11 size) groupedHeads
+  lowerVariableAddressBlock (S.Block size vars) = MainHead (toWord11 size) lowerHeads
     where
-    groupedHeads = NL.fromList $ map (\group -> let
-        [a, b, c] = take 3 $ (irSlopes $ NL.head group) ++ repeat 0
-        in Head (toWord11 a) (toWord11 b) (toWord11 c) (NL.map (\(VAIR nm off _ vars) -> let
-          [p1, p2, p3] = take 3 $ (map (Just . QA . T.singleton) vars) ++ repeat Nothing
-          (dir, diff) =
-            if off < 255 then (FromStart, fromIntegral off)
-            else if off > (size - 255) then (FromEnd, fromIntegral $ size - off)
-            else error "error"
-          in VaInfo nm ( p1) ( p2) ( p3) diff dir
-        ) group)
-      ) groupedVars
+    lowerHeads = NL.fromList $ map lowerHead groupedVars
 
-    groupedVars = NL.groupBy (\a b -> irSlopes a == irSlopes b) . NL.sortBy (\a b -> irSlopes a `compare` irSlopes b) $ NL.map unpackVariableAddress vars
+    lowerHead group = let
+      [a, b, c] = take 3 $ (irSlopes $ NL.head group) ++ repeat 0
+      in Head (toWord11 a) (toWord11 b) (toWord11 c) (NL.map lowerVariableAddress group)
 
+    lowerVariableAddress (VAIR nm off _ vars) = let
+        [p1, p2, p3] = take 3 $ (map (Just . QA . T.singleton) vars) ++ repeat Nothing
+        (dir, diff) =
+          if off < 255 then (FromStart, fromIntegral off)
+          else if off > (size - 255) then (FromEnd, fromIntegral $ size - off)
+          else error "error"
+        in VaInfo nm p1 p2 p3 diff dir
+
+    {-
+      Take the list of variable addresses m_i, i ∈ {0,.., n}, of a block M_(k) each having the form:
+
+      m_i = A_i * x_i + B_i * y_i + C_i * z_i + D
+
+      and group them according to the tuple (A,B,C) producing sublists with all variables that share
+      the same constant parameters.
+    -}
+
+    groupedVars :: [NonEmpty VAIR]
+    groupedVars =
+        NL.groupBy ((==) `on` irSlopes)
+      . NL.sortBy (compare `on` irSlopes)
+      $ NL.map unpackVariableAddress vars
 
     splitConstant eq = (vars, toInt c)
       where (c, vars) = partition isConstant eq
             toInt [S.SConstant i] =  i
             toInt []              = 0
             toInt _               = error "omg no"
+            isConstant (S.SConstant _) = True
+            isConstant _               = False
 
     unpackVariableAddress (name, eq) = VAIR name off slopes vars
-      where ((slopes, vars), off) = xxx $ splitConstant $ unwrapVA eq
+      where
+      ((slopes, vars), off) = unzipLeft $ splitConstant $ unwrapVA eq
+      unzipLeft (vars, c) = (unzip $ map vaConstant vars, c)
+      vaConstant (S.STimes (S.SConstant c) (S.SExpVar v)) = (c, v)
 
-    isConstant (S.SConstant _) = True
-    isConstant _               = False
 
     unwrapVA (S.SAdd l r) = unwrapVA l ++ unwrapVA r
     unwrapVA l            = [l]
-
-    vaConstant (S.STimes (S.SConstant c) (S.SExpVar v)) = (c, v)
-
-    xxx (vars, c) = (unzip $ map vaConstant vars, c)
 
 
 lowerParameters ps = map lowerParameter ps
@@ -243,9 +261,11 @@ lowerSchema (S.Assign exp var) = lowerExp exp ++ [Arith Assign, Parameter (lower
 lowerSchema (S.LogicalOperator var op ranges) = [LogicalOperator (lowerLogicalOperator var op ranges)]
 lowerSchema (S.OpLabel op) = [OperatorSign (lowerOpSign op)]
 lowerSchema (S.Print exp) = lowerExp exp ++ [Arith Print]
-lowerSchema (S.Stop) = [] -- ?????
+-- I havent found any information on how Stop is coded so I assume it's equivalent to
+-- and end-of-input-marker
+lowerSchema (S.Stop) = []
+-- ; is a purely syntactic construct that is parsed solely for prettyprinting purposes
 lowerSchema (S.Semicolon) = []
-
 
 lowerVariable = QA . S.unVar
 
