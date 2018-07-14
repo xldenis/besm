@@ -1,0 +1,6 @@
+[package]
+name = "besm-vm"
+version = "0.1.0"
+authors = ["Xavier Denis <xldenis@gmail.com>"]
+
+[dependencies]

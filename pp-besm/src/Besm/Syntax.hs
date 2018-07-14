@@ -56,6 +56,7 @@ data Range
   | Segment       Variable Variable
   deriving Show
 
+-- TODO: Add parentheses
 data LogicalSchema
   = Loop Char LogicalSchema
   | Seq [LogicalSchema]
