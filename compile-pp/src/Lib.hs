@@ -1,55 +1,12 @@
-{-# LANGUAGE TemplateHaskell, FlexibleContexts, DeriveFunctor, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell, FlexibleContexts, DeriveFunctor, GeneralizedNewtypeDeriving, RecursiveDo #-}
 module Lib
     ( someFunc
     ) where
 
-import Control.Monad.Free
-import Control.Monad.Free.TH
+import Monad
 
 someFunc :: IO ()
 someFunc = putStrLn "someFunc"
-
-newtype Address = A { unAddr :: Int }
-  deriving (Show, Num)
-
-data BesmAsm param
-  = Add       Address Address Address param
-  | Sub       Address Address Address param
-  | Mult      Address Address Address param
-  | Div       Address Address Address param
-  | AddE      Address Address Address param
-  | SubE      Address Address Address param
-  | Ce        Address Address Address param
-  | Xa        Address Address Address param
-  | Xb                        Address param
-  | DivA      Address Address Address param
-  | DivB                      Address param
-  | TN        Address         Address param
-  | PN        Address                 param
-  | TMin      Address         Address param
-  | TMod      Address         Address param -- I think the 'modulus' actually means magnitude of mantissa?
-  | TSign     Address Address Address param
-  | TExp      Address         Address param
-  | Shift     Address         Address param
-  | ShiftAll  Address Address Address param
-  | AI        Address Address Address param
-  | AICarry   Address Address Address param
-  | I         Address Address Address param
-  | Comp      Address Address Address param
-  | CompWord  Address Address Address param
-  | CompMod   Address Address Address param
-  | Ma        Address Address Address param
-  | Mb        Address Address Address param
-  | JCC                               param
-  | CLCC                      Address param
-  | CCCC              Address Address param
-  | LogMult   Address Address Address param
-  | Stop                              param
-  | SwitchStop                        param
-  -- | End
-  deriving (Functor)
-
-$(makeFree ''BesmAsm)
 
 {-
   PP-1
@@ -139,12 +96,17 @@ symbolCounter = undefined
 partialProgramme :: Address
 partialProgramme = undefined
 
+left11 = undefined
+left22 = undefined
+
 -- Apparently the first addresses of the DS store some constants
 zero :: Address
 zero = undefined
 
 one :: Address
-one = 0x1081
+one = Absolute 0x1081
+
+x1c = undefined
 
 {-
   """
@@ -161,8 +123,10 @@ op1 = do
   tN _1 counterK
   tN _2 counterB1
   tN one symbolCounter
-  tN 0 cellC
-  tN 0 (partialProgramme - 1)
+  tN zero cellC
+  tN zero (partialProgramme `offAddr` (negate 1))
+
+  chain (op 2)
 {-
   Op 2 - 3
 
@@ -176,19 +140,22 @@ op1 = do
 
 op23 = do
   tExp cellA _1
-  compWord _1 zero _3pp1
-
+  compWord _1 zero pp_3_1 (op 4)
+  where pp_3_1 = undefined
 {-
   Op 4. extracts the code of the next symbol of the formula and adds 1 to
   the symbol counter.
 -}
 op4 = do
-  shift cellA _8left cellA
+  shift cellA left8 cellA
   tMod cellA cellF
-  shift cellF _24right cellF
+  shift cellF right24 cellF
 
   add one symbolCounter symbolCounter
 
+  cccc (op 5)
+  where left8   = undefined
+        right24 = undefined
 {-
   Op. 5 compares the indication of the symbol counter  with the number 4 and
   in the case of extraction of the last code from the line transfers control
@@ -200,9 +167,21 @@ op4 = do
   Op. 7 clears the symbol counter
 
 -}
-op567 = do
-  comp symbolCounter _four _mp_1_17
-  tN zero symbolCounter
+op5 = mdo
+  comp symbolCounter four (op 6) joinP
+  joinP <- block $ do
+    jcc
+    chain (op 8)
+
+  operator 6 $ do
+    tN zero symbolCounter
+
+    callRtc mp_1_17
+    cccc joinP
+
+  where mp_1_17 = undefined
+        four    = undefined
+
 
 {-
   Op. 8 transfers the code of the extracted symbol to cell B.
@@ -211,8 +190,8 @@ op567 = do
   formula  coding, transferring control to Op. 2
 -}
 op89 = do
-  tN cellF cellB
-  compWord zero cellB _op2
+  add cellF cellB cellB
+  compWord zero cellB (op 2) (op 10)
 
 {-
   Op 10 transfers control to Op. 11, if in the cell is the code of a
@@ -220,17 +199,19 @@ op89 = do
 -}
 
 op10 = do
-  comp cellB _0xb  _op12
-  comp cellB _0xf0 _op11
+  comp cellB xb  (op 12)
+  comp cellB xf0 (op 11)
 
+  cccc (op 12)
+  where xf0 = undefined
+        xb  = undefined
 {-
-  Op. 11 transfers control to Op. 13, if in the cell there is located the
-  code of an operation symbol for raising to a square or a cube.
+  Op. 11 transfers the code of the quantity to cellC C
 -}
 
 op11 = do
   tN cellB cellC
-  cCCC _op2
+  cccc (op 2)
 
 {-
   Op. 12 transfers control to op. 13, if in the cell there is
@@ -238,9 +219,11 @@ op11 = do
 -}
 
 op12 = do
-  comp cellB _0x1B _op13
-  comp cellB _0x1C _op13
+  comp cellB x1b (op 13)
+  comp cellB x1c (op 13)
 
+  cccc (op 19)
+  where x1b = undefined
 
 {-
   Op. 13 forms the instruction for raising to a square of a quantity, the
@@ -252,13 +235,13 @@ op12 = do
 -}
 
 op131415 = do
-  tN _multTemplate cellC
+  tN multTemplate cellC
   -- insert the quantity from c into both args
-  cCCC _op106
+  clcc (op 106)
 
-  comp cellB _0x1C _op16
-  cCCC _op18
+  comp cellB x1c (op 16) (op 18)
 
+  where multTemplate = undefined
 {-
   Op. 16 additionally forms the instruction for obtaining the cube, which
   Op. 17 transfers to the block of the completed operator.
@@ -266,10 +249,10 @@ op131415 = do
 -}
 
 op1617 = do
-  tN _multTemplate cellC
+  tN multTemplate cellC
   -- insert previous cell reference and quantity as args
-  cCCC _op106
-
+  cccc (op 106)
+  where multTemplate = undefined
 {-
   Op. 18 transfers the additional code to the working cell with the result
   of the programmed operation to cell c.
@@ -277,6 +260,7 @@ op1617 = do
 
 op18 = do
   tN cellD cellC
+  cccc (op 2)
 
 {-
   Op. 19 transfers control to the sub-routine for testing the presence of a
@@ -286,7 +270,239 @@ op18 = do
 -}
 
 op1920 = do
-  cCCC _op73
+  callRtc (op 73)
+  comp xf0 cellB (op 21) (op 25)
 
-  comp _0xf0 cellB _op21
+  where xf0 = undefined
+{-
 
+Op. 21 determines the case of a single-place operation with parameter (CE_n
+and <-_n), transferring control to op. 22
+
+Op. 22 selects rom cell A the parameter n and shifts it to the cell B.
+
+Op. 23 combines the symbol code and the parameter n in a single cell B.
+
+-}
+op212223 = mdo
+  _   <- comp     cellB xfd (op 24) alt
+  alt <- compWord cellB xff (op 24) op22
+
+  op22 <- operator 22 $ do
+    shift cellB left11 cellB
+    clcc (op 2) -- woo subroutines!
+
+    cccc (op 24)
+
+  return ()
+  where xff = undefined
+        xfd = undefined
+{-
+
+Op. 24 transfers (B) to cell D for the last transfer to the partial programme.
+
+-}
+
+op24 = operator 24 $ do
+  tN cellB cellD
+  cccc (op 69)
+
+{-
+
+Op. 25 transfers control to op. 30, if in cell B is the code of a single
+open-parentheses
+
+Op. 26 transfers control to op. 27, if in the cell B is the code a multiple
+open-parentheses.
+
+-}
+
+op2526 = mdo
+  _    <- operator 25 $ compWord cellB singOParenCode (op 30) op26
+  op26 <- operator 26 $ compWord cellB multOParenCode (op 27) (op 28)
+
+  return ()
+
+  where singOParenCode = undefined
+        multOParenCode = undefined
+
+{-
+  Op. 27 shifts this code to the first address of cell B.
+-}
+
+op27 = operator 27 $ do
+  shift cellB left22 cellB
+  cccc (op 22)
+
+{-
+
+Op. 28 transfers control to op. 29, if in cell B is the code of a symbol for
+the operations multiplication or division.
+
+-}
+op28 = operator 28 $ mdo
+  compWord cellB multCode (op 29) alt
+  alt <- compWord cellB divCode (op 29) (op 31)
+
+  return ()
+  where divCode = undefined
+        multCode = undefined
+{-
+
+Op. 31 determines the case of multiple close-parentehses or the sign of
+correspondence, for which
+
+-}
+op31 = do
+  comp cellB multCParen (op 32)
+  comp cellB correspond (op 32)
+
+  cccc (op 34)
+  where correspond = undefined
+        multCParen = undefined
+{-
+
+Op. 32 determines from cell A the code of the following symbol (the number of
+the close-parentheses or the symbol of the result).
+
+Op. 33 shifts this code to the second address.
+
+-}
+
+op32 = operator 32 $ do
+  tN cellB cellF
+
+  clcc (op 2)
+
+  shift cellB left11 cellB
+  add cellF cellB cellB
+
+  cccc (op 32)
+
+
+
+
+{-
+
+Op. 29 reduces the quantity of the code of an operation symbol by 4. The
+necessity of this will be evident from the description of the functioning of
+the sub-routine for programming two-place operations.
+
+Op. 30 shifts the code of the symbol in the first address of cell D for the
+subsequent trsansfer to the partial programme.
+
+
+Op. 34 sends to counter B_2 the contents of counter B_1, preparing "shifting
+backwards" over the partial programme.
+
+Op. 35 sends the contents of the next cell in the partial programme to cell E.
+
+Op. 36 verifies if the contents of cell E constitute the code of a sign
+open-parenteheses, addition or subtraction (YEs -- op. 38 functions, NO --
+op.37)
+
+Op. 37 transfers control to op. 38 , if in "shifting backwards" we have
+arrived at the start of the partial programme.
+
+Op. 38 programmes the operations of mutlplication and division, the codes of
+signs and components of which are found in the part of the partial programme
+"already examined", using the sub-routine of programming two-place operations.
+
+Op. 39 transfers to the partial programme the conditional code of the working
+cell with the result of the programmed operations.
+
+Op. 40 carries out further testing of the symbol, the code of which is in cell
+B, determines the cases of perations of addition or subtraction, transferring
+control to op. 30.
+
+Op. 41, in the casse of the correspondence sign, transfers control to op. 42,
+and in the case of close-parentheses -- to op. 55.
+
+Op. 42 sets in counter B_2 the address of the start o the partial programme.
+
+Op. 43 with the use of the subr-outine for programming two-place operations
+programmes the operations of addition and subtraction, the codes of signs and
+components of which are located in the partial programme.
+
+Op. 44 verifies if anything has been transferred to the block of the completed
+oeprator in programming a given arithmetical operation (YES -- op. 45
+unctions, NO -- op. 47). This test determines the case when the arithmetical
+oeprator begins with the formula a => y.
+
+Op. 45 selects the last instructioon from the block of the completed operator
+and extracts its third address.
+
+Op. 46  compares the contents of teh selected address with zero. If it is
+different from zero, this dnotes that in programming the formula to which the
+selected sign => relates, no instruction has been transferred to the block of
+the completed operator, which is possible if the formula has the form a => y
+or if the right part of the formula is comppletely included in the already
+programmed expression. In these cases either the code of the quantity a or the
+contitional code r of the working cell with the result of the programmed
+expression is in cell D, and then control is transferred to op. 47.
+
+Op. 47 forms the instruction
+  ┌───┬───┬───┬───┐
+  │ T │ x │   │.  │
+  └───┴───┴───┴───┘,
+
+  where x is equal to "a" or r.
+
+Op. 48 shifts the code with the result of the formula to the third address.
+
+Op. 49 verifies if this code is equal to zero (YES -- op. 50 functions, NO --
+op. 51).
+
+Op. 50, in accordance with the coding rules (sec 8), forms the instruction for
+printing the result of the formula.
+
+Op. 51 palces the code with the result in the third address of the last
+instruction of the programme of the formula.
+
+Op. 52 determines the case of the symbol =>, for which
+
+Op. 53 places inhibition of normalization in the operatio ncode of hte last
+isntruction.
+
+Op. 54 sends the last instruction, in the third address of which is placed the
+code of the result, to the block of the completed operator and transfers
+control to selection of the next symbol of the arithmetical operator.
+
+Operaotrs 55-68 function if in cell B there is locatred the code of a single
+or multiple close-parentheses.
+
+Op. 55 sends to counter B_2 the ocntents of coutner B_1 preparing "shifting
+backwards" over the partial programme.
+
+Op. 56 sends the contents of the next cell of the partial programme to cell E.
+
+Op. 57 tests the code fo the next symbol from the partial programme and refers
+to op. 56 as logn as the code of a single or multiple open-parentheses does
+not appear in cell E.
+
+Op. 58 programmes the operatio of addition and subtraction standing in
+parentheses with the aid of the sub-routine for programming single-place
+operations.
+
+Op. 59 subtracts 1 from coutner B_1, "erasing" by this the open-parenthses.
+
+Op. 60 determines the case of m-multiple open-parentheses, transferring
+conrtol to op. 61.
+
+Op. 61 reduces m by 1.
+
+Op. 62 transfers control to op. 64 if m = 0.
+
+Op. 63 sends to the partial programme the code of the multiple
+open-parentheses with m reduced by 1.
+
+Op. 64 determines the case of n-multiple close-parentheses, transferring
+control to op. 65
+
+Op. 65 reduces n by 1.
+
+Op. 66 transfers control to op. 67, if n.= 0.
+
+Op. 67 sends the code of the result of the programmed operation within
+parentheses to cell
+-}
