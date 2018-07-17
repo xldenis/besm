@@ -33,8 +33,9 @@ op = Operator
 rtc = undefined
 
 data BasicBlock = BB
-  { instrs :: [Instruction]
-  , terminator :: Terminator
+  { instrs      :: [Instruction]
+  , terminator  :: Terminator
+  , baseAddress :: Address
   }
 
 data Instruction
@@ -90,6 +91,8 @@ data CurrentBlock = CurrentBlock
   , currentAddr   :: Address
   }
 
+emptyCurrentBlock addr = CurrentBlock mempty addr addr
+
 newtype Builder a = Builder { runBuilder :: State BuilderState a }
   deriving (Functor, Applicative, Monad, MonadState BuilderState, MonadFix)
 
@@ -104,15 +107,37 @@ emitInstr instr = do
     }
   gets (currentAddr . currentBlock)
 
+emitTerm :: Terminator -> Builder Address
 emitTerm term = do
-  undefined
+  bb <- gets currentBlock
+
+  let basicBlock = BB
+        { instrs      = unSnocList $ currentInstrs bb
+        , baseAddress = blockAddr bb
+        , terminator  = term
+        }
+
+  modify $ \bs -> bs
+    { currentBlock = emptyCurrentBlock (currentAddr bb `offAddr` 1)
+    , builtBlocks  = builtBlocks bs `snoc` basicBlock
+    }
+
+  return (currentAddr bb `offAddr` 1)
 
 operator :: Int -> Builder a -> Builder Address
 operator nm body = do
-  undefined
+  bb <- gets currentBlock
+  case bb of
+    CurrentBlock (SnocList []) _ _ -> modifyBlock (const $ CurrentBlock mempty (op nm) (op nm)) >> return (op nm)
+    CurrentBlock a  _ _ -> emitTerm (Chain (op nm)) >> operator nm body
 
 block :: Builder a -> Builder Address
-block = undefined
+block body = do
+  bb <- gets currentBlock
+  case bb of
+    CurrentBlock (SnocList []) _ _ -> body >> return (currentAddr bb)
+    CurrentBlock a  _ _ -> emitTerm (Chain (currentAddr bb)) >> block body
+
 
 add  a b c = emitInstr $ Add  a b c
 sub  a b c = emitInstr $ Sub  a b c

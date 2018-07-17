@@ -106,6 +106,8 @@ zero = undefined
 one :: Address
 one = Absolute 0x1081
 
+four = undefined
+
 x1c = undefined
 
 {-
@@ -120,8 +122,8 @@ x1c = undefined
 -}
 
 op1 = do
-  tN _1 counterK
-  tN _2 counterB1
+  tN zero counterK
+  tN partialProgramme counterB1
   tN one symbolCounter
   tN zero cellC
   tN zero (partialProgramme `offAddr` (negate 1))
@@ -139,8 +141,8 @@ op1 = do
 -}
 
 op23 = do
-  tExp cellA _1
-  compWord _1 zero pp_3_1 (op 4)
+  tExp cellA cellF
+  compWord cellF zero pp_3_1 (op 4)
   where pp_3_1 = undefined
 {-
   Op 4. extracts the code of the next symbol of the formula and adds 1 to
@@ -180,7 +182,6 @@ op5 = mdo
     cccc joinP
 
   where mp_1_17 = undefined
-        four    = undefined
 
 
 {-
@@ -198,9 +199,9 @@ op89 = do
   quantity.
 -}
 
-op10 = do
-  comp cellB xb  (op 12)
-  comp cellB xf0 (op 11)
+op10 = mdo
+  _   <- comp cellB xb  (op 12) alt
+  alt <- comp cellB xf0 (op 11) (op 12)
 
   cccc (op 12)
   where xf0 = undefined
@@ -218,11 +219,11 @@ op11 = do
   located the code of an operation symbol for raising to a square or cube.
 -}
 
-op12 = do
-  comp cellB x1b (op 13)
-  comp cellB x1c (op 13)
+op12 = mdo
+  comp cellB x1b (op 13) alt
+  alt <- comp cellB x1c (op 13) (op 19)
 
-  cccc (op 19)
+  return alt
   where x1b = undefined
 
 {-
@@ -353,11 +354,11 @@ Op. 31 determines the case of multiple close-parentehses or the sign of
 correspondence, for which
 
 -}
-op31 = do
-  comp cellB multCParen (op 32)
-  comp cellB correspond (op 32)
+op31 = mdo
+  comp cellB multCParen (op 32) alt
+  alt <- comp cellB correspond (op 32) (op 34)
 
-  cccc (op 34)
+  return ()
   where correspond = undefined
         multCParen = undefined
 {-
@@ -379,58 +380,170 @@ op32 = operator 32 $ do
 
   cccc (op 32)
 
-
-
-
 {-
 
 Op. 29 reduces the quantity of the code of an operation symbol by 4. The
 necessity of this will be evident from the description of the functioning of
 the sub-routine for programming two-place operations.
 
+-}
+
+op29 = do
+  sub cellB four cellB
+  cccc (op 30)
+
+{-
+
 Op. 30 shifts the code of the symbol in the first address of cell D for the
 subsequent trsansfer to the partial programme.
 
+-}
+
+op30 = do
+  tN cellB cellD
+  cccc (op 69)
+
+{-
 
 Op. 34 sends to counter B_2 the contents of counter B_1, preparing "shifting
 backwards" over the partial programme.
 
+-}
+
+op34 = operator 34 $ do
+  tN counterB1 counterB2
+  chain (op 35)
+
+{-
+
 Op. 35 sends the contents of the next cell in the partial programme to cell E.
+
+-}
+
+op35 = operator 35 $ do
+  clcc (op 71)
+
+
+{-
 
 Op. 36 verifies if the contents of cell E constitute the code of a sign
 open-parenteheses, addition or subtraction (YEs -- op. 38 functions, NO --
 op.37)
 
+-}
+
+op36 = operator 36 $ do
+  comp four cellE (op 38) (op 37)
+
+
+{-
+
 Op. 37 transfers control to op. 38 , if in "shifting backwards" we have
 arrived at the start of the partial programme.
+
+-}
+
+op37 = operator 37 $ do
+  compWord partialProgramme counterB2 (op 38) (op 35)
+
+{-
 
 Op. 38 programmes the operations of mutlplication and division, the codes of
 signs and components of which are found in the part of the partial programme
 "already examined", using the sub-routine of programming two-place operations.
 
+-}
+
+op38 = operator 38 $ do
+  callRtc (op 80)
+  chain (op 39)
+
+{-
+
 Op. 39 transfers to the partial programme the conditional code of the working
 cell with the result of the programmed operations.
 
+-}
+
+op39 = operator 39 $ do
+  clcc (op 69) -- is this enough? op69 expects the conditional code in cellD
+  chain (op 40)
+
+
+{-
+
 Op. 40 carries out further testing of the symbol, the code of which is in cell
-B, determines the cases of perations of addition or subtraction, transferring
+B, determines the cases of operations of addition or subtraction, transferring
 control to op. 30.
 
-Op. 41, in the casse of the correspondence sign, transfers control to op. 42,
+Operators 25 and 26 have eliminated parentheses from consideration (01, 02)
+
+If 2 < cellB < 5, then op 30, else op 41
+
+-}
+
+op40 = operator 40 $ mdo
+  comp two cellB (op 30) (op 41) -- cellB > 2
+  where two = undefined
+
+{-
+
+Op. 41, in the case of the correspondence sign, transfers control to op. 42,
 and in the case of close-parentheses -- to op. 55.
 
+Because of 40 we only need to check that < 7 and < 9
+28 has eliminated multiplication and division
+-}
+
+op41 = operator 41 $ do
+  compWord six cellB (op 42) (op 55)
+  where six = undefined
+{-
 Op. 42 sets in counter B_2 the address of the start o the partial programme.
 
-Op. 43 with the use of the subr-outine for programming two-place operations
+TODO: Decide, is partialProgramme the address of the partial programme
+  or the address of the address of the partial programme.
+
+-}
+
+op42 = operator 42 $ do
+  tN partialProgramme counterB2
+{-
+
+Op. 43 with the use of the subroutine for programming two-place operations
 programmes the operations of addition and subtraction, the codes of signs and
 components of which are located in the partial programme.
+-}
+
+op43 = operator 43 $ do
+  callRtc (op 80)
+
+  chain (op 44)
+
+
+{-
 
 Op. 44 verifies if anything has been transferred to the block of the completed
-oeprator in programming a given arithmetical operation (YES -- op. 45
+operator in programming a given arithmetical operation (YES -- op. 45
 unctions, NO -- op. 47). This test determines the case when the arithmetical
 oeprator begins with the formula a => y.
 
+-}
+
+op44 = operator 44 $ do
+  undefined -- not sure how yet...
+
+{-
+
 Op. 45 selects the last instructioon from the block of the completed operator
 and extracts its third address.
+
+-}
+
+op45 = operator 45 $ do
+  undefined -- i dont want to do this yet
+
+{-
 
 Op. 46  compares the contents of teh selected address with zero. If it is
 different from zero, this dnotes that in programming the formula to which the
@@ -441,6 +554,11 @@ programmed expression. In these cases either the code of the quantity a or the
 contitional code r of the working cell with the result of the programmed
 expression is in cell D, and then control is transferred to op. 47.
 
+-}
+op46 = operator 46 $ undefined
+
+{-
+
 Op. 47 forms the instruction
   ┌───┬───┬───┬───┐
   │ T │ x │   │.  │
@@ -448,6 +566,11 @@ Op. 47 forms the instruction
 
   where x is equal to "a" or r.
 
+-}
+op47 = operator 47 $ do
+  undefined
+
+{-
 Op. 48 shifts the code with the result of the formula to the third address.
 
 Op. 49 verifies if this code is equal to zero (YES -- op. 50 functions, NO --
