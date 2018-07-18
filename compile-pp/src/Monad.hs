@@ -48,24 +48,29 @@ data BasicBlock = BB
   , baseAddress :: Address
   } deriving (Show)
 
+data NormalizeResult
+  = Normalized
+  | UnNormalized
+  deriving (Show, Eq)
+
 data Instruction
-  = Add       Address Address Address
-  | Sub       Address Address Address
-  | Mult      Address Address Address
-  | Div       Address Address Address
-  | AddE      Address Address Address
-  | SubE      Address Address Address
-  | Ce        Address Address Address
-  | Xa        Address Address Address
-  | Xb                        Address
-  | DivA      Address Address Address
-  | DivB                      Address
-  | TN        Address         Address
+  = Add       Address Address Address NormalizeResult
+  | Sub       Address Address Address NormalizeResult
+  | Mult      Address Address Address NormalizeResult
+  | Div       Address Address Address NormalizeResult
+  | AddE      Address Address Address NormalizeResult
+  | SubE      Address Address Address NormalizeResult
+  | Ce        Address Address Address NormalizeResult
+  | Xa        Address Address Address NormalizeResult
+  | Xb                        Address NormalizeResult
+  | DivA      Address Address Address NormalizeResult
+  | DivB                      Address NormalizeResult
+  | TN        Address         Address NormalizeResult
   | PN        Address
-  | TMin      Address         Address
-  | TMod      Address         Address -- I think the 'modulus' actually means magnitude of mantissa?
-  | TSign     Address Address Address
-  | TExp      Address         Address
+  | TMin      Address         Address NormalizeResult
+  | TMod      Address         Address NormalizeResult -- I think the 'modulus' actually means magnitude of mantissa? might actually mean the sexadecimal width of the number??? wtf...
+  | TSign     Address Address Address NormalizeResult
+  | TExp      Address         Address NormalizeResult
   | Shift     Address Address Address
   | ShiftAll  Address Address Address
   | AI        Address Address Address
@@ -77,7 +82,7 @@ data Instruction
   | CallRTC           Address Address
   | CLCC                      Address
   | JCC
-  deriving (Show)
+  deriving (Show, Eq)
 
 data Terminator
   = Comp      Address Address Address Address
@@ -151,22 +156,40 @@ block body = do
     CurrentBlock a  _ _ -> emitTerm (Chain (currentAddr bb)) >> block body
 
 
-add  a b c = emitInstr $ Add  a b c
-sub  a b c = emitInstr $ Sub  a b c
-mult a b c = emitInstr $ Mult a b c
-div  a b c = emitInstr $ Div  a b c
-addE a b c = emitInstr $ AddE a b c
-subE a b c = emitInstr $ SubE a b c
-ce   a b c = emitInstr $ Ce   a b c
-jcc        = emitInstr $ JCC
+add   a b c  = emitInstr $ Add  a b c Normalized
+add'  a b c  = emitInstr $ Add  a b c UnNormalized
 
-callRtc op = emitInstr $ CallRTC (rtc op) op
+addE  a b c  = emitInstr $ AddE a b c Normalized
+addE' a b c  = emitInstr $ AddE a b c UnNormalized
 
+ce    a b c  = emitInstr $ Ce   a b c Normalized
+ce'   a b c  = emitInstr $ Ce   a b c UnNormalized
+
+div   a b c  = emitInstr $ Div  a b c Normalized
+div'  a b c  = emitInstr $ Div  a b c UnNormalized
+
+mult  a b c  = emitInstr $ Mult a b c Normalized
+mult' a b c  = emitInstr $ Mult a b c UnNormalized
+
+sub   a b c  = emitInstr $ Sub  a b c Normalized
+sub'  a b c  = emitInstr $ Sub  a b c UnNormalized
+
+subE  a b c  = emitInstr $ SubE a b c Normalized
+subE' a b c  = emitInstr $ SubE a b c UnNormalized
+
+tExp  a c    = emitInstr $ TExp a c   Normalized
+tExp' a c    = emitInstr $ TExp a c   UnNormalized
+
+tMod  a c    = emitInstr $ TMod a c   Normalized
+tMod' a c    = emitInstr $ TMod a c   UnNormalized
+
+tN a  c      = emitInstr $ TN   a c   Normalized
+tN' a c      = emitInstr $ TN   a c   UnNormalized
+
+jcc         = emitInstr $ JCC
+callRtc op  = emitInstr $ CallRTC (rtc op) op
 shift a b c = emitInstr $ Shift a b c
-tN a c    = emitInstr $ TN a c
-tMod a c  = emitInstr $ TMod a c
-tExp a c  = emitInstr $ TExp a c
-clcc addr = emitInstr $ CLCC addr
+clcc addr   = emitInstr $ CLCC addr
 
 
 
