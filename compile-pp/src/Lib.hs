@@ -362,7 +362,7 @@ op28 = operator 28 $ mdo
         multCode = undefined
 {-
 
-Op. 31 determines the case of multiple close-parentehses or the sign of
+Op. 31 determines the case of multiple close-parentheses or the sign of
 correspondence, for which
 
 -}
@@ -441,7 +441,7 @@ op35 = operator 35 $ do
 {-
 
 Op. 36 verifies if the contents of cell E constitute the code of a sign
-open-parenteheses, addition or subtraction (YEs -- op. 38 functions, NO --
+open-parentheses, addition or subtraction (YEs -- op. 38 functions, NO --
 op.37)
 
 -}
@@ -559,7 +559,7 @@ op45 = operator 45 $ do
 
 {-
 
-Op. 46  compares the contents of teh selected address with zero. If it is
+Op. 46  compares the contents of the selected address with zero. If it is
 different from zero, this dnotes that in programming the formula to which the
 selected sign => relates, no instruction has been transferred to the block of
 the completed operator, which is possible if the formula has the form a => y
@@ -703,7 +703,7 @@ parentheses to cell C.
 
 For n != 0
 
-Op. 68 transfers teh code fo the result of the programmed operation in
+Op. 68 transfers the code fo the result of the programmed operation in
 parentheses to cell C and transfers control to the sub-routine testing the
 presence of a single-place operation, which amy be located before the
 open-parentheses. After this control is again transferred to op. 34.
@@ -825,19 +825,19 @@ Op. 96 forms the instruction for sending the argument to cell 0001.
 
 Op. 97 determines the sign of the operation "cot", for which:
 
-Op. 98 forms the instruction or dispatching th argument in the form
+Op. 98 forms the instruction or dispatching the argument in the form
 
   ┌───┬──────┬─────┬──────┐
   │ - │ 1101 │ "x" │ 0001 │
   └───┴──────┴─────┴──────┘
 
-  where 1101 is the address of teh constant pi / 2 (cot is calcuated according
+  where 1101 is the address of the constant pi / 2 (cot is calcuated according
   to the formula cot x = tan (pi / 2 - x)).
 
 Op 99. transfers the completed instructio for dispatch of the argument to the
 block of the completed operator.
 
-Op 100 and op 101. transfers teh instruction for resference to the sub-routine
+Op 100 and op 101. transfers the instruction for resference to the sub-routine
 in DS to the block of the completed operator.
 
 Op. 102 sets, in the standard cell for the succeeding transfer to the block of
@@ -860,7 +860,7 @@ Op. 105 transfers to the blcok of the completed operator the instruction for
 obtaining the result from 0002 or 0003, and then refers to op. 111 for economy
 of instruction.
 
-The sub-routine for transferring instructions to teh block of competed operator
+The sub-routine for transferring instructions to the block of competed operator
 and economy of instructions (op 106 - 122) functions according to the following
 principle.
 
@@ -881,7 +881,7 @@ In transferring the instructions for carrying out single-place operations
 employing a sub-routine from DS the indication of the counter is fixed only in
 transferring the fist instruction. The transfer of all three instructions to
 the block of the completed operator takes place under local control. As is
-evident from teh scheme, such transfer is not accompanied by economy of
+evident from the scheme, such transfer is not accompanied by economy of
 instructions. Economy is carried out at one time for the three instructions
 after transfer of the last instruction.
 
@@ -938,7 +938,7 @@ Op. 120 determines the case of commutative operations of multiplcation and
 addition, in which case control is transferred to op. 121
 
 Op. 121 interchange the first and second addresses of the tested instruction
-and transfers control to op. 111 with transfer to teh local system of control,
+and transfers control to op. 111 with transfer to the local system of control,
 since after repeating the test of the instruction JCC gives control to op. 122.
 
 Op. 122 transfers the indication of counter K to the third address of cell D
