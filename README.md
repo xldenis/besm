@@ -20,3 +20,15 @@ This project will eventually include:
 - a program to transform input PP programs into their input format for the compiler
 - a modern implementation of the PP compiler
 - a BESM re-implementation of the compiler
+
+
+Resources to Find
+
+Electronic Digital Machines
+
+Electronic Computers
+
+- https://catalog.lib.utexas.edu/record=b1571926~S29
+
+Electronic Digital Computers and Programming
+
