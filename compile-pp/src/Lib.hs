@@ -1,13 +1,9 @@
 {-# LANGUAGE TemplateHaskell, FlexibleContexts, DeriveFunctor, GeneralizedNewtypeDeriving, RecursiveDo #-}
-module Lib
-    ( someFunc
-    ) where
+module Lib where
 
 import Monad
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
-
+import Debug.Trace
 {-
   PP-1
 
@@ -48,36 +44,36 @@ someFunc = putStrLn "someFunc"
 -}
 
 cellA :: Address
-cellA = undefined
+cellA = Unknown
 
 cellB :: Address
-cellB = undefined
+cellB = Unknown
 
 cellC :: Address
-cellC = undefined
+cellC = Unknown
 
 cellD :: Address
-cellD = undefined
+cellD = Unknown
 
 cellE :: Address
-cellE = undefined
+cellE = Unknown
 
 -- Other standard cells (16 standard cells total)
 
 cellF :: Address
-cellF = undefined
+cellF = Unknown
 
 cellG :: Address
-cellG = undefined
+cellG = Unknown
 
 cellH :: Address
-cellH = undefined
+cellH = Unknown
 
 cellI :: Address
-cellI = undefined
+cellI = Unknown
 
 cellJ :: Address
-cellJ = undefined
+cellJ = Unknown
 
 -- Counters
 
@@ -90,6 +86,9 @@ counterB1 = undefined
 counterB2 :: Address
 counterB2 = undefined
 
+counterB3 :: Address
+counterB3 = undefined
+
 symbolCounter :: Address
 symbolCounter = undefined
 
@@ -101,7 +100,7 @@ left22 = undefined
 
 -- Apparently the first addresses of the DS store some constants
 zero :: Address
-zero = undefined
+zero = Unknown
 
 one :: Address
 one = Absolute 0x1081
@@ -109,6 +108,14 @@ one = Absolute 0x1081
 four = undefined
 
 x1c = undefined
+
+arithCoder :: Builder Address
+arithCoder = do
+  op1 >> op23 >> op4 >> op5 >> op89 >> op10 >> op11 >> op12 >> op131415
+  op1617 >> op18 >> op1920 >> op212223 >> op24 >> op2526 >> op27 >> op28
+  op31 >> op32 >> op29 >> op30 >> op34 >> op35 >> op36 >> op37 >> op38
+  op39 >> op40 >> op41 >> op42 >> op43
+  op55 >> op56 >> op57 >> op58
 
 {-
   """
@@ -121,7 +128,7 @@ x1c = undefined
   """
 -}
 
-op1 = do
+op1 = operator 1 $ do
   tN zero counterK
   tN partialProgramme counterB1
   tN one symbolCounter
@@ -141,23 +148,23 @@ op1 = do
 -}
 
 op23 = do
-  tExp cellA cellF
-  compWord cellF zero pp_3_1 (op 4)
-  where pp_3_1 = undefined
+  operator 2 $ tExp cellA cellF
+  operator 3 $ compWord cellF zero pp_3_1 (op 4)
+  where pp_3_1 = (Procedure "pp_3_1")
 {-
   Op 4. extracts the code of the next symbol of the formula and adds 1 to
   the symbol counter.
 -}
-op4 = do
+op4 = operator 4 $ do
   shift cellA left8 cellA
   tMod cellA cellF
-  shift cellF right24 cellF
+  shift cellF right22 cellF
 
   add one symbolCounter symbolCounter
 
   cccc (op 5)
   where left8   = undefined
-        right24 = undefined
+        right22 = undefined
 {-
   Op. 5 compares the indication of the symbol counter  with the number 4 and
   in the case of extraction of the last code from the line transfers control
@@ -170,18 +177,20 @@ op4 = do
 
 -}
 op5 = mdo
-  comp symbolCounter four (op 6) joinP
+  operator 5 $ comp symbolCounter four (op 6) joinP
+  operator 6 $ do
+    callRtc mp_1_17
+
+  operator 7 $ do
+    tN zero symbolCounter
+    cccc joinP
+
   joinP <- block $ do
     jcc
     chain (op 8)
 
-  operator 6 $ do
-    tN zero symbolCounter
-
-    callRtc mp_1_17
-    cccc joinP
-
-  where mp_1_17 = undefined
+  return ()
+  where mp_1_17 = Unknown
 
 
 {-
@@ -191,26 +200,25 @@ op5 = mdo
   formula  coding, transferring control to Op. 2
 -}
 op89 = do
-  add cellF cellB cellB
-  compWord zero cellB (op 2) (op 10)
+  operator 8 $ add cellF cellB cellB >> chain (op 9)
+  operator 9 $ compWord zero cellB (op 2) (op 10)
 
 {-
   Op 10 transfers control to Op. 11, if in the cell is the code of a
   quantity.
 -}
 
-op10 = mdo
+op10 = operator 10 $ mdo
   _   <- comp cellB xb  (op 12) alt
   alt <- comp cellB xf0 (op 11) (op 12)
-
-  cccc (op 12)
-  where xf0 = undefined
-        xb  = undefined
+  return ()
+  where xf0 = Unknown
+        xb  = Unknown
 {-
   Op. 11 transfers the code of the quantity to cellC C
 -}
 
-op11 = do
+op11 = operator 11 $ do
   tN cellB cellC
   cccc (op 2)
 
@@ -219,7 +227,7 @@ op11 = do
   located the code of an operation symbol for raising to a square or cube.
 -}
 
-op12 = mdo
+op12 = operator 12 $ mdo
   comp cellB x1b (op 13) alt
   alt <- comp cellB x1c (op 13) (op 19)
 
@@ -236,11 +244,11 @@ op12 = mdo
 -}
 
 op131415 = do
-  tN multTemplate cellC
+  operator 13 $ tN multTemplate cellC -- WRONG
   -- insert the quantity from c into both args
-  clcc (op 106)
+  operator 14 $ clcc (op 106)
 
-  comp cellB x1c (op 16) (op 18)
+  operator 15 $ comp cellB x1c (op 16) (op 18)
 
   where multTemplate = undefined
 {-
@@ -250,16 +258,16 @@ op131415 = do
 -}
 
 op1617 = do
-  tN multTemplate cellC
+  operator 16 $ tN multTemplate cellC
   -- insert previous cell reference and quantity as args
-  cccc (op 106)
+  operator 17 $ clcc (op 106) >> chain (op 18)
   where multTemplate = undefined
 {-
   Op. 18 transfers the additional code to the working cell with the result
   of the programmed operation to cell c.
 -}
 
-op18 = do
+op18 = operator 18 $ do
   tN cellD cellC
   cccc (op 2)
 
@@ -271,8 +279,8 @@ op18 = do
 -}
 
 op1920 = do
-  callRtc (op 73)
-  comp xf0 cellB (op 21) (op 25)
+  operator 19 $ callRtc (op 73)
+  operator 20 $ comp xf0 cellB (op 21) (op 25)
 
   where xf0 = undefined
 {-
@@ -286,8 +294,10 @@ Op. 23 combines the symbol code and the parameter n in a single cell B.
 
 -}
 op212223 = mdo
-  _   <- comp     cellB xfd (op 24) alt
-  alt <- compWord cellB xff (op 24) op22
+  operator 21 $ mdo
+    _   <- comp     cellB xfd (op 24) alt
+    alt <- compWord cellB xff (op 24) op22
+    return ()
 
   op22 <- operator 22 $ do
     shift cellB left11 cellB
@@ -296,8 +306,8 @@ op212223 = mdo
     cccc (op 24)
 
   return ()
-  where xff = undefined
-        xfd = undefined
+  where xff = Unknown
+        xfd = Unknown
 {-
 
 Op. 24 transfers (B) to cell D for the last transfer to the partial programme.
@@ -354,7 +364,7 @@ Op. 31 determines the case of multiple close-parentehses or the sign of
 correspondence, for which
 
 -}
-op31 = mdo
+op31 = operator 31 $ mdo
   comp cellB multCParen (op 32) alt
   alt <- comp cellB correspond (op 32) (op 34)
 
@@ -374,11 +384,13 @@ op32 = operator 32 $ do
   tN cellB cellF
 
   clcc (op 2)
+  chain (op 33)
 
-  shift cellB left11 cellB
-  add cellF cellB cellB
+  operator 33 $ do
+    shift cellB left11 cellB
+    add cellF cellB cellB
 
-  cccc (op 32)
+    cccc (op 34)
 
 {-
 
@@ -388,7 +400,7 @@ the sub-routine for programming two-place operations.
 
 -}
 
-op29 = do
+op29 = operator 29 $ do
   sub cellB four cellB
   cccc (op 30)
 
@@ -399,7 +411,7 @@ subsequent trsansfer to the partial programme.
 
 -}
 
-op30 = do
+op30 = operator 30 $ do
   tN cellB cellD
   cccc (op 69)
 
@@ -591,21 +603,59 @@ Op. 54 sends the last instruction, in the third address of which is placed the
 code of the result, to the block of the completed operator and transfers
 control to selection of the next symbol of the arithmetical operator.
 
+-}
+
+{-
 Operaotrs 55-68 function if in cell B there is locatred the code of a single
 or multiple close-parentheses.
 
 Op. 55 sends to counter B_2 the ocntents of coutner B_1 preparing "shifting
 backwards" over the partial programme.
 
+-}
+
+op55 = operator 55 $ do
+  tN counterB2 counterB1
+
+  chain (op 56)
+
+{-
+
 Op. 56 sends the contents of the next cell of the partial programme to cell E.
 
+-}
+
+op56 = operator 56 $ do
+  clcc (op 71)
+  chain (op 57)
+
+{-
 Op. 57 tests the code fo the next symbol from the partial programme and refers
 to op. 56 as logn as the code of a single or multiple open-parentheses does
 not appear in cell E.
+-}
+
+op57 = operator 57 $ do
+  tN cellE cellF
+  shift cellF right22 cellF
+
+  comp two cellF (op 56) (op 58)
+  where right22 = undefined
+        two = undefined
+
+{-
 
 Op. 58 programmes the operatio of addition and subtraction standing in
 parentheses with the aid of the sub-routine for programming single-place
 operations.
+
+-}
+
+op58 = operator 58 $ do
+  callRtc (op 80)
+  chain (op 59)
+
+{-
 
 Op. 59 subtracts 1 from coutner B_1, "erasing" by this the open-parenthses.
 

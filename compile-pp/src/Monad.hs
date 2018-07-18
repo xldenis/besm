@@ -4,6 +4,8 @@ module Monad where
 import Control.Monad.State
 import Control.Monad.Fix
 
+import Debug.Trace
+
 newtype SnocList a = SnocList { unSnocList :: [a] }
   deriving (Eq, Show)
 
@@ -23,7 +25,15 @@ data Address
   = Operator Int
   | Offset Address Int
   | Absolute Int
-  deriving (Show)
+  | Procedure String
+  | Unknown
+  deriving (Show, Eq)
+
+formatAddr (Operator i) = "op. " ++ show i
+formatAddr (Offset a i) = formatAddr a ++ " + " ++ show i
+formatAddr (Absolute i) = "abs. " ++ show i
+formatAddr (Procedure s) = show s
+formatAddr (Unknown) = "unknown"
 
 offAddr (Offset a o) i = Offset a (o + i)
 offAddr a i = Offset a i
@@ -36,7 +46,7 @@ data BasicBlock = BB
   { instrs      :: [Instruction]
   , terminator  :: Terminator
   , baseAddress :: Address
-  }
+  } deriving (Show)
 
 data Instruction
   = Add       Address Address Address
@@ -72,7 +82,7 @@ data Instruction
 data Terminator
   = Comp      Address Address Address Address
   | CompWord  Address Address Address Address
-  | CompMod   Address Address Address
+  | CompMod   Address Address Address Address
   | CCCC                      Address
   | CCCCSnd           Address Address
   | Stop
@@ -93,8 +103,10 @@ data CurrentBlock = CurrentBlock
 
 emptyCurrentBlock addr = CurrentBlock mempty addr addr
 
-newtype Builder a = Builder { runBuilder :: State BuilderState a }
+newtype Builder a = Builder { unBuilder :: State BuilderState a }
   deriving (Functor, Applicative, Monad, MonadState BuilderState, MonadFix)
+
+runBuilder i = getSnocList . builtBlocks . flip execState (BuilderState (emptyCurrentBlock i) (SnocList [])) . unBuilder
 
 modifyBlock f = do
   modify $ \s -> s { currentBlock = f (currentBlock s) }
@@ -122,13 +134,13 @@ emitTerm term = do
     , builtBlocks  = builtBlocks bs `snoc` basicBlock
     }
 
-  return (currentAddr bb `offAddr` 1)
+  return (currentAddr bb)
 
 operator :: Int -> Builder a -> Builder Address
 operator nm body = do
   bb <- gets currentBlock
   case bb of
-    CurrentBlock (SnocList []) _ _ -> modifyBlock (const $ CurrentBlock mempty (op nm) (op nm)) >> return (op nm)
+    CurrentBlock (SnocList []) _ _ -> modifyBlock (const $ CurrentBlock mempty (op nm) (op nm)) >> body >> return (op nm)
     CurrentBlock a  _ _ -> emitTerm (Chain (op nm)) >> operator nm body
 
 block :: Builder a -> Builder Address
