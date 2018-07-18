@@ -115,7 +115,9 @@ arithCoder = do
   op1617 >> op18 >> op1920 >> op212223 >> op24 >> op2526 >> op27 >> op28
   op31 >> op32 >> op29 >> op30 >> op34 >> op35 >> op36 >> op37 >> op38
   op39 >> op40 >> op41 >> op42 >> op43
-  op55 >> op56 >> op57 >> op58
+  op55 >> op56 >> op57 >> op58 >> op59 >> op60
+
+
 
 {-
   """
@@ -659,11 +661,31 @@ op58 = operator 58 $ do
 
 Op. 59 subtracts 1 from coutner B_1, "erasing" by this the open-parenthses.
 
+-}
+
+op59 = operator 59 $ do
+  sub counterB1 one counterB1
+  chain (op 60)
+
+{-
 Op. 60 determines the case of m-multiple open-parentheses, transferring
 conrtol to op. 61.
 
+By Op. 57, cell e is either a multiple or single open paren.
+Check that it's greater than 01 (single).
+-}
+op60 = operator 60 $ do
+  comp one cellE (op 61) (op 64)
+
+{-
 Op. 61 reduces m by 1.
 
+-}
+op61 = operator 61 $ do
+
+  undefined -- m is in the second address (how to subtract!!)
+
+{-
 Op. 62 transfers control to op. 64 if m = 0.
 
 Op. 63 sends to the partial programme the code of the multiple
@@ -677,5 +699,249 @@ Op. 65 reduces n by 1.
 Op. 66 transfers control to op. 67, if n.= 0.
 
 Op. 67 sends the code of the result of the programmed operation within
-parentheses to cell
+parentheses to cell C.
+
+For n != 0
+
+Op. 68 transfers teh code fo the result of the programmed operation in
+parentheses to cell C and transfers control to the sub-routine testing the
+presence of a single-place operation, which amy be located before the
+open-parentheses. After this control is again transferred to op. 34.
+
+Let us now consider the functioning of the sub-routine of the blaock of
+arithmetical operators.
+
+OP. 69 transfers (D) to the partial programme and adds 1 to counter B_1.
+
+Op 70. forestalls "overflow" of the partial programme. If there are more than 32
+symbols in the partial programme a check stop takes place.
+
+Op 71. is the first-sub-routine of selection from the partial programme,
+transferring to cell E the contents of the next cell of the partial programme
+and subtracticing 1 from counter B_2.
+
+Op 72. is the second sub-routine of selection from the partial programme,
+transferring to cell D the contents of the next cell of the partial programme
+and adding 1 to the counter B_3.
+
+Operators 73 - 78 constitute the sub-routine for testing the presence of a
+single-place operation. This sub-routine realizes operator 6 in the scheme of
+the algorithm for programming formulae (s 9).
+
+Op. 73 compares (C) with zero. IF (C) = 0, exixt from the subroutine takes
+place.
+
+Op. 74 sends (C) to cell D and the contents of counter B_1 to the counter B_2.
+
+Op. 75 transfers the contents of the next cell of the partial programme to cell
+E.
+
+Op. 76 transfers control to op. 77 if in cell E is the code of the symbol of a
+single-place operatiotn and to op. 77 in the contrary case.
+
+Op. 77 programmes a singel-palce operation according to the codes of the
+argument and the sign of the operation located simultaneously in cells D and E.
+The conditional code of the working cell with the result of the programmed
+operation is sent to cell D.
+
+Op 78. subtracts  1 from counter B_1, "erasing" the programme operation.
+
+Op 79. transfers (D) to the partial programme and clears counter C.
+
+The sub-routine for programming two-palce operations (operatios 80 - 90)
+programmes ecxpressions existing in coded form in the partial programme. The
+boundaries of this expression are the addressses of the cells in counters B_2
+and B_1. At the start of functioning of the sub-routinethe programmed
+expression represents a sequence of quantities separated by the signs +, - or
+x, :.
+
+Op. 80 transfers the contents of coounter B_2 to counter B_3.
+
+Op. 81 selects from cell D the code of the first quantity of the programmed
+expression.
+
+Op. 82 sets (D) in the first address of the formed instruction (this will be
+the first compenent of the first two-place operation) and transfers control to
+op. 89, determining the end of functioning of the sub-routine. This also takes
+into account the case where the programmed expression consists only of a single
+quantity.
+
+Op. 83 selects from cell D the code of the sign of the two-place operation.
+
+Op. 84 forms the code of the operation of the instruction being constructed,
+according to the sign of the operation. Since the codes of multiplication and
+division signs were previously reduced by four, the codes of symbols of
+two-place operations differ from the codes of oeprations of the corresponding
+instruction by the same quantity, equal to 2.
+
+Op. 85 selects from cell D the code of the second componenet of the two-place
+operation.
+
+Op. 86 sets it in the second address of the formed instruction.
+
+Op. 87 transfers the formed instruction to the block of the completed operator.
+
+Op. 88 sets the conditional code of the working cell with the result of the
+programmed operation in the first address of the cell in which the instruction
+is formed, as the first component of the following two-place operation.
+
+Op. 89 compares the indications of counters B_3 and B_1 and in the case of
+their agreement transfers control to op. 90.
+
+Op. 90 transfers the contents of counter B_2 to counter B_1, "erasing" the
+programmed part of the formula.
+
+The sub-routine for programming single-place operations functions on the
+following principle. In a definite order in the store, correspondng to the
+distribution of symbols of single-place operations in the coding table, are
+distributed the preparations for instructions for carrying out single-place
+operations in such form, that they only lack indications of the addresses of
+the argument (and the quantuty n for instructiosn CEn and <-n). The sub-routine
+locates the necessary intermediate results according to the magnitude of the
+code of the single-place operation and, utilizing the code of the argument
+located in cell D, forms the necessary instruction. For single-place operations
+carried out by means of standard sub-routines in DS, only the intermediate
+result of the instructions of reference to the sub-routine is retained. The
+instructions for dispatching the argument to cell 0001 and producing the result
+from 0002 (from 0003 for the cosine) are formed additionally.
+
+Op. 91 installs the code of the argument in the first address and the parameter
+(if there is one) in the second address of cell D.
+
+Op. 92 determines the case of the operation "sign", for which
+
+OP. 93 shifts the code of the argument to the second address (s 1).
+
+Op. 94 forms the instruction for carrying out the single-place operation by
+combining the intermediate results of the instruction with the contents of cell
+D.
+
+Op. 95 transfers control top op. 106 in the sub-routine for transferring the
+instructions to the block of completed operators and economy of instructions,
+if the single-place operation fulfilled does not require reference to a
+sub-routine in DS. In the contrary cse control is transferred to op. 96
+
+Op. 96 forms the instruction for sending the argument to cell 0001.
+
+Op. 97 determines the sign of the operation "cot", for which:
+
+Op. 98 forms the instruction or dispatching th argument in the form
+
+  ┌───┬──────┬─────┬──────┐
+  │ - │ 1101 │ "x" │ 0001 │
+  └───┴──────┴─────┴──────┘
+
+  where 1101 is the address of teh constant pi / 2 (cot is calcuated according
+  to the formula cot x = tan (pi / 2 - x)).
+
+Op 99. transfers the completed instructio for dispatch of the argument to the
+block of the completed operator.
+
+Op 100 and op 101. transfers teh instruction for resference to the sub-routine
+in DS to the block of the completed operator.
+
+Op. 102 sets, in the standard cell for the succeeding transfer to the block of
+the completed operator, the instruction
+
+  ┌───┬──────┬─────┬──────┐
+  │ T │ 0002 │     │      │
+  └───┴──────┴─────┴──────┘
+
+Op. 103 determines the sign of the operation "Cos", for which control is
+transferred to op. 104
+
+Op. 104 sets in the standard cell the instruction
+
+  ┌───┬──────┬─────┬──────┐
+  │ T │ 0003 │     │      │
+  └───┴──────┴─────┴──────┘
+
+Op. 105 transfers to the blcok of the completed operator the instruction for
+obtaining the result from 0002 or 0003, and then refers to op. 111 for economy
+of instruction.
+
+The sub-routine for transferring instructions to teh block of competed operator
+and economy of instructions (op 106 - 122) functions according to the following
+principle.
+
+In transferring the instructions the indication of counter K is fixed in a
+certain cell and then increased by unity. The transferred instruction is
+compared with instructions standing in the block of the completed operator. If
+it agrees with one of them (with regard to the possibility of interchange of
+addresses in instructions carrying out commutative operations), while the codes
+in its first and second addresses do not figure as the codes of the resutls of
+formulae of the given arithemtical operator, the transferred instruction is
+economize. Then the stored indiction is palced in counter K while for the
+conditional code of the result of the constructed instruction the address is
+taken agreeing with that of the instruction in the block of the completed
+operator. In the contrary case the new indication is left in the counter, which
+is transferred as the conditional coe of the result of cell D.
+
+In transferring the instructions for carrying out single-place operations
+employing a sub-routine from DS the indication of the counter is fixed only in
+transferring the fist instruction. The transfer of all three instructions to
+the block of the completed operator takes place under local control. As is
+evident from teh scheme, such transfer is not accompanied by economy of
+instructions. Economy is carried out at one time for the three instructions
+after transfer of the last instruction.
+
+Op 106. fixed the indication of counter K.
+
+Op 107. adds unity to counter K and forms the instruction for transfer to the
+block of the completed operator.
+
+Op. 108 tests for "overflow" of the block of the completed operator (it
+occupies 160 cells of IS). In the case of "overflow" a check stop takes place.
+
+Op. 109 transfers the instruction to the block fo the completed operator.
+
+Op. 110 stores the transferred instruction in the standard cell. This operator
+does not function for instructions of single-place operations utilizing the
+sub-routine DS since there is already in the indicated standard cell the
+instruction for reference to the sub-routine, which is compared with the
+instructions in the block of the completed operator.
+
+Op. 111 forms the initial form of rhte instruction for selection from the block
+of the completed operator.
+
+Op. 112 selects the next instruction from the block of the completed operator,
+beginning with the next to the last instruction.
+
+Op. 113 verifies if all instructions have been taken from the block. After
+termination of selection control is transferred to the instruction JCC located
+before op. 120.
+
+Op. 114 verifies if the third address of the next instruction from the block of
+the completed operator coincides with the first or second address of the tested
+instruction (YES -- op. 122 fucntions, NO -- op. 115).
+
+Op. 115 compares the tested instruction with the next instruction from the
+block of the completed operator, transferring control to op. 116 in case of
+agreement.
+
+Op. 116 transfers to the third address of cell D the address of the instruction
+in the block of the completed oeprator coinciding with the tested instruction,
+which ocnstitues the conditional code of the working cell with the rsult of the
+tested instruction.
+
+Op. 117 determines the cse when the coindiding instructions constutute CLCC to
+the sub-routine in DS, trnasferring conrtol to op. 118.
+
+Op. 118 increases the third address in cell D by 1, since the code of the
+result in this cse is found in the following instruction calling up exit from
+the sub-routine.
+
+Op. 119 transfers to counter K the stored indication, then callign up exit from
+the sub-routine.
+
+Op. 120 determines the case of commutative operations of multiplcation and
+addition, in which case control is transferred to op. 121
+
+Op. 121 interchange the first and second addresses of the tested instruction
+and transfers control to op. 111 with transfer to teh local system of control,
+since after repeating the test of the instruction JCC gives control to op. 122.
+
+Op. 122 transfers the indication of counter K to the third address of cell D
+and realizes exit from the sub-routine.
 -}
+
