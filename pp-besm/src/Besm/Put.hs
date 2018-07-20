@@ -15,6 +15,8 @@ import           GHC.TypeNats                   (KnownNat)
 
 import           Data.Text                      (Text)
 import           Besm.Lower
+import           Data.Digits (digits)
+import           Data.Bits (setBit)
 
 {-
   A programme has to be prepared for the PP by being coded in binary.
@@ -188,7 +190,7 @@ buildInstruction op addr1 addr2 addr3 = (bitVector 0)
 
 {-
   Layout of numbers:
-
+                         2^-1 2^-2  ..
   +----------------------------------------+
   | 6 | 5 | .. | 1 | 33 | 32 | 31 | .. | 1 |
   +----------------------------------------+
@@ -198,6 +200,12 @@ buildInstruction op addr1 addr2 addr3 = (bitVector 0)
     |   |            +---------------- 1-bit sign of number
     |   +----------------------------- 5-bit exponent
     +--------------------------------- 1-bit sign of exponenet
+
+
+  The exponent is encoded in two's-complement notation, while the
+  mantissa is a direct most-significant-bit encoding of the value.
+
+
 -}
 
 
@@ -293,7 +301,7 @@ blockC :: [Constant] -> [BitVector 39]
 blockC constants = map toCell constants
   where
   toCell (Vacant{}) = b0
-  toCell (Cell _ v) = v
+  toCell (Cell _ v) = numberToBesmFloating v
 
 {-
   Block K: Programme
@@ -426,8 +434,6 @@ encodeLogicalOp pa opSign (Op x defaultOp branches) following = let
     let secondBound = maybe b0 (quantityOffsetBits pa) upperBound
     in Full $ buildInstruction (rangeCode rangeType) (quantityOffsetBits pa lowerBound) (secondBound) (getOperator op)
 
-
-
 rangeCode :: RangeType -> BitVector 6
 rangeCode (LeftImproper)      = bitVector 1
 rangeCode (LeftImproperSemi)  = bitVector 2
@@ -468,3 +474,29 @@ arithOpcode (E)                  = Short 0xFA
 arithOpcode (ExtractExponenent)  = Short 0xFB
 arithOpcode (Mod)                = Short 0xFC
 arithOpcode (Sign)               = Short 0xFF
+
+{-
+  Converts numbers to BESM floating point
+
+  For now only handles positive integers, needs to be expanded to all floating points
+
+  Known bugs:
+
+  Can't represent fractional values.
+    - Probably want to take a type of (Int, Int) as input
+
+-}
+
+numberToBesmFloating :: Int -> BitVector 39
+numberToBesmFloating num = let
+  bits = digits 2 (abs num)
+  exp  = digits 2 (length bits) -- this is soooo wrong for negative numbers...
+  sBit = fromEnum $ num < 0
+  in buildNumber (bitVector (fromIntegral $ length bits)) (bitVector $ fromIntegral sBit) (toBitVector bits)
+  where
+  toBitVector bits = toBitVector' (length bits - 1) bits b0
+  toBitVector' 0 (x:_:_)  _  = error "wtf man"
+  toBitVector' 0 []     bv = bv
+  toBitVector' i (1:xs) bv = toBitVector' (i - 1) xs (bv `setBit` (bvWidth bv - i))
+  toBitVector' i (_:xs) bv = toBitVector' (i - 1) xs bv
+  toBitVector' i []     bv = bv

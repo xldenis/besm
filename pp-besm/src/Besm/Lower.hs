@@ -11,6 +11,7 @@ import           Data.Text            (Text)
 import qualified Data.Text            as T
 import           Data.Word
 import           Data.Function (on)
+
 {-
   """
   All information on the problem is always divided into the following four groups:
@@ -168,7 +169,7 @@ data ParameterInfo
   deriving Show
 
 data Constant
-  = Cell { cName :: Text, val :: (BitVector 39) }
+  = Cell { cName :: Text, val :: Int }
   | Vacant { cName :: Text }
   deriving Show
 
@@ -295,6 +296,6 @@ lowerExp (S.ExpVar v) = [Parameter $ lowerVariable v]
 lowerExp (S.Form v) = [Arith TransformToDecimal, Parameter (lowerVariable v)]
 
 lowerConstants = map lowerConstant
-  where lowerConstant (S.SConstant i) = Cell (T.pack $ show i) (bitVector $ fromIntegral i)
+  where lowerConstant (S.SConstant i) = Cell (T.pack $ show i) i
         lowerConstant (S.SExpVar v) = Vacant $ T.singleton v
 
