@@ -494,9 +494,11 @@ numberToBesmFloating num = let
   sBit = fromEnum $ num < 0
   in buildNumber (bitVector (fromIntegral $ length bits)) (bitVector $ fromIntegral sBit) (toBitVector bits)
   where
-  toBitVector bits = toBitVector' (length bits - 1) bits b0
-  toBitVector' 0 (x:_:_)  _  = error "wtf man"
-  toBitVector' 0 []     bv = bv
-  toBitVector' i (1:xs) bv = toBitVector' (i - 1) xs (bv `setBit` (bvWidth bv - i))
-  toBitVector' i (_:xs) bv = toBitVector' (i - 1) xs bv
-  toBitVector' i []     bv = bv
+  toBitVector bits = toBitVector' (len - 1) (bits) b0
+    where
+    len = length bits
+    toBitVector' 0 (x:_:_)  _  = error "wtf man"
+    toBitVector' 0 []     bv = bv
+    toBitVector' i (1:xs) bv = toBitVector' (i - 1) xs (bv `setBit` (bvWidth bv - (len - i)))
+    toBitVector' i (_:xs) bv = toBitVector' (i - 1) xs bv
+    toBitVector' i []     bv = bv
