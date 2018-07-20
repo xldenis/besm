@@ -9,7 +9,13 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 use bit_field::BitField;
 use std::fs::File;
-use std::cmp::*;
+// use std::cmp::*;
+mod float;
+
+use float::*;
+use byteorder::{BigEndian, ReadBytesExt};
+use std::iter;
+extern crate num;
 
 struct VM<'a> {
   is: &'a mut [u64; 1023],
@@ -41,31 +47,23 @@ impl<'a> VM<'a> {
 
     match Instruction::from_bytes(opcode) {
       Add  { a: l, b: r, c: res, normalize: needs_norm } => {
-        let mut lfloat = Float::from_bytes(self.get_address(l));
-        let mut rfloat = Float::from_bytes(self.get_address(r));
-
-        match lfloat.exp.cmp(&rfloat.exp) {
-          Ordering::Less    => {
-            lfloat.mant = lfloat.mant.checked_shr((lfloat.exp - rfloat.exp) as u32).unwrap_or(0);
-            lfloat.exp = rfloat.exp;
-          }
-          Ordering::Greater => {
-            rfloat.mant = rfloat.mant.checked_shr((rfloat.exp - lfloat.exp) as u32).unwrap_or(0);
-            rfloat.exp = lfloat.exp;
-          }
-          Ordering::Equal => { }
-        }
-
-        let (res_mant, overflow) = lfloat.mant.overflowing_add(rfloat.mant);
-        let res_sign = match lfloat.mant.cmp(&rfloat.mant) {
-          Ordering::Less => rfloat.sign,
-          Ordering::Greater => lfloat.sign,
-          Ordering::Equal   => false,
-        };
-
-        let mut val = Float { mant: res_mant, overflow: overflow, sign: res_sign, exp: rfloat.exp };
+        let lfloat  = Float::from_bytes(self.get_address(l));
+        let rfloat  = Float::from_bytes(self.get_address(r));
+        let mut val = lfloat.add_unnormalized(&rfloat);
 
         if needs_norm { val.normalize() };
+
+        self.set_address(res, val.to_bytes());
+        self.increment_ic();
+
+      }
+      Sub  { a: l, b: r, c: res, normalize: needs_norm } => {
+        let lfloat  = Float::from_bytes(self.get_address(l));
+        let rfloat  = Float::from_bytes(self.get_address(r));
+        let mut val = lfloat.sub_unnormalized(&rfloat);
+
+        if needs_norm { val.normalize() };
+
         self.set_address(res, val.to_bytes());
         self.increment_ic();
 
@@ -122,48 +120,6 @@ impl<'a> VM<'a> {
     self
   }
  }
-extern crate num;
-
-#[derive(Debug)]
-struct Float {
-  mant: u32, // actually only the lower 32 bits are used (u64 lets us store overflow  though...)
-  overflow: bool,
-  exp: i8, // actually is only 6 bits long aka (-32 - 31)
-  sign: bool
-}
-
-impl Float {
-  pub fn from_bytes(word: u64) -> Float {
-    let exp = (0xFF & word.get_bits(33..38)) as i8;
-    let mant = word.get_bits(0..32) as u32;
-    let sign = word.get_bit(32);
-    Float { mant: mant, exp: exp, sign: sign, overflow: false }
-  }
-
-  pub fn to_bytes(&mut self) -> u64 {
-    let mut bytes : u64 = 0;
-    bytes.set_bits(0..32, self.mant.into());
-    bytes.set_bit(32, self.sign);
-    *bytes.set_bits(33..38, self.exp as u64) // oh boy is this correct?
-  }
-  pub fn normalize(&mut self) {
-    if self.overflow {
-      self.exp += 1;
-      self.mant >>= 1;
-      self.mant.set_bit(31, true);
-      self.overflow = false
-    } else {
-      let mut shift = 0;
-      while self.mant.get_bit(31) == false {
-
-        shift += 1;
-        self.mant <<= 1;
-      }
-
-      self.exp  = num::clamp(self.exp - shift, -32,  31);
-    }
-  }
-}
 
 type Address = u64;
 
@@ -270,8 +226,6 @@ struct Opts {
   is_file: PathBuf,
 }
 
-use byteorder::{BigEndian, ReadBytesExt};
-use std::iter;
 fn main() {
     let opt = Opts::from_args();
 
@@ -284,7 +238,7 @@ fn main() {
     let mut vm = VM::new(&mut is_buf);
 
     while !vm.stopped {
-      let ins = vm.is[vm.next_instr() as usize];
+      let ins = vm.get_address(vm.next_instr() as u64);
 
       println!("{:?} {:039b} {:016x}", vm.next_instr(), ins, ins);
       vm.step();
