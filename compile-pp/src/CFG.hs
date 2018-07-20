@@ -1,6 +1,7 @@
 module CFG where
 
 import Monad
+import Syntax
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree

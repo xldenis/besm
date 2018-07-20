@@ -2,6 +2,7 @@
 module Lib where
 
 import Monad
+import Syntax
 
 import Debug.Trace
 {-
