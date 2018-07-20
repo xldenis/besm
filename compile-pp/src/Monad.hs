@@ -183,8 +183,11 @@ tExp' a c    = emitInstr $ TExp a c   UnNormalized
 tMod  a c    = emitInstr $ TMod a c   Normalized
 tMod' a c    = emitInstr $ TMod a c   UnNormalized
 
-tN a  c      = emitInstr $ TN   a c   Normalized
+tN  a c      = emitInstr $ TN   a c   Normalized
 tN' a c      = emitInstr $ TN   a c   UnNormalized
+
+ai a b c     = emitInstr $ AI a b c
+bitAnd a b c = emitInstr $ LogMult a b c
 
 jcc         = emitInstr $ JCC
 callRtc op  = emitInstr $ CallRTC (rtc op) op
@@ -198,3 +201,4 @@ comp a b c d = emitTerm $ Comp a b c d
 compWord a b c d = emitTerm $ CompWord a b c d
 chain addr = emitTerm $ Chain addr
 stop = emitTerm $ Stop
+checkStop = emitTerm $ SwitchStop

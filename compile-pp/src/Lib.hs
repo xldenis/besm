@@ -97,7 +97,9 @@ partialProgramme = undefined
 
 left11 = undefined
 left22 = undefined
+right22 = Unknown
 
+completedOperator = Unknown
 -- Apparently the first addresses of the DS store some constants
 zero :: Address
 zero = Unknown
@@ -114,10 +116,12 @@ arithCoder = do
   op1 >> op23 >> op4 >> op5 >> op89 >> op10 >> op11 >> op12 >> op131415
   op1617 >> op18 >> op1920 >> op212223 >> op24 >> op2526 >> op27 >> op28
   op31 >> op32 >> op29 >> op30 >> op34 >> op35 >> op36 >> op37 >> op38
-  op39 >> op40 >> op41 >> op42 >> op43
-  op55 >> op56 >> op57 >> op58 >> op59 >> op60
+  op39 >> op40 >> op41 >> op42 >> op43 >>         op45
+  op55 >> op56 >> op57 >> op58 >> op59 >> op60 >> op61 >> op62 >> op63
+  -- op64
+  op65 >> op66
 
-
+  op69 >> op70
 
 {-
   """
@@ -540,7 +544,7 @@ op43 = operator 43 $ do
 Op. 44 verifies if anything has been transferred to the block of the completed
 operator in programming a given arithmetical operation (YES -- op. 45
 unctions, NO -- op. 47). This test determines the case when the arithmetical
-oeprator begins with the formula a => y.
+operator begins with the formula a => y.
 
 -}
 
@@ -554,9 +558,13 @@ and extracts its third address.
 
 -}
 
-op45 = operator 45 $ do
-  undefined -- i dont want to do this yet
+op45 = operator 45 $ mdo
+  shift counterK left22 cellF
+  ai cellF addr addr
+  addr <- bitAnd completedOperator addr3bitmask cellF
 
+  chain (op 46)
+  where addr3bitmask = Unknown -- 0x7FF
 {-
 
 Op. 46  compares the contents of the selected address with zero. If it is
@@ -569,7 +577,8 @@ contitional code r of the working cell with the result of the programmed
 expression is in cell D, and then control is transferred to op. 47.
 
 -}
-op46 = operator 46 $ undefined
+op46 = operator 46 $ do
+  comp cellF zero (op 48) (op 47)
 
 {-
 
@@ -672,31 +681,100 @@ Op. 60 determines the case of m-multiple open-parentheses, transferring
 conrtol to op. 61.
 
 By Op. 57, cell e is either a multiple or single open paren.
-Check that it's greater than 01 (single).
+
 -}
 op60 = operator 60 $ do
-  comp one cellE (op 61) (op 64)
+  shift cellE left22 cellF
+  comp one cellF (op 61) (op 64)
 
 {-
 Op. 61 reduces m by 1.
 
--}
-op61 = operator 61 $ do
+The value in cell e will have the form:
+  ┌───┬────┬───┬───┐
+  │ 0 │ 02 │ m │ 0 │
+  └───┴────┴───┴───┘
 
-  undefined -- m is in the second address (how to subtract!!)
+  where 0 < m < 2^11
+
+  The idea is to use "negative address modification constants" to modify the value of the second address, directly!
+
+  0000 00 | 000 0000 0010 000 0000 0001 000 0000 0000 = 0x800800
+
+  0000 00 | 111 1111 1111 111 1111 1111 000 0000 0000  = 0x1FFFFF800
+
+AI =
+  0000 00 | 000 0000 0010 000 0000 0000 000 0000 0000  = 0x800000
+-}
+
+op61 = operator 61 $ do
+  ai cellE aiConstant cellE
+  chain (op 62)
+  where aiConstant = Unknown -- address of cell holding 0x1FFFFF800
 
 {-
 Op. 62 transfers control to op. 64 if m = 0.
 
+If we m = 0 then we have the value
+
+  ┌───┬────┬───┬───┐
+  │ 0 │ 02 │ 0 │ 0 │ => hex: 0x800000
+  └───┴────┴───┴───┘
+
+-}
+
+op62 = operator 62 $ do
+  compWord cellE compVal (op 64) (op 63)
+
+  where compVal = Unknown --  0x800000
+
+{-
 Op. 63 sends to the partial programme the code of the multiple
 open-parentheses with m reduced by 1.
 
+-}
+op63 = operator 63 $ do
+  tN cellE cellD
+  clcc (op 69)
+  chain (op 64)
+
+
+{-
 Op. 64 determines the case of n-multiple close-parentheses, transferring
 control to op. 65
 
+WHERE ARE WE SUPPOSED TO FIND THE CLOSE PAREN? Cell b?
+
+-}
+
+op64 = undefined
+
+{-
+
 Op. 65 reduces n by 1.
 
+-}
+
+op65 = operator 65 $ do
+  ai Unknown aiConstant Unknown
+  chain (op 66)
+  where aiConstant = Unknown -- address of cell holding 0x1FFFFF800
+
+{-
 Op. 66 transfers control to op. 67, if n.= 0.
+
+  ┌───┬────┬───┬───┐
+  │ 0 │ 06 │ 0 │ 0 │ => hex: 0x1800000
+  └───┴────┴───┴───┘
+
+-}
+
+op66 = operator 66 $ do
+  compWord cellE compVal (op 68) (op 67)
+
+  where compVal = Unknown --  0x1800000
+
+{-
 
 Op. 67 sends the code of the result of the programmed operation within
 parentheses to cell C.
@@ -710,12 +788,40 @@ open-parentheses. After this control is again transferred to op. 34.
 
 Let us now consider the functioning of the sub-routine of the blaock of
 arithmetical operators.
+-}
+
+
+{-
 
 OP. 69 transfers (D) to the partial programme and adds 1 to counter B_1.
 
+rofl this operator is bonkers... the idea is to use the AI operation to modify the
+_next_ instruction and change the address we want to set based off counterB1!
+-}
+
+op69 = operator 69 $ mdo
+  add one counterB1 counterB1
+  shift counterB1 right22 cellF
+  ai cellF addr addr
+  addr <- tN cellD partialProgramme
+
+  chain (op 70)
+{-
 Op 70. forestalls "overflow" of the partial programme. If there are more than 32
 symbols in the partial programme a check stop takes place.
 
+-}
+
+op70 = operator 70 $ mdo
+  comp counterB1 thirtyTwo stop jcc'
+
+  stop <- block (checkStop)
+
+  jcc' <- block (jcc >> cccc (op 2))
+
+  return ()
+  where thirtyTwo = Unknown
+{-
 Op 71. is the first-sub-routine of selection from the partial programme,
 transferring to cell E the contents of the next cell of the partial programme
 and subtracticing 1 from counter B_2.
