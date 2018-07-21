@@ -4,3 +4,7 @@ packages:
 - .
 extra-deps:
 - ../pp-besm
+- github: xldenis/bv-sized
+  commit: 4f42d9e2c7154dfdd543bab36cba1f8b4ae93cfa
+- github: GaloisInc/parameterized-utils
+  commit: 898020da43fbf9989a8877c1404c05767bb5df98

@@ -24,6 +24,8 @@ dependencies:
 - mtl
 - graphviz
 - fgl
+- pp-besm
+- bv-sized
 
 library:
   source-dirs: src
