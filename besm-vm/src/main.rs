@@ -71,7 +71,6 @@ impl<'a> VM<'a> {
 
       }
       CCCC { b: cell, c: addr } => {
-        println!("cccc");
         if cell != 0 { self.is[cell as usize]; }
         self.global_ic = addr as u16;
         self.active_ic = ActiveIC::Global;
