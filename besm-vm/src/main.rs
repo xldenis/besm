@@ -44,7 +44,7 @@ impl<'a> VM<'a> {
 
   pub fn step(&mut self) -> () {
     let opcode = self.is[self.next_instr() as usize - 1];
-
+    println!("{:?}",Instruction::from_bytes(opcode));
     match Instruction::from_bytes(opcode) {
       Add  { a: l, b: r, c: res, normalize: needs_norm } => {
         let lfloat  = Float::from_bytes(self.get_address(l));
@@ -62,6 +62,8 @@ impl<'a> VM<'a> {
         let rfloat  = Float::from_bytes(self.get_address(r));
         let mut val = lfloat.sub_unnormalized(&rfloat);
 
+        println!("{:06b} {:?} {:032b}", val.exp, val.sign, val.mant);
+
         if needs_norm { val.normalize() };
 
         self.set_address(res, val.to_bytes());
@@ -69,6 +71,7 @@ impl<'a> VM<'a> {
 
       }
       CCCC { b: cell, c: addr } => {
+        println!("cccc");
         if cell != 0 { self.is[cell as usize]; }
         self.global_ic = addr as u16;
         self.active_ic = ActiveIC::Global;
@@ -174,7 +177,7 @@ fn third_addr(x: u64) -> u64 {
 
 impl Instruction {
   pub fn from_bytes(word: u64) -> Instruction {
-    match word.get_bits(33..37) {
+    match word.get_bits(33..38) {
       0x01 => Add       { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       0x02 => Sub       { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       0x03 => Mult      { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
@@ -186,8 +189,8 @@ impl Instruction {
       0x09 => Xb        { normalize: !word.get_bit(38),                                            c: third_addr(word)},
       0x0A => DivA      { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       0x0B => DivB      { normalize: !word.get_bit(38),                                            c: third_addr(word)},
-      0x2B => TN        { normalize: !word.get_bit(38), a: first_addr(word),                       c: third_addr(word)},
-      0x0C => PN        {                               a: first_addr(word)},
+      0x0C => TN        { normalize: !word.get_bit(38), a: first_addr(word),                       c: third_addr(word)},
+      0x2C => PN        {                               a: first_addr(word)},
       0x0D => TMin      { normalize: !word.get_bit(38), a: first_addr(word),                       c: third_addr(word)},
       0x0E => TMod      { normalize: !word.get_bit(38), a: first_addr(word),                       c: third_addr(word)},
       0x0F => TSign     { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},

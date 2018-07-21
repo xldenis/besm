@@ -11,19 +11,24 @@ pub struct Float {
 }
 
 macro_rules! equalize_exponents {
-  ($left_mant:ident, $left_exp:ident, $right_mant:ident, $right_exp:ident) => {{
+  ($left:expr, $right:expr, $left_mant:ident, $left_exp:ident, $right_mant:ident, $right_exp:ident) => {
+    let mut $left_mant:u32  = $left.mant;
+    let mut $right_mant:u32 = $right.mant;
+    let mut $left_exp:i8   = $left.exp;
+    let mut $right_exp:i8  = $right.exp;
+
     match $left_exp.cmp(&$right_exp) {
       Ordering::Less    => {
         $left_mant = $left_mant.checked_shr(($left_exp - $right_exp) as u32).unwrap_or(0);
         $left_exp = $right_exp;
       }
       Ordering::Greater => {
-        $right_mant = $right_mant.checked_shr(($right_exp - $left_exp) as u32).unwrap_or(0);
+        $right_mant = $right_mant.checked_shr(($left_exp - $right_exp) as u32).unwrap_or(0);
         $right_exp = $left_exp;
       }
       Ordering::Equal => { }
     }
-  }};
+  };
 }
 
 impl Float {
@@ -31,8 +36,6 @@ impl Float {
     let exp = (0xFF & word.get_bits(33..38)) as i8;
     let mant = word.get_bits(0..32) as u32;
     let sign = word.get_bit(32);
-    println!("{:039b}", word);
-    println!("{:06b} {:?} {:032b}", exp, sign, mant);
     Float { mant: mant, exp: exp, sign: sign, overflow: false }
   }
 
@@ -62,14 +65,7 @@ impl Float {
   }
 
   pub fn add_unnormalized(&self, other: &Float) -> Float {
-    let mut left_mant = self.mant;
-    let mut right_mant = other.mant;
-    let mut left_exp = self.exp;
-    let mut right_exp = other.exp;
-
-    println!("{:032b} {:032b} {:06b} {:06b}", left_mant, right_mant, left_exp, right_exp);
-    equalize_exponents!(left_exp, left_mant, right_exp, right_mant);
-    println!("{:032b} {:032b} {:06b} {:06b}", left_mant, right_mant, left_exp, right_exp);
+    equalize_exponents!(self, other, left_mant, left_exp, right_mant, right_exp);
 
     let exp = right_exp;
 
@@ -84,16 +80,9 @@ impl Float {
   }
 
   pub fn sub_unnormalized(&self, other: &Float) -> Float {
-    let mut left_mant = self.mant;
-    let mut right_mant = other.mant;
-    let mut left_exp = self.exp;
-    let mut right_exp = other.exp;
+    equalize_exponents!(self, other, left_mant, left_exp, right_mant, right_exp);
 
-    println!("{:032b} {:032b} {:06b} {:06b}", left_mant, right_mant, left_exp, right_exp);
-    equalize_exponents!(left_exp, left_mant, right_exp, right_mant);
-    println!("{:032b} {:032b} {:06b} {:06b}", left_mant, right_mant, left_exp, right_exp);
-
-    let exp = right_exp;
+    let exp:i8 = right_exp;
 
     let (res_mant, overflow) = left_mant.overflowing_sub(right_mant);
     let res_sign = match overflow {
