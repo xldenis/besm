@@ -39,6 +39,10 @@ impl Float {
     Float { mant: mant, exp: exp, sign: sign, overflow: false }
   }
 
+  pub fn new(mant: u32, exp: i8,) -> Float {
+    Float { mant: mant, exp: exp, overflow: false, sign: false}
+  }
+
   pub fn to_bytes(&mut self) -> u64 {
     let mut bytes : u64 = 0;
     bytes.set_bits(0..32, self.mant.into());

@@ -10,14 +10,14 @@ Implemented instructions:
 | Sub      | ✅ |
 | Mult     | ❌ |
 | Div      | ❌ |
-| AddE     | ❌ |
-| SubE     | ❌ |
+| AddE     | ✅ |
+| SubE     | ✅ |
 | Ce       | ❌ |
 | Xa       | ❌ |
 | Xb       | ❌ |
 | DivA     | ❌ |
 | DivB     | ❌ |
-| TN       | ❌ |
+| TN       | ✅ |
 | PN       | ❌ |
 | TMin     | ❌ |
 | TMod     | ❌ |
@@ -25,8 +25,8 @@ Implemented instructions:
 | TExp     | ❌ |
 | Shift    | ❌ |
 | ShiftAll | ❌ |
-| AI       | ❌ |
-| AICarry  | ❌ |
+| AI       | ✅ |
+| AICarry  | ✅ |
 | I        | ❌ |
 | Comp     | ❌ |
 | CompWord | ❌ |
@@ -38,4 +38,4 @@ Implemented instructions:
 | CCCC     | ✅ |
 | Stop28   | ✅ |
 | LogMult  | ❌ |
-| Stop     | ❌ |
+| Stop     | ✅ |

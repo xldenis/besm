@@ -44,7 +44,7 @@ impl<'a> VM<'a> {
 
   pub fn step(&mut self) -> () {
     let opcode = self.is[self.next_instr() as usize - 1];
-    println!("{:?}",Instruction::from_bytes(opcode));
+
     match Instruction::from_bytes(opcode) {
       Add  { a: l, b: r, c: res, normalize: needs_norm } => {
         let lfloat  = Float::from_bytes(self.get_address(l));
@@ -62,13 +62,43 @@ impl<'a> VM<'a> {
         let rfloat  = Float::from_bytes(self.get_address(r));
         let mut val = lfloat.sub_unnormalized(&rfloat);
 
-        println!("{:06b} {:?} {:032b}", val.exp, val.sign, val.mant);
-
         if needs_norm { val.normalize() };
 
         self.set_address(res, val.to_bytes());
         self.increment_ic();
 
+      },
+      AddE { a: x, b: y, c: z, normalize: needs_norm } => {
+        let lfloat = Float::from_bytes(self.get_address(x));
+        let rfloat = Float::from_bytes(self.get_address(y));
+
+        let mut result = Float::new(lfloat.mant, lfloat.exp + rfloat.exp);
+
+        if needs_norm { result.normalize() };
+
+        // alarm if power is > 31
+
+        self.set_address(z, result.to_bytes());
+      }
+      SubE { a: x, b: y, c: z, normalize: needs_norm } => {
+        let lfloat = Float::from_bytes(self.get_address(x));
+        let rfloat = Float::from_bytes(self.get_address(y));
+
+        let mut result = Float::new(lfloat.mant, lfloat.exp + rfloat.exp);
+
+        if needs_norm { result.normalize() };
+
+        // alarm if power is > 31
+
+        self.set_address(z, result.to_bytes());
+      }
+      TN { a: source, c: target, normalize: needs_norm } => {
+        let mut val = Float::from_bytes(self.get_address(source));
+
+        if needs_norm { val.normalize() };
+
+        self.set_address(target, val.to_bytes());
+        self.increment_ic();
       }
       CCCC { b: cell, c: addr } => {
         if cell != 0 { self.is[cell as usize]; }
@@ -84,9 +114,44 @@ impl<'a> VM<'a> {
         self.increment_ic();
 
       }
+      AICarry { a: p, b: q, c: r } => {
+        let left = self.get_address(p);
+        let right = self.get_address(q);
+
+        let (mut result, _) = left.overflowing_add(right);
+        let wrapping_carry = result.get_bits(39..40);
+
+        result.set_bits(39..63, 0);
+        result |= wrapping_carry;
+
+        self.set_address(r, result);
+        self.increment_ic();
+      }
+      AI { a: p, b: q, c: r} => {
+        let laddrs = self.get_address(p).get_bits(0..33);
+        let raddrs = self.get_address(q).get_bits(0..33);
+
+        let mut result = laddrs + raddrs;
+
+        result.set_bits(33..39, self.get_address(p).get_bits(33..39));
+
+        self.set_address(r, result);
+        self.increment_ic();
+      }
+      LogMult { a, b, c } => {
+        let left = self.get_address(a);
+        let right = self.get_address(b);
+        let result = left & right;
+
+        self.set_address(c, result);
+        self.increment_ic();
+      }
       Stop => {}
       Stop28 => {}
-      _a => { self.stopped = true; }
+      a => {
+        println!("NYI {:?}", a);
+        self.stopped = true;
+      }
     }
   }
 
@@ -105,7 +170,7 @@ impl<'a> VM<'a> {
 
   }
 
-  fn get_address(& self, ix: u64) -> u64 {
+  fn get_address(&self, ix: u64) -> u64 {
     if ix <= 1023 {
       self.is[(ix - 1) as usize]
     } else {
@@ -121,7 +186,7 @@ impl<'a> VM<'a> {
     }
     self
   }
- }
+}
 
 type Address = u64;
 
@@ -242,7 +307,7 @@ fn main() {
     while !vm.stopped {
       let ins = vm.get_address(vm.next_instr() as u64);
 
-      println!("{:?} {:039b} {:016x}", vm.next_instr(), ins, ins);
+      println!("{:?} {:039b} {:010x}", vm.next_instr(), ins, ins);
       vm.step();
 
     }
