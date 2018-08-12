@@ -95,6 +95,16 @@ impl Float {
     };
 
     Float { mant: res_mant, overflow: false, sign: res_sign, exp: exp }
+  }
 
+  // what is un normalized floating point multiplication?
+  pub fn mul_unnormalized(&self, other: &Float) -> Float {
+    equalize_exponents!(self, other, left_mant, left_exp, right_mant, right_exp);
+
+    let exp:i8 = right_exp + left_exp;
+
+    let res_mant = (left_mant as u64) * (right_mant as u64);
+
+    Float { mant: res_mant.get_bits(32..64) as u32, overflow: false, sign: self.sign ^ other.sign, exp: exp}
   }
 }

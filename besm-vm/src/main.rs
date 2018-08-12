@@ -16,6 +16,7 @@ use float::*;
 use byteorder::{BigEndian, ReadBytesExt};
 use std::iter;
 extern crate num;
+extern crate arraydeque;
 
 struct VM<'a> {
   is: &'a mut [u64; 1023],
@@ -30,6 +31,11 @@ enum ActiveIC { Global, Local}
 
 static DS : [u64; 364] = [0; 364];
 
+#[derive(Debug)]
+enum VMError {
+  OutOfBounds { },
+
+}
 impl<'a> VM<'a> {
   pub fn new(is: &'a mut [u64; 1023]) -> VM {
     VM {
@@ -42,13 +48,14 @@ impl<'a> VM<'a> {
     }
   }
 
-  pub fn step(&mut self) -> () {
+  pub fn step(&mut self) -> Result<Instruction, VMError> {
     let opcode = self.is[self.next_instr() as usize - 1];
+    let instr = Instruction::from_bytes(opcode);
 
-    match Instruction::from_bytes(opcode) {
+    match instr {
       Add  { a: l, b: r, c: res, normalize: needs_norm } => {
-        let lfloat  = Float::from_bytes(self.get_address(l));
-        let rfloat  = Float::from_bytes(self.get_address(r));
+        let lfloat  = Float::from_bytes(self.get_address(l)?);
+        let rfloat  = Float::from_bytes(self.get_address(r)?);
         let mut val = lfloat.add_unnormalized(&rfloat);
 
         if needs_norm { val.normalize() };
@@ -58,8 +65,8 @@ impl<'a> VM<'a> {
 
       }
       Sub  { a: l, b: r, c: res, normalize: needs_norm } => {
-        let lfloat  = Float::from_bytes(self.get_address(l));
-        let rfloat  = Float::from_bytes(self.get_address(r));
+        let lfloat  = Float::from_bytes(self.get_address(l)?);
+        let rfloat  = Float::from_bytes(self.get_address(r)?);
         let mut val = lfloat.sub_unnormalized(&rfloat);
 
         if needs_norm { val.normalize() };
@@ -69,8 +76,8 @@ impl<'a> VM<'a> {
 
       },
       AddE { a: x, b: y, c: z, normalize: needs_norm } => {
-        let lfloat = Float::from_bytes(self.get_address(x));
-        let rfloat = Float::from_bytes(self.get_address(y));
+        let lfloat = Float::from_bytes(self.get_address(x)?);
+        let rfloat = Float::from_bytes(self.get_address(y)?);
 
         let mut result = Float::new(lfloat.mant, lfloat.exp + rfloat.exp);
 
@@ -81,8 +88,8 @@ impl<'a> VM<'a> {
         self.set_address(z, result.to_bytes());
       }
       SubE { a: x, b: y, c: z, normalize: needs_norm } => {
-        let lfloat = Float::from_bytes(self.get_address(x));
-        let rfloat = Float::from_bytes(self.get_address(y));
+        let lfloat = Float::from_bytes(self.get_address(x)?);
+        let rfloat = Float::from_bytes(self.get_address(y)?);
 
         let mut result = Float::new(lfloat.mant, lfloat.exp + rfloat.exp);
 
@@ -93,7 +100,7 @@ impl<'a> VM<'a> {
         self.set_address(z, result.to_bytes());
       }
       TN { a: source, c: target, normalize: needs_norm } => {
-        let mut val = Float::from_bytes(self.get_address(source));
+        let mut val = Float::from_bytes(self.get_address(source)?);
 
         if needs_norm { val.normalize() };
 
@@ -115,8 +122,8 @@ impl<'a> VM<'a> {
 
       }
       AICarry { a: p, b: q, c: r } => {
-        let left = self.get_address(p);
-        let right = self.get_address(q);
+        let left = self.get_address(p)?;
+        let right = self.get_address(q)?;
 
         let (mut result, _) = left.overflowing_add(right);
         let wrapping_carry = result.get_bits(39..40);
@@ -128,31 +135,32 @@ impl<'a> VM<'a> {
         self.increment_ic();
       }
       AI { a: p, b: q, c: r} => {
-        let laddrs = self.get_address(p).get_bits(0..33);
-        let raddrs = self.get_address(q).get_bits(0..33);
+        let laddrs = self.get_address(p)?.get_bits(0..33);
+        let raddrs = self.get_address(q)?.get_bits(0..33);
 
         let mut result = laddrs + raddrs;
 
-        result.set_bits(33..39, self.get_address(p).get_bits(33..39));
+        result.set_bits(33..39, self.get_address(p)?.get_bits(33..39));
 
         self.set_address(r, result);
         self.increment_ic();
       }
       LogMult { a, b, c } => {
-        let left = self.get_address(a);
-        let right = self.get_address(b);
+        let left = self.get_address(a)?;
+        let right = self.get_address(b)?;
         let result = left & right;
 
         self.set_address(c, result);
         self.increment_ic();
       }
-      Stop => {}
-      Stop28 => {}
+      Stop => { self.stopped = true; }
+      Stop28 => { self.stopped = true; }
       a => {
         println!("NYI {:?}", a);
         self.stopped = true;
       }
     }
+    Ok(instr)
   }
 
   fn next_instr(& self) -> u16 {
@@ -170,11 +178,13 @@ impl<'a> VM<'a> {
 
   }
 
-  fn get_address(&self, ix: u64) -> u64 {
-    if ix <= 1023 {
-      self.is[(ix - 1) as usize]
+  fn get_address(&self, ix: u64) -> Result<u64, VMError> {
+    if ix == 0 {
+      Err(VMError::OutOfBounds {})
+    } else if ix <= 1023 {
+      Ok(self.is[(ix - 1) as usize])
     } else {
-      self.ds[(ix - 1023 - 1) as usize]
+      Ok(self.ds[(ix - 1023 - 1) as usize])
     }
   }
 
@@ -188,9 +198,73 @@ impl<'a> VM<'a> {
   }
 }
 
+extern crate tui;
+
+use tui::backend::MouseBackend;
+use tui::Terminal;
+use tui::layout::{Direction, Group, Rect, Size};
+use tui::widgets::{Widget, Paragraph, Block, Borders};
+use tui::style::{Alignment, Color, Style};
+
+fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruction; 3]> , size: &Rect) {
+  Group::default()
+    .direction(Direction::Vertical)
+    .sizes(&[Size::Fixed(3), Size::Fixed(6), Size::Percent(100)])
+    .render(t, size, |t, chunks| {
+      Block::default()
+        .borders(Borders::ALL)
+        .title("Current Instruction")
+        .render(t, &chunks[0]);
+
+      let empty_space = 0.max(chunks[0].width - (5 + 42 + 10) - 4);
+      let spacer = empty_space / 2;
+
+      Group::default()
+        .margin(1)
+        .direction(Direction::Horizontal)
+        .sizes(&[Size::Fixed(5), Size::Fixed(spacer), Size::Fixed(42), Size::Fixed(spacer), Size::Fixed(10)])
+        .render(t, &chunks[0], |t, chunks| {
+          let ins = vm.get_address(vm.next_instr() as u64).unwrap();
+
+          Paragraph::default()
+            .text(&format!("{:04}", vm.next_instr()))
+            .alignment(Alignment::Right)
+            .render(t, &chunks[0]);
+
+          Paragraph::default()
+            .text(&format!("{:06b} {:011b} {:011b} {:011b}", ins.get_bits(33..38), first_addr(ins), second_addr(ins), third_addr(ins)))
+            .render(t, &chunks[2]);
+
+          Paragraph::default()
+            .text(&format!("{:010x}", ins))
+            .render(t, &chunks[4]);
+        });
+
+      Block::default()
+        .borders(Borders::ALL)
+        .title("Past Instructions")
+        .render(t, &chunks[1]);
+
+      Group::default()
+        .margin(1)
+        .direction(Direction::Vertical)
+        .sizes(&[Size::Fixed(1), Size::Fixed(1), Size::Fixed(1)])
+        .render(t, &chunks[1], |t, chunks| {
+          for (instr, chunk) in ui_state.iter().zip(chunks.iter()) {
+            Paragraph::default()
+              .text(&format!("{:?}", instr))
+              .alignment(Alignment::Right)
+              .render(t, &chunk);
+          }
+        });
+
+    });
+  t.draw();
+}
+
 type Address = u64;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum Instruction {
   Add       { a: Address, b: Address, c: Address, normalize: bool},
   Sub       { a: Address, b: Address, c: Address, normalize: bool},
@@ -240,6 +314,7 @@ fn third_addr(x: u64) -> u64 {
 }
 
 impl Instruction {
+  // Eventually this should be Result<(), Instruction>
   pub fn from_bytes(word: u64) -> Instruction {
     match word.get_bits(33..38) {
       0x01 => Add       { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
@@ -293,25 +368,39 @@ struct Opts {
   is_file: PathBuf,
 }
 
+use std::io;
+use std::{thread, time};
+use arraydeque::{ArrayDeque};
+
 fn main() {
-    let opt = Opts::from_args();
+  let opt = Opts::from_args();
 
-    let mut f = File::open(opt.is_file.clone()).expect("file not found");
+  let mut f = File::open(opt.is_file.clone()).expect("file not found");
 
-    let words : Vec<u64> = iter::repeat_with(|| f.read_u64::<BigEndian>().unwrap_or(0)).take(1023).collect();
-    let mut is_buf = [0u64; 1023];
-    is_buf.copy_from_slice(&words[..]);
+  let words : Vec<u64> = iter::repeat_with(|| f.read_u64::<BigEndian>().unwrap_or(0)).take(1023).collect();
+  let mut is_buf = [0u64; 1023];
+  is_buf.copy_from_slice(&words[..]);
 
-    let mut vm = VM::new(&mut is_buf);
+  let mut vm = VM::new(&mut is_buf);
+  let mut past_instrs: ArrayDeque<[_; 3]> = ArrayDeque::new();
 
-    while !vm.stopped {
-      let ins = vm.get_address(vm.next_instr() as u64);
+  let mut terminal = Terminal::new(MouseBackend::new().unwrap()).unwrap();
+  let stdin = io::stdin();
+  let mut term_size = terminal.size().unwrap();
 
-      println!("{:?} {:039b} {:010x}", vm.next_instr(), ins, ins);
-      vm.step();
+  terminal.clear().unwrap();
+  terminal.hide_cursor().unwrap();
 
-    }
+  let quarter_sec = time::Duration::from_millis(250);
+  while !vm.stopped {
+    draw(&mut terminal, &vm, &past_instrs, &term_size);
+    thread::sleep(quarter_sec);
 
-    println!("{:?}", opt);
+    match vm.step() {
+      Err(e) => break,
+      Ok(i) => past_instrs.push_front(i),
+    };
 
+  }
+  terminal.show_cursor().unwrap();
 }
