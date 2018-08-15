@@ -114,12 +114,18 @@ tN  a c      = emitInstr $ TN   a c   Normalized
 tN' a c      = emitInstr $ TN   a c   UnNormalized
 
 ai a b c     = emitInstr $ AI a b c
+
 bitAnd a b c = emitInstr $ LogMult a b c
 
 jcc         = emitInstr $ JCC
 callRtc op  = emitInstr $ CallRTC (rtc op) op
 shift a b c = emitInstr $ Shift a b c
 clcc addr   = emitInstr $ CLCC addr
+
+readMD n n1 n2 a = (emitInstr $ Ma (Absolute $ 0x100 + n) n1 a) >> (emitInstr $ Mb n2)
+
+ma n n1 a = emitInstr $ Ma n n1 a
+mb n2 = emitInstr $ Mb n2
 
 cccc addr = emitTerm $ CCCC addr
 comp a b c d = emitTerm $ Comp a b c d

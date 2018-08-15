@@ -12,6 +12,8 @@ completedInstructions = Unknown
 cellB = Unknown
 cellA = Unknown
 
+cellA1 = Unknown -- A + 1
+
 zero :: Address
 zero = Unknown
 
@@ -64,36 +66,40 @@ mp1 = do
     let pp_2 = Unknown
     compWord zero cellA (pp_2) (op 6)
   {-
-    Op. 6 transfers control to op. 11 if x != 018. In thiscase in cell A is
+    Op. 6 transfers control to op. 11 if x != 018. In this case in cell A is
     found a line of information on a non-standard operator or the
     close-parentheses of a loop.
   -}
   operator 6 $ do
-    undefined
+    let logOp = Unknown -- 0x18
+    compWord logOp cellB (op 11) (op 7)
   {-
     Op. 7 places in cell A + 1 the extracted first address (A), and in cell A,
     the extracted second and third address of (A).
   -}
-  operator 7 $ do
-    undefined
+  -- operator 7 $ do
+
+
+  --   chain (op 8)
   {-
-    Op. 8 examines (A + 1). IF (A + 1) !=, then in A + 1 is the number of the
+    Op. 8 examines (A + 1). IF (A + 1) != 0, then in A + 1 is the number of the
     operator of the open-parentheses of the loop, which
   -}
   operator 8 $ do
-    undefined
+    compWord zero cellA1 (op 10) (op 9)
   {-
     Op. 9 transfers to the blcok of completed instructions.
   -}
   operator 9 $ do
-    undefined
+    callRtc (op 21)
+    chain (op 10)
   {-
     Op. 10 examines (A). if (A) != 0, then this first line of information on
     the logical operator and control is transferred to the block of logical
     operators. If (A) = 0 control is transferred to op. 2 for selection of the
     following line of information.
 
-      To determine the moment of completing selection of information on a
+    To determine the moment of completing selection of information on a
       logical scheme, a "selection counter" is in the selection block, in
       which is the address of the last line of information selected from block
       K in the initial position of information on the problem.

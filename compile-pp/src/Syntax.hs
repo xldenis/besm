@@ -65,7 +65,7 @@ data Instr a
   | AICarry   a a a
   | I         a a a
   | Ma        a a a
-  | Mb        a a a
+  | Mb          a
   | LogMult   a a a
   | CallRTC     a a
   | CLCC          a
@@ -115,7 +115,7 @@ instToCell (AI        a b c  ) = buildInstruction (bitVector 0x012) (bitVector a
 instToCell (AICarry   a b c  ) = buildInstruction (bitVector 0x032) (bitVector a) (bitVector b) (bitVector c)
 instToCell (I         a b c  ) = buildInstruction (bitVector 0x013) (bitVector a) (bitVector b) (bitVector c)
 instToCell (Ma        a b c  ) = buildInstruction (bitVector 0x016) (bitVector a) (bitVector b) (bitVector c)
-instToCell (Mb        a b c  ) = buildInstruction (bitVector 0x017) (bitVector a) (bitVector b) (bitVector c)
+instToCell (Mb          b    ) = buildInstruction (bitVector 0x017) (bitVector 0) (bitVector b) (bitVector 0)
 instToCell (LogMult   a b c  ) = buildInstruction (bitVector 0x01D) (bitVector a) (bitVector 0) (bitVector c)
 instToCell (CallRTC     b c  ) = buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector b) (bitVector c)
 instToCell (JCC              ) = buildInstruction (bitVector 0x019) (bitVector 0) (bitVector 0) (bitVector 0)
