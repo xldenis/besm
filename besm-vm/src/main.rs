@@ -26,7 +26,7 @@ use tui::layout::{Direction, Group, Rect, Size};
 use tui::widgets::{Widget, Paragraph, Block, Borders};
 use tui::style::{Alignment};
 
-fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruction; 10]> , size: &Rect) {
+fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruction; 10], Wrapping> , size: &Rect) {
   Group::default()
     .direction(Direction::Vertical)
     .sizes(&[Size::Fixed(3), Size::Fixed(12), Size::Percent(100)])
@@ -94,6 +94,7 @@ struct Opts {
 use std::io;
 use std::{thread, time};
 use arraydeque::{ArrayDeque};
+use arraydeque::behavior::Wrapping;
 use std::sync::mpsc;
 
 extern crate termion;
@@ -105,7 +106,7 @@ fn main() {
 
   let mut is_buf = [0u64; 1023];
   let mut t = MouseBackend::new().unwrap();
-  let mut past_instrs: ArrayDeque<[_; 10]> = ArrayDeque::new();
+  let mut past_instrs: ArrayDeque<[_; 10], Wrapping> = ArrayDeque::new();
   let mut terminal = Terminal::new(MouseBackend::new().unwrap()).unwrap();
   let mut term_size = terminal.size().unwrap();
 
@@ -144,9 +145,12 @@ fn main() {
     use termion::event;
 
     let evt = rx.try_recv();
+    use std::sync::mpsc::TryRecvError::*;
     match evt {
       Ok(event::Key::Char('q')) => { break; }
-      _ => { }
+      Ok(_) => {}
+      Err(Disconnected) => { break; }
+      Err(Empty) => { }
     }
 
     match vm.step() {
