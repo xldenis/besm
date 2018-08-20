@@ -133,3 +133,5 @@ compWord a b c d = emitTerm $ CompWord a b c d
 chain addr = emitTerm $ Chain addr
 stop = emitTerm $ Stop
 checkStop = emitTerm $ SwitchStop
+
+retRTC = emitTerm $ RetRTC

@@ -11,12 +11,15 @@ import Monad
 import Data.GraphViz.Commands
 import Syntax
 
+import PP1
+
 main :: IO ()
 main = do
-  let bbs = runBuilder (op 999) $ arithCoder
-      cfg = programmeToGraph bbs
+  let cfg = programmeToGraph (runBuilder (op 999) $ arithCoder)
+      cf2 = programmeToGraph (runBuilder (op 999) $ mp1)
 
   runGraphviz (graphToDot params $ (nmap formatAddr cfg)) Png "cfg.png"
+  runGraphviz (graphToDot params $ (nmap formatAddr cf2)) Png "cfg-2.png"
 
   print $ bb0
   return ()

@@ -14,6 +14,9 @@ cellA = Unknown
 
 cellA1 = Unknown -- A + 1
 
+cellKf = Unknown
+cellKcr = Unknown
+
 zero :: Address
 zero = Unknown
 
@@ -74,13 +77,23 @@ mp1 = do
     let logOp = Unknown -- 0x18
     compWord logOp cellB (op 11) (op 7)
   {-
+    If x = 018, there may be in cell A the number of an operator,
+      open-parentheses of a loop or initial information on a logical operator.
+      In the later case, there is either zero or the number of this operator
+      in the first address (A), to distinguish this information.
+
     Op. 7 places in cell A + 1 the extracted first address (A), and in cell A,
     the extracted second and third address of (A).
   -}
-  -- operator 7 $ do
+  operator 7 $ do
+    let _firstAddr  = Unknown
+        _secondAndThirdAddr = Unknown
 
+    bitAnd _firstAddr cellA cellA1
+    bitAnd _secondAndThirdAddr cellA cellA
 
-  --   chain (op 8)
+    chain (op 8)
+
   {-
     Op. 8 examines (A + 1). IF (A + 1) != 0, then in A + 1 is the number of the
     operator of the open-parentheses of the loop, which
@@ -88,7 +101,7 @@ mp1 = do
   operator 8 $ do
     compWord zero cellA1 (op 10) (op 9)
   {-
-    Op. 9 transfers to the blcok of completed instructions.
+    Op. 9 transfers to the block of completed instructions.
   -}
   operator 9 $ do
     callRtc (op 21)
@@ -99,45 +112,41 @@ mp1 = do
     operators. If (A) = 0 control is transferred to op. 2 for selection of the
     following line of information.
 
-    To determine the moment of completing selection of information on a
-      logical scheme, a "selection counter" is in the selection block, in
-      which is the address of the last line of information selected from block
-      K in the initial position of information on the problem.
 
   -}
   operator 10 $ do
-    undefined
+    compWord zero cellA (op 2) (op 10)
   {-
     Op. 11 sends this line to cell A + 1 and from there to the block of
     completed instructions.
 
-      If x = 018, there may be in cell A the number of an operator,
-      open-parentheses of a loop or initial information on a logical operator.
-      In the later case, there is either zero or the number of this operator
-      in the first address (A), to distinguish this information.
-
   -}
   operator 11 $ do
-    undefined
+    tN cellA cellA1
+    callRtc (op 21)
+    cccc (op 2)
   {-
-    Op. 12 transfers K_ to cell 000C, in which will be subsequently stored the
+    Op. 12 transfers K_f to cell 000C, in which will be subsequently stored the
     address of the last cell of block K.
   -}
   operator 12 $ do
-    undefined
+    tN cellKf (Absolute 0x000C)
+    chain (op 13)
+
   {-
     Op. 13 compares K_f with K_cr, equal ɣ.
 
   -}
   operator 13 $ do
-    undefined
+    comp cellKf cellKcr (op 14) (op 16)
+
   {-
     Op. 14 is a "control stop", occuring for K_f >= K_cr. After termination of
     the functioning of PP-1 there need not be 144 instructions in the block of
     completed instructions.
   -}
   operator 14 $ do
-    undefined
+    checkStop
   {-
     Op. 15 writes the last portion of instructions from the block of completed
     operators on MD-1 in "forced order" with the use of the writing
@@ -146,13 +155,17 @@ mp1 = do
   operator 15 $ do
     undefined
   {-
-    Op. 16 reads from MD-1 ifnormation on the problem prepared for the work of
+    Op. 16 reads from MD-1 information on the problem prepared for the work of
     PP-2 into IS and located in standard position.
   -}
   operator 16 $ do
     undefined
 
   {-
+    To determine the moment of completing selection of information on a
+      logical scheme, a "selection counter" is in the selection block, in
+      which is the address of the last line of information selected from block
+      K in the initial position of information on the problem.
 
     Op. 17 transfers control to op. 12 as soon as the indication of the
     seleection counter becomes equal to the address of the last cell of block
@@ -167,22 +180,56 @@ mp1 = do
   operator 17 $ do
     undefined
 
+  let _selectionCounter = Unknown
+  let _ninetysix        = Unknown
+  {-
+    Op. 18 tests that the contents of the selection block have been exhausted
+  -}
   operator 18 $ do
-    undefined
+    comp _selectionCounter _ninetysix (op 19) (op 20)
 
+  {-
+    Op. 19 reads the next 96 cells of memory to the selection block.
+  -}
   operator 19 $ do
-    undefined
+    a <- ma (Absolute $ 0x0100 + 2) _ informationBlock
+    b <- mb _
 
+    let _ninetysixSndAddr = Unknown
+    ai a _ninetysixSndAddr a
+    ai b _ninetysixSndAddr b
+
+    tN zero _selectionCounter
+
+    chain (op 20)
+
+  {-
+    Op. 20 sends the contents of the first cell in the block to the standard cell A.
+  -}
   operator 20 $ do
-    undefined
+    tN _ cellA
+    retRTC
 
+  let _arrangementCounter = Unknown
+  let _hundredfourtyfour  = Unknown
+
+  {-
+    Op. 21 tests whether the arrangement block has been exhausted
+  -}
   operator 21 $ do
     undefined
 
+  {-
+    Op. 22 writes the arrangement block to MD-1
+  -}
   operator 22 $ do
     undefined
 
+  {-
+    Op. 23 transfers the contesnts of cell A + 1 to the next cell in the arrangement of block.
+  -}
   operator 23 $ do
     undefined
+
 
 

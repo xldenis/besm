@@ -83,6 +83,7 @@ data Term a
   | Stop
   | SwitchStop
   | Chain     a -- meta-linguistic, chains two basic blocks together
+  | RetRTC
   deriving (Show, Eq, Functor)
 
 type RawBlock = BB Int
