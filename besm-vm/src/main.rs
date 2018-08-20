@@ -79,7 +79,7 @@ fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruct
         });
 
     });
-  t.draw();
+  t.draw().unwrap();
 }
 
 #[derive(StructOpt, Debug)]
@@ -111,7 +111,9 @@ fn main() {
   let mut term_size = terminal.size().unwrap();
 
   is_buf.copy_from_slice(&words[..]);
-  let mut vm = VM::new(&mut is_buf);
+  let mut x = [MagDrive::new(); 5];
+  let mut y = [MagTape::new(); 4];
+  let mut vm = VM::new(&mut is_buf, &mut x, &mut y);
 
   let (tx, rx) = mpsc::channel();
 
@@ -124,7 +126,7 @@ fn main() {
     for e in stdin.keys() {
       let evt = e.unwrap();
 
-      tx.send(evt);
+      tx.send(evt).unwrap();
 
       match evt {
         event::Key::Char('q') => { break; }
@@ -146,6 +148,7 @@ fn main() {
 
     let evt = rx.try_recv();
     use std::sync::mpsc::TryRecvError::*;
+
     match evt {
       Ok(event::Key::Char('q')) => { break; }
       Ok(_) => {}

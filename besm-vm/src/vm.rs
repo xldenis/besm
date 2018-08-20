@@ -8,6 +8,20 @@ pub struct VM<'a> {
   global_ic: u16,
   active_ic: ActiveIC,
   pub stopped: bool,
+
+  mag_drives: &'a mut [MagDrive; 5],
+  mag_tapes: &'a mut [MagTape; 4],
+}
+
+#[derive(Copy, Clone)]
+pub struct MagDrive {
+  drive: [u64; 1024]
+}
+
+#[derive(Copy, Clone)]
+pub struct MagTape {
+  head: u16,
+  tape: [u64; 30_000]
 }
 
 enum ActiveIC { Global, Local}
@@ -19,8 +33,21 @@ pub enum VMError {
   OutOfBounds { },
 
 }
+
+impl MagDrive {
+  pub fn new() -> MagDrive {
+    MagDrive { drive: [0; 1024]}
+  }
+}
+
+impl MagTape {
+  pub fn new() -> MagTape {
+    MagTape { head: 0, tape: [0; 30_000]}
+  }
+}
+
 impl<'a> VM<'a> {
-  pub fn new(is: &'a mut [u64; 1023]) -> VM {
+  pub fn new(is: &'a mut [u64; 1023], drives: &'a mut [MagDrive; 5], tapes: &'a mut [MagTape; 4]) -> VM<'a> {
     VM {
       is: is,
       ds: &DS,
@@ -28,6 +55,8 @@ impl<'a> VM<'a> {
       local_ic: 1,
       active_ic: ActiveIC::Global,
       stopped: false,
+      mag_drives: drives,
+      mag_tapes: tapes,
     }
   }
 
