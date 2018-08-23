@@ -9,14 +9,14 @@ data Address
   | Offset Address Int
   | Absolute Int
   | Procedure String
-  | Unknown
+  | Unknown String
   deriving (Show, Eq)
 
 formatAddr (Operator i) = "op. " ++ show i
 formatAddr (Offset a i) = formatAddr a ++ " + " ++ show i
 formatAddr (Absolute i) = "abs. " ++ show i
 formatAddr (Procedure s) = show s
-formatAddr (Unknown) = "unknown"
+formatAddr (Unknown str) = "uk. " ++ str
 
 offAddr (Offset a o) i = Offset a (o + i)
 offAddr a i = Offset a i

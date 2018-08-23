@@ -45,36 +45,36 @@ import Debug.Trace
 -}
 
 cellA :: Address
-cellA = Unknown
+cellA = Unknown "A"
 
 cellB :: Address
-cellB = Unknown
+cellB = Unknown "B"
 
 cellC :: Address
-cellC = Unknown
+cellC = Unknown "C"
 
 cellD :: Address
-cellD = Unknown
+cellD = Unknown "D"
 
 cellE :: Address
-cellE = Unknown
+cellE = Unknown "E"
 
 -- Other standard cells (16 standard cells total)
 
 cellF :: Address
-cellF = Unknown
+cellF = Unknown "F"
 
 cellG :: Address
-cellG = Unknown
+cellG = Unknown "G"
 
 cellH :: Address
-cellH = Unknown
+cellH = Unknown "H"
 
 cellI :: Address
-cellI = Unknown
+cellI = Unknown "I"
 
 cellJ :: Address
-cellJ = Unknown
+cellJ = Unknown "J"
 
 -- Counters
 
@@ -98,12 +98,12 @@ partialProgramme = undefined
 
 left11 = undefined
 left22 = undefined
-right22 = Unknown
+right22 = Unknown "right 22"
 
-completedOperator = Unknown
+completedOperator = Unknown "completed operators"
 -- Apparently the first addresses of the DS store some constants
 zero :: Address
-zero = Unknown
+zero = Unknown "0"
 
 one :: Address
 one = Absolute 0x1081
@@ -197,7 +197,7 @@ op5 = mdo
     chain (op 8)
 
   return ()
-  where mp_1_17 = Unknown
+  where mp_1_17 = Procedure "MP-1-17"
 
 
 {-
@@ -219,8 +219,8 @@ op10 = operator 10 $ mdo
   _   <- comp cellB xb  (op 12) alt
   alt <- comp cellB xf0 (op 11) (op 12)
   return ()
-  where xf0 = Unknown
-        xb  = Unknown
+  where xf0 = Unknown "xf0"
+        xb  = Unknown "xb"
 {-
   Op. 11 transfers the code of the quantity to cellC C
 -}
@@ -313,8 +313,8 @@ op212223 = mdo
     cccc (op 24)
 
   return ()
-  where xff = Unknown
-        xfd = Unknown
+  where xff = Unknown "xff"
+        xfd = Unknown "xfd"
 {-
 
 Op. 24 transfers (B) to cell D for the last transfer to the partial programme.
@@ -565,7 +565,7 @@ op45 = operator 45 $ mdo
   addr <- bitAnd completedOperator addr3bitmask cellF
 
   chain (op 46)
-  where addr3bitmask = Unknown -- 0x7FF
+  where addr3bitmask = Unknown "0x7FF" -- 0x7FF
 {-
 
 Op. 46  compares the contents of the selected address with zero. If it is
@@ -711,7 +711,7 @@ AI =
 op61 = operator 61 $ do
   ai cellE aiConstant cellE
   chain (op 62)
-  where aiConstant = Unknown -- address of cell holding 0x1FFFFF800
+  where aiConstant = Unknown "op 61-1" -- address of cell holding 0x1FFFFF800
 
 {-
 Op. 62 transfers control to op. 64 if m = 0.
@@ -727,7 +727,7 @@ If we m = 0 then we have the value
 op62 = operator 62 $ do
   compWord cellE compVal (op 64) (op 63)
 
-  where compVal = Unknown --  0x800000
+  where compVal = Unknown "0x800000"
 
 {-
 Op. 63 sends to the partial programme the code of the multiple
@@ -757,9 +757,9 @@ Op. 65 reduces n by 1.
 -}
 
 op65 = operator 65 $ do
-  ai Unknown aiConstant Unknown
+  ai (Unknown "op 65-1") aiConstant (Unknown "op 65-2")
   chain (op 66)
-  where aiConstant = Unknown -- address of cell holding 0x1FFFFF800
+  where aiConstant = Unknown "ai constant"-- address of cell holding 0x1FFFFF800
 
 {-
 Op. 66 transfers control to op. 67, if n.= 0.
@@ -773,7 +773,7 @@ Op. 66 transfers control to op. 67, if n.= 0.
 op66 = operator 66 $ do
   compWord cellE compVal (op 68) (op 67)
 
-  where compVal = Unknown --  0x1800000
+  where compVal = Unknown "comparison value" --  0x1800000
 
 {-
 
@@ -821,7 +821,7 @@ op70 = operator 70 $ mdo
   jcc' <- block (jcc >> cccc (op 2))
 
   return ()
-  where thirtyTwo = Unknown
+  where thirtyTwo = Unknown "32"
 {-
 Op 71. is the first-sub-routine of selection from the partial programme,
 transferring to cell E the contents of the next cell of the partial programme

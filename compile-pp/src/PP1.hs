@@ -5,27 +5,35 @@ module PP1 where
 import Monad
 import Syntax
 
-informationBlock      = Unknown
-completedInstructions = Unknown
+informationBlock      = Unknown "information block"
+completedInstructions = Unknown "completed instructions"
 
-cellB  = Unknown
-cellA  = Unknown
-cellA1 = Unknown -- A + 1
+cellB  = Unknown "cell b"
+cellA  = Unknown "cell a"
+cellA1 = Unknown "cell a+1" -- A + 1
 
-cellKf  = Unknown
-cellKcr = Unknown
+cellKf  = Unknown "K_f"
+cellKcr = Unknown "K_cr"
 
 zero :: Address
-zero = Unknown
+zero = Unknown "zero"
 
 one :: Address
-one  = Unknown
+one  = Unknown "one"
 
-_selectionCounter   = Unknown
-_ninetysix          = Unknown
-cellKlast           = Unknown
-_arrangementCounter = Unknown
-_hundredfourtyfour  = Unknown
+_selectionCounter   = Unknown "selection counter"
+_ninetysix          = Unknown "96"
+cellKlast           = Unknown "last K cell"
+_arrangementCounter = Unknown "arrangement counter"
+_hundredfourtyfour  = Unknown "144"
+
+{-
+  Known Bugs
+  ==========
+
+  1. Selection and Arrangement counters should be absolute. Not relative
+
+-}
 
 mp1 = do
   {-
@@ -40,7 +48,7 @@ mp1 = do
 
     ai cellB addr addr
 
-    let buffer = Unknown -- Address above the executable, at most we need 256 bytes. (less since we have no constants)
+    let buffer = Unknown "buffer" -- Address above the executable, at most we need 256 bytes. (less since we have no constants)
     ma (Absolute $ 0x0100 + 2) (Absolute 0x10) buffer
     addr <- mb (Absolute 0)
 
@@ -79,7 +87,7 @@ mp1 = do
     exponent is information on an arithmetical operator.
   -}
   operator 5 $ do
-    let pp_2 = Unknown
+    let pp_2 = Procedure "PP-2"
     compWord zero cellA (pp_2) (op 6)
   {-
     Op. 6 transfers control to op. 11 if x != 018. In this case in cell A is
@@ -87,7 +95,7 @@ mp1 = do
     close-parentheses of a loop.
   -}
   operator 6 $ do
-    let logOp = Unknown -- 0x18
+    let logOp = Unknown "0x18" -- 0x18
     compWord logOp cellB (op 11) (op 7)
   {-
     If x = 018, there may be in cell A the number of an operator,
@@ -99,8 +107,8 @@ mp1 = do
     the extracted second and third address of (A).
   -}
   operator 7 $ do
-    let _firstAddr  = Unknown
-        _secondAndThirdAddr = Unknown
+    let _firstAddr  = Unknown "first addr mask"
+        _secondAndThirdAddr = Unknown "snd and third addr mask"
 
     bitAnd _firstAddr cellA cellA1
     bitAnd _secondAndThirdAddr cellA cellA
@@ -128,8 +136,7 @@ mp1 = do
 
   -}
   operator 10 $ do
-    let _1pp = Unknown
-    compWord zero cellA (op 2) _1pp
+    compWord zero cellA (op 2) (Procedure "1-PP")
   {-
     Op. 11 sends this line to cell A + 1 and from there to the block of
     completed instructions.
@@ -167,8 +174,8 @@ mp1 = do
     instructions located in the arrangement block.
   -}
   operator 15 $ mdo
-    let shift11 = Unknown
-    let _startMDKMinus144 = Unknown
+    let shift11 = Unknown "shift l 11"
+    let _startMDKMinus144 = Unknown "start of 144 block"
 
     cellC <- shift _arrangementCounter shift11 cellC
     ai cellC b b
@@ -190,11 +197,11 @@ mp1 = do
 
     ai cellB addr addr
 
-    let buffer = Unknown -- Address above the executable, at most we need 256 bytes. (less since we have no constants)
+    let buffer = Unknown "buffer"-- Address above the executable, at most we need 256 bytes. (less since we have no constants)
     ma (Absolute $ 0x0100 + 2) (Absolute 0x10) buffer
     addr <- mb (Absolute 0)
 
-    let _mp2 = Unknown
+    let _mp2 = Procedure "MP-2"
 
     cccc _mp2
 
@@ -228,12 +235,12 @@ mp1 = do
     Op. 19 reads the next 96 cells of memory to the selection block.
   -}
   operator 19 $ do
-    let startOfK = Unknown
-    let kPlus96  = Unknown
+    let startOfK = Unknown "start of info block write"
+    let kPlus96  = Unknown "end of info block write"
     a <- ma (Absolute $ 0x0100 + 2) startOfK informationBlock
     b <- mb kPlus96
 
-    let _ninetysixSndAddr = Unknown
+    let _ninetysixSndAddr = Unknown "96 shifted"
     ai a _ninetysixSndAddr a
     ai b _ninetysixSndAddr b
 
@@ -245,9 +252,8 @@ mp1 = do
     Op. 20 sends the contents of the first cell in the block to the standard cell A.
   -}
   operator 20 $ mdo
-    let _one = Unknown
     ta <- tN informationBlock cellA -- use AI to modify
-    ai _one ta ta
+    ai one ta ta
     retRTC
 
   {-
@@ -261,9 +267,9 @@ mp1 = do
     Op. 22 writes the arrangement block to MD-1
   -}
   operator 22 $ do
-    let _startMDK = Unknown
-    let _startMDKMinus144 = Unknown
-    let _hundredfourtyfourSndAddr = Unknown
+    let _startMDK = Unknown "end of md write"
+    let _startMDKMinus144 = Unknown "start of md write"
+    let _hundredfourtyfourSndAddr = Unknown "144 shifted 2nd addr"
 
     a <- ma (Absolute $ 0x0300 + 1) _startMDK completedInstructions
     b <- mb _startMDKMinus144
