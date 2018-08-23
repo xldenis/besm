@@ -5,22 +5,27 @@ module PP1 where
 import Monad
 import Syntax
 
-informationBlock = Unknown
-
+informationBlock      = Unknown
 completedInstructions = Unknown
 
-cellB = Unknown
-cellA = Unknown
-
+cellB  = Unknown
+cellA  = Unknown
 cellA1 = Unknown -- A + 1
 
-cellKf = Unknown
+cellKf  = Unknown
 cellKcr = Unknown
 
 zero :: Address
 zero = Unknown
 
-one = Unknown
+one :: Address
+one  = Unknown
+
+_selectionCounter   = Unknown
+_ninetysix          = Unknown
+cellKlast           = Unknown
+_arrangementCounter = Unknown
+_hundredfourtyfour  = Unknown
 
 mp1 = do
   {-
@@ -38,6 +43,14 @@ mp1 = do
     let buffer = Unknown -- Address above the executable, at most we need 256 bytes. (less since we have no constants)
     ma (Absolute $ 0x0100 + 2) (Absolute 0x10) buffer
     addr <- mb (Absolute 0)
+
+    -- write it back out
+
+    ai cellB addr' addr'
+
+    ma (Absolute $ 0x0300 + 1) (Absolute 0x10) buffer
+    addr' <- mb (Absolute 0)
+
 
     chain (op 2)
 
@@ -115,7 +128,8 @@ mp1 = do
 
   -}
   operator 10 $ do
-    compWord zero cellA (op 2) (op 10)
+    let _1pp = Unknown
+    compWord zero cellA (op 2) _1pp
   {-
     Op. 11 sends this line to cell A + 1 and from there to the block of
     completed instructions.
@@ -138,7 +152,7 @@ mp1 = do
 
   -}
   operator 13 $ do
-    comp cellKf cellKcr (op 14) (op 16)
+    comp cellKf cellKcr (op 14) (op 15)
 
   {-
     Op. 14 is a "control stop", occuring for K_f >= K_cr. After termination of
@@ -152,14 +166,37 @@ mp1 = do
     operators on MD-1 in "forced order" with the use of the writing
     instructions located in the arrangement block.
   -}
-  operator 15 $ do
-    undefined
+  operator 15 $ mdo
+    let shift11 = Unknown
+    let _startMDKMinus144 = Unknown
+
+    cellC <- shift _arrangementCounter shift11 cellC
+    ai cellC b b
+
+    a <- ma (Absolute $ 0x0300 + 1) _startMDKMinus144 completedInstructions
+    b <- mb (Absolute 0)
+
+
+
+    chain (op 16)
+
   {-
     Op. 16 reads from MD-1 information on the problem prepared for the work of
     PP-2 into IS and located in standard position.
   -}
-  operator 16 $ do
-    undefined
+  operator 16 $ mdo
+    cellC <- readMD 2 (Absolute 9) (Absolute 9) cellB
+    sub cellB one cellB
+
+    ai cellB addr addr
+
+    let buffer = Unknown -- Address above the executable, at most we need 256 bytes. (less since we have no constants)
+    ma (Absolute $ 0x0100 + 2) (Absolute 0x10) buffer
+    addr <- mb (Absolute 0)
+
+    let _mp2 = Unknown
+
+    cccc _mp2
 
   {-
     To determine the moment of completing selection of information on a
@@ -177,11 +214,10 @@ mp1 = do
     position of information on the problem.
 
   -}
-  operator 17 $ do
-    undefined
 
-  let _selectionCounter = Unknown
-  let _ninetysix        = Unknown
+  operator 17 $ do
+    comp _selectionCounter cellKlast (op 12) (op 18)
+
   {-
     Op. 18 tests that the contents of the selection block have been exhausted
   -}
@@ -192,8 +228,10 @@ mp1 = do
     Op. 19 reads the next 96 cells of memory to the selection block.
   -}
   operator 19 $ do
-    a <- ma (Absolute $ 0x0100 + 2) _ informationBlock
-    b <- mb _
+    let startOfK = Unknown
+    let kPlus96  = Unknown
+    a <- ma (Absolute $ 0x0100 + 2) startOfK informationBlock
+    b <- mb kPlus96
 
     let _ninetysixSndAddr = Unknown
     ai a _ninetysixSndAddr a
@@ -206,30 +244,44 @@ mp1 = do
   {-
     Op. 20 sends the contents of the first cell in the block to the standard cell A.
   -}
-  operator 20 $ do
-    tN _ cellA
+  operator 20 $ mdo
+    let _one = Unknown
+    ta <- tN informationBlock cellA -- use AI to modify
+    ai _one ta ta
     retRTC
-
-  let _arrangementCounter = Unknown
-  let _hundredfourtyfour  = Unknown
 
   {-
     Op. 21 tests whether the arrangement block has been exhausted
   -}
   operator 21 $ do
-    undefined
+    comp _arrangementCounter _hundredfourtyfour (op 22) (op 23)
+
 
   {-
     Op. 22 writes the arrangement block to MD-1
   -}
   operator 22 $ do
-    undefined
+    let _startMDK = Unknown
+    let _startMDKMinus144 = Unknown
+    let _hundredfourtyfourSndAddr = Unknown
+
+    a <- ma (Absolute $ 0x0300 + 1) _startMDK completedInstructions
+    b <- mb _startMDKMinus144
+
+    ai a _hundredfourtyfourSndAddr a
+    ai b _hundredfourtyfourSndAddr b
+
+    tN zero _arrangementCounter
+
+    chain (op 23)
 
   {-
     Op. 23 transfers the contesnts of cell A + 1 to the next cell in the arrangement of block.
   -}
   operator 23 $ do
-    undefined
+    tN cellA1 completedInstructions -- use AI to modify
+
+    retRTC
 
 
 
