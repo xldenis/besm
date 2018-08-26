@@ -26,6 +26,7 @@ dependencies:
 - fgl
 - pp-besm
 - bv-sized
+- containers
 
 library:
   source-dirs: src

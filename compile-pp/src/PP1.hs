@@ -5,8 +5,8 @@ module PP1 where
 import Monad
 import Syntax
 
-informationBlock      = Unknown "information block"
-completedInstructions = Unknown "completed instructions"
+informationBlock      = Unknown "buffer" `offAddr` 0
+completedInstructions = Unknown "buffer" `offAddr` 96
 
 cellB  = Unknown "cell b"
 cellA  = Unknown "cell a"
@@ -26,6 +26,33 @@ _ninetysix          = Unknown "96"
 cellKlast           = Unknown "last K cell"
 _arrangementCounter = Unknown "arrangement counter"
 _hundredfourtyfour  = Unknown "144"
+
+constantMap =
+  [ ("buffer", Size 240)
+  , ("selection counter", Val 0)
+  , ("arrangement counter", Val 0)
+  , ("96", Val 96) -- encode properly
+  , ("144", Val 144) -- encode these properly
+  , ("cell b", Val 0)
+  , ("cell a", Val 0)
+  , ("cell a+1", Val 0)
+  , ("cell b", Val 0)
+  , ("one", Val 0)
+  , ("zero", Val 0)
+  , ("0x18", Val 0)
+  , ("snd and third addr mask", Val 0)
+  , ("first addr mask", Val 0)
+  , ("K_f", Val 0)
+  , ("K_cr", Val 0)
+  , ("start of 144 block", Val 0)
+  , ("shift l 11", Val 0)
+  , ("last K cell", Val 0)
+  , ("96 shifted", Val 0)
+  , ("start of info block write", Val 0)
+  , ("144 shifted 2nd addr", Val 0)
+  , ("end of md write", Val 0)
+  ]
+
 
 {-
   Known Bugs
@@ -66,7 +93,7 @@ mp1 = do
     Op. 2 selects the next line of information on the logical scheme and transfers it to cell A.
   -}
   operator 2 $ do
-    callRtc (op 17)
+    callRtc (op 17) (op 20)
     chain (op 3)
 
   {-
@@ -74,7 +101,7 @@ mp1 = do
   -}
   operator 3 $ do
     tExp cellA cellB
-    cccc (op 4)
+    chain (op 4)
 
   {-
     Op. 4 transfers control to op. 5 if x = 0.
@@ -125,7 +152,7 @@ mp1 = do
     Op. 9 transfers to the block of completed instructions.
   -}
   operator 9 $ do
-    callRtc (op 21)
+    callRtc (op 21) (op 23)
     chain (op 10)
   {-
     Op. 10 examines (A). if (A) != 0, then this first line of information on
@@ -144,8 +171,8 @@ mp1 = do
   -}
   operator 11 $ do
     tN cellA cellA1
-    callRtc (op 21)
-    cccc (op 2)
+    callRtc (op 21) (op 23)
+    chain (op 2)
   {-
     Op. 12 transfers K_f to cell 000C, in which will be subsequently stored the
     address of the last cell of block K.
@@ -203,7 +230,7 @@ mp1 = do
 
     let _mp2 = Procedure "MP-2"
 
-    cccc _mp2
+    chain _mp2
 
   {-
     To determine the moment of completing selection of information on a
@@ -236,7 +263,7 @@ mp1 = do
   -}
   operator 19 $ do
     let startOfK = Unknown "start of info block write"
-    let kPlus96  = Unknown "end of info block write"
+    let kPlus96  = startOfK `offAddr` 96
     a <- ma (Absolute $ 0x0100 + 2) startOfK informationBlock
     b <- mb kPlus96
 
@@ -268,7 +295,7 @@ mp1 = do
   -}
   operator 22 $ do
     let _startMDK = Unknown "end of md write"
-    let _startMDKMinus144 = Unknown "start of md write"
+    let _startMDKMinus144 = _startMDK `offAddr` (negate 144)
     let _hundredfourtyfourSndAddr = Unknown "144 shifted 2nd addr"
 
     a <- ma (Absolute $ 0x0300 + 1) _startMDK completedInstructions

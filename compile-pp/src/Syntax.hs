@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, DeriveFunctor #-}
+{-# LANGUAGE DataKinds, DeriveFunctor, DeriveFoldable, GeneralizedNewtypeDeriving #-}
 module Syntax where
 
 import Besm.Put (buildNumber, buildInstruction)
@@ -10,7 +10,8 @@ data Address
   | Absolute Int
   | Procedure String
   | Unknown String
-  deriving (Show, Eq)
+  | RTC Address
+  deriving (Show, Eq, Ord)
 
 formatAddr (Operator i) = "op. " ++ show i
 formatAddr (Offset a i) = formatAddr a ++ " + " ++ show i
@@ -23,15 +24,34 @@ offAddr a i = Offset a i
 
 op = Operator
 
-rtc = undefined
+rtc = RTC
+
+isUnknown (Unknown _) = True
+isUnknown _           = False
 
 type BasicBlock = BB Address
+
+data ConstantInfo
+  = Size Int -- number of cells to reserve
+  | Val  Int -- Value to store in one cell
+  deriving (Show, Eq)
+
+constantSize (Size i) = i
+constantSize _ = 1
 
 data BB a = BB
   { instrs      :: [Instr a]
   , terminator  ::  Term  a
   , baseAddress :: a
-  } deriving (Show)
+  } deriving (Show, Functor, Foldable, Eq)
+
+instLen :: BB a -> Int
+instLen bb = length (instrs bb) + termLen (terminator bb)
+  where
+  termLen (RetRTC _) = 2
+  termLen (Chain _) = 0
+  termLen _        = 1
+
 
 data NormalizeResult
   = Normalized
@@ -70,7 +90,7 @@ data Instr a
   | CallRTC     a a
   | CLCC          a
   | JCC
-  deriving (Show, Eq, Functor)
+  deriving (Show, Eq, Functor, Foldable)
 
 type Terminator = Term Address
 
@@ -83,14 +103,14 @@ data Term a
   | Stop
   | SwitchStop
   | Chain     a -- meta-linguistic, chains two basic blocks together
-  | RetRTC
-  deriving (Show, Eq, Functor)
+  | RetRTC a
+  deriving (Show, Eq, Functor, Foldable)
 
 type RawBlock = BB Int
 
 asmToCell :: RawBlock -> [BitVector 39]
 asmToCell (BB is tm adx) =
-  map (instToCell . fmap fromIntegral) is ++ [termToCell $ fmap fromIntegral tm]
+  map (instToCell . fmap fromIntegral) is ++ (termToCell $ fmap fromIntegral tm)
 
 instToCell :: Instr Integer -> BitVector 39
 instToCell (Add       a b c _) = buildInstruction (bitVector 0x001) (bitVector a) (bitVector b) (bitVector c)
@@ -122,12 +142,13 @@ instToCell (CallRTC     b c  ) = buildInstruction (bitVector 0x01B) (bitVector 0
 instToCell (JCC              ) = buildInstruction (bitVector 0x019) (bitVector 0) (bitVector 0) (bitVector 0)
 instToCell (CLCC          c  ) = buildInstruction (bitVector 0x01A) (bitVector 0) (bitVector 0) (bitVector c)
 
-termToCell :: Term Integer -> BitVector 39
-termToCell (Comp      a b c _) = buildInstruction (bitVector 0x014) (bitVector a) (bitVector b) (bitVector c)
-termToCell (CompWord  a b c _) = buildInstruction (bitVector 0x034) (bitVector a) (bitVector b) (bitVector c)
-termToCell (CompMod   a b c _) = buildInstruction (bitVector 0x015) (bitVector 0) (bitVector b) (bitVector c)
-termToCell (CCCC          c  ) = buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector 0) (bitVector c)
-termToCell (CCCCSnd     b c  ) = buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector b) (bitVector c)
-termToCell (Stop)              = buildInstruction (bitVector 0x01F) (bitVector 0) (bitVector 0) (bitVector 0)
-termToCell (SwitchStop)        = buildInstruction (bitVector 0x01C) (bitVector 0) (bitVector 0) (bitVector 0)
-termToCell (Chain     _)       = error "not a real instruction"
+termToCell :: Term Integer -> [BitVector 39]
+termToCell (Comp      a b c _) = pure $ buildInstruction (bitVector 0x014) (bitVector a) (bitVector b) (bitVector c)
+termToCell (CompWord  a b c _) = pure $ buildInstruction (bitVector 0x034) (bitVector a) (bitVector b) (bitVector c)
+termToCell (CompMod   a b c _) = pure $ buildInstruction (bitVector 0x015) (bitVector 0) (bitVector b) (bitVector c)
+termToCell (CCCC          c  ) = pure $ buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector 0) (bitVector c)
+termToCell (CCCCSnd     b c  ) = pure $ buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector b) (bitVector c)
+termToCell (Stop)              = pure $ buildInstruction (bitVector 0x01F) (bitVector 0) (bitVector 0) (bitVector 0)
+termToCell (SwitchStop)        = pure $ buildInstruction (bitVector 0x01C) (bitVector 0) (bitVector 0) (bitVector 0)
+termToCell (RetRTC a)            = [instToCell (AI 0x110F (a+1) (a+1)), bitVector 0]
+termToCell (Chain     _)       = []

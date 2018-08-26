@@ -186,7 +186,7 @@ op4 = operator 4 $ do
 op5 = mdo
   operator 5 $ comp symbolCounter four (op 6) joinP
   operator 6 $ do
-    callRtc mp_1_17
+    callRtc mp_1_17 (Unknown "mp_1_21")
 
   operator 7 $ do
     tN zero symbolCounter
@@ -286,7 +286,7 @@ op18 = operator 18 $ do
 -}
 
 op1920 = do
-  operator 19 $ callRtc (op 73)
+  operator 19 $ callRtc (op 73) (Unknown "FIXME")
   operator 20 $ comp xf0 cellB (op 21) (op 25)
 
   where xf0 = undefined
@@ -474,7 +474,7 @@ signs and components of which are found in the part of the partial programme
 -}
 
 op38 = operator 38 $ do
-  callRtc (op 80)
+  callRtc (op 80) (op 90)
   chain (op 39)
 
 {-
@@ -535,7 +535,7 @@ components of which are located in the partial programme.
 -}
 
 op43 = operator 43 $ do
-  callRtc (op 80)
+  callRtc (op 80) (op 90)
 
   chain (op 44)
 
@@ -664,7 +664,7 @@ operations.
 -}
 
 op58 = operator 58 $ do
-  callRtc (op 80)
+  callRtc (op 80) (op 90)
   chain (op 59)
 
 {-

@@ -56,7 +56,7 @@ emitTerm term = do
   bb <- gets currentBlock
 
   let basicBlock = BB
-        { instrs      = unSnocList $ currentInstrs bb
+        { instrs      = getSnocList $ currentInstrs bb
         , baseAddress = blockAddr bb
         , terminator  = term
         }
@@ -118,7 +118,7 @@ ai a b c     = emitInstr $ AI a b c
 bitAnd a b c = emitInstr $ LogMult a b c
 
 jcc         = emitInstr $ JCC
-callRtc op  = emitInstr $ CallRTC (rtc op) op
+callRtc op retOp = emitInstr $ CallRTC (rtc retOp) op
 shift a b c = emitInstr $ Shift a b c
 clcc addr   = emitInstr $ CLCC addr
 
@@ -134,4 +134,6 @@ chain addr = emitTerm $ Chain addr
 stop = emitTerm $ Stop
 checkStop = emitTerm $ SwitchStop
 
-retRTC = emitTerm $ RetRTC
+retRTC = do
+  addr <- gets (currentAddr . currentBlock)
+  emitTerm $ RetRTC addr

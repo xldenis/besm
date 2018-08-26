@@ -17,7 +17,7 @@ import           Data.Text                      (Text)
 import           Besm.Lower
 import           Data.Digits (digits)
 import           Data.Bits (setBit)
-
+import           Text.Printf
 {-
   A programme has to be prepared for the PP by being coded in binary.
 
@@ -35,7 +35,6 @@ import           Data.Bits (setBit)
   |    Block K   |
   +--------------+
 -}
-
 
 encodeProgramme :: Programme -> [BitVector 39]
 encodeProgramme p@(PP {..}) = let
@@ -144,6 +143,13 @@ calculateQuantityAddresses (PP {..}) = let
 
   loopParamMap :: Word8 -> LoopParameter -> (Word8, (Text, Word8))
   loopParamMap offset lp = (offset+2, (lpName lp, offset))
+
+{-
+  Turn a BitVector into a human readable hex representation
+-}
+
+toHexString :: BitVector 39 -> String
+toHexString = printf "%016x" . bvIntegerU
 
 {-
   The BESM uses 39-bit words which can be of two categories: floating point numbers or instructions.
