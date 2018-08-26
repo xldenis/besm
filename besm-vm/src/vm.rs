@@ -47,11 +47,11 @@ impl MagTape {
 }
 
 impl<'a> VM<'a> {
-  pub fn new(is: &'a mut [u64; 1023], drives: &'a mut [MagDrive; 5], tapes: &'a mut [MagTape; 4]) -> VM<'a> {
+  pub fn new(is: &'a mut [u64; 1023], drives: &'a mut [MagDrive; 5], tapes: &'a mut [MagTape; 4], start: u16) -> VM<'a> {
     VM {
       is: is,
       ds: &DS,
-      global_ic: 1,
+      global_ic: start,
       local_ic: 1,
       active_ic: ActiveIC::Global,
       stopped: false,
@@ -187,7 +187,6 @@ impl<'a> VM<'a> {
       ActiveIC::Global => self.global_ic += 1,
       ActiveIC::Local  => self.local_ic += 1,
     }
-
   }
 
   pub fn get_address(&self, ix: u64) -> Result<u64, VMError> {

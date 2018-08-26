@@ -42,7 +42,7 @@ fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruct
       Group::default()
         .margin(1)
         .direction(Direction::Horizontal)
-        .sizes(&[Size::Fixed(5), Size::Fixed(spacer), Size::Fixed(42), Size::Fixed(spacer), Size::Fixed(10)])
+        .sizes(&[Size::Fixed(5), Size::Fixed(2), Size::Fixed(42), Size::Fixed(2), Size::Fixed(10), Size::Fixed(2), Size::Percent(100)])
         .render(t, &chunks[0], |t, chunks| {
           let ins = vm.get_address(vm.next_instr() as u64).unwrap();
 
@@ -58,6 +58,11 @@ fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruct
           Paragraph::default()
             .text(&format!("{:010x}", ins))
             .render(t, &chunks[4]);
+
+          Paragraph::default()
+            .text(&format!("{:?}", Instruction::from_bytes(ins)))
+            .alignment(Alignment::Right)
+            .render(t, &chunks[6]);
         });
 
       Block::default()
@@ -85,7 +90,7 @@ fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruct
 #[derive(StructOpt, Debug)]
 #[structopt(name = "omg")]
 struct Opts {
-  #[structopt(short = "s", long = "start-address", default_value = "0")]
+  #[structopt(short = "s", long = "start-address", default_value = "1")]
   start_address: u64,
   #[structopt(name = "FILE", parse(from_os_str))]
   is_file: PathBuf,
@@ -113,7 +118,7 @@ fn main() {
   is_buf.copy_from_slice(&words[..]);
   let mut x = [MagDrive::new(); 5];
   let mut y = [MagTape::new(); 4];
-  let mut vm = VM::new(&mut is_buf, &mut x, &mut y);
+  let mut vm = VM::new(&mut is_buf, &mut x, &mut y, opt.start_address as u16);
 
   let (tx, rx) = mpsc::channel();
 
@@ -157,7 +162,7 @@ fn main() {
     }
 
     match vm.step() {
-      Err(e) => { ui_stop = true; },
+      Err(e) => { ui_stop = true; println!("{:?}", e);},
       Ok(i) => { past_instrs.push_front(i); },
     };
 
