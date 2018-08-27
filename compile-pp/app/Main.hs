@@ -24,7 +24,7 @@ main = do
   runGraphviz (graphToDot params $ (nmap formatAddr cfg)) Png "cfg.png"
   runGraphviz (graphToDot params $ (nmap formatAddr cf2)) Png "cfg-2.png"
 
-  print $ bb0
+  -- print $ bb0
 
   mapM_ putStrLn $ assemble constantMap AlignRight (runBuilder (op 999) mp1) & map toHexString
   return ()

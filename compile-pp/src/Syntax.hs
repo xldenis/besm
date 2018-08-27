@@ -3,6 +3,7 @@ module Syntax where
 
 import Besm.Put (buildNumber, buildInstruction)
 import Data.BitVector.Sized
+import Data.Bits
 
 data Address
   = Operator Int
@@ -34,6 +35,7 @@ type BasicBlock = BB Address
 data ConstantInfo
   = Size Int -- number of cells to reserve
   | Val  Int -- Value to store in one cell
+  | Raw  Int -- Raw value to store
   deriving (Show, Eq)
 
 constantSize (Size i) = i
@@ -114,7 +116,7 @@ asmToCell (BB is tm adx) =
 
 instToCell :: Instr Integer -> BitVector 39
 instToCell (Add       a b c _) = buildInstruction (bitVector 0x001) (bitVector a) (bitVector b) (bitVector c)
-instToCell (Sub       a b c _) = buildInstruction (bitVector 0x002) (bitVector a) (bitVector b) (bitVector c)
+instToCell (Sub       a b c n) = buildInstruction (bitVector $ normToBit n .|. 0x002) (bitVector a) (bitVector b) (bitVector c)
 instToCell (Mult      a b c _) = buildInstruction (bitVector 0x003) (bitVector a) (bitVector b) (bitVector c)
 instToCell (Div       a b c _) = buildInstruction (bitVector 0x004) (bitVector a) (bitVector b) (bitVector c)
 instToCell (AddE      a b c _) = buildInstruction (bitVector 0x005) (bitVector a) (bitVector b) (bitVector c)
@@ -142,6 +144,9 @@ instToCell (CallRTC     b c  ) = buildInstruction (bitVector 0x01B) (bitVector 0
 instToCell (JCC              ) = buildInstruction (bitVector 0x019) (bitVector 0) (bitVector 0) (bitVector 0)
 instToCell (CLCC          c  ) = buildInstruction (bitVector 0x01A) (bitVector 0) (bitVector 0) (bitVector c)
 
+normToBit :: NormalizeResult -> Integer
+normToBit Normalized   = 0
+normToBit UnNormalized = bit 5
 termToCell :: Term Integer -> [BitVector 39]
 termToCell (Comp      a b c _) = pure $ buildInstruction (bitVector 0x014) (bitVector a) (bitVector b) (bitVector c)
 termToCell (CompWord  a b c _) = pure $ buildInstruction (bitVector 0x034) (bitVector a) (bitVector b) (bitVector c)

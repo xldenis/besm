@@ -16,6 +16,8 @@ import Data.Function ((&))
 
 import Data.BitVector.Sized
 
+import Besm.Put
+
 -- Dummy Definitions
 type ConstantDefs = [(String, ConstantInfo)] -- map of constant name to value
 type Output = [BitVector 39]
@@ -55,7 +57,8 @@ render defs a blks = let
 
 constantToCell :: ConstantInfo -> [BitVector 39]
 constantToCell (Size i) = replicate i (bitVector 0)
-constantToCell (Val  i) = [bitVector $ fromIntegral i]
+constantToCell (Val  i) = [numberToBesmFloating i]
+constantToCell (Raw  i) = [bitVector $ fromIntegral i]
 
 absolutize :: ConstantDefs -> Alignment -> [BB RelativeAddr] -> [RawBlock]
 absolutize defs align blks = let

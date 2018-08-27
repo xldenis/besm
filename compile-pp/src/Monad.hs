@@ -45,11 +45,14 @@ modifyBlock f = do
 
 emitInstr :: Instruction -> Builder Address
 emitInstr instr = do
+  addr <- gets (currentAddr . currentBlock)
+
   modifyBlock $ \bb -> bb
     { currentInstrs = currentInstrs bb `snoc` instr
     , currentAddr = offAddr (currentAddr bb) 1
     }
-  gets (currentAddr . currentBlock)
+
+  return addr
 
 emitTerm :: Terminator -> Builder Address
 emitTerm term = do
