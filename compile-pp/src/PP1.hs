@@ -37,7 +37,7 @@ constantMap =
   , ("cell a", Val 0)
   , ("cell a+1", Val 0)
   , ("cell b", Val 0)
-  , ("one", Val 0)
+  , ("one",  Raw 1)
   , ("zero", Val 0)
   , ("0x18", Val 0)
   , ("snd and third addr mask", Val 0)
@@ -71,9 +71,10 @@ mp1 = do
   -}
   operator 1 $ mdo
     cellC <- readMD 2 (Absolute 9) (Absolute 9) cellB
-    sub cellB one cellB
+    sub' cellB one cellB
 
-    ai cellB addr addr
+    shift cellB (Absolute 11) cellB
+    ai addr cellB addr
 
     let buffer = Unknown "buffer" -- Address above the executable, at most we need 256 bytes. (less since we have no constants)
     ma (Absolute $ 0x0100 + 2) (Absolute 0x10) buffer
@@ -81,7 +82,7 @@ mp1 = do
 
     -- write it back out
 
-    ai cellB addr' addr'
+    ai addr' cellB addr'
 
     ma (Absolute $ 0x0300 + 1) (Absolute 0x10) buffer
     addr' <- mb (Absolute 0)
@@ -201,11 +202,11 @@ mp1 = do
     instructions located in the arrangement block.
   -}
   operator 15 $ mdo
-    let shift11 = Unknown "shift l 11"
+    let shiftL11 = (Absolute 11)
     let _startMDKMinus144 = Unknown "start of 144 block"
 
-    cellC <- shift _arrangementCounter shift11 cellC
-    ai cellC b b
+    cellC <- shift _arrangementCounter shiftL11 cellC
+    ai b cellC b
 
     a <- ma (Absolute $ 0x0300 + 1) _startMDKMinus144 completedInstructions
     b <- mb (Absolute 0)
@@ -222,7 +223,7 @@ mp1 = do
     cellC <- readMD 2 (Absolute 9) (Absolute 9) cellB
     sub cellB one cellB
 
-    ai cellB addr addr
+    ai addr cellB addr
 
     let buffer = Unknown "buffer"-- Address above the executable, at most we need 256 bytes. (less since we have no constants)
     ma (Absolute $ 0x0100 + 2) (Absolute 0x10) buffer
@@ -280,7 +281,7 @@ mp1 = do
   -}
   operator 20 $ mdo
     ta <- tN informationBlock cellA -- use AI to modify
-    ai one ta ta
+    ai ta one ta
     retRTC
 
   {-
