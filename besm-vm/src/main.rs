@@ -59,6 +59,7 @@ fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruct
           Paragraph::default()
             .text(&format!("{:?}", Instruction::from_bytes(ins)))
             .alignment(Alignment::Right)
+            .wrap(true)
             .render(t, &chunks[6]);
         });
 
@@ -91,6 +92,17 @@ struct Opts {
   start_address: u64,
   #[structopt(name = "FILE", parse(from_os_str))]
   is_file: PathBuf,
+
+  #[structopt(long = "md0", parse(from_os_str))]
+  md0: Option<PathBuf>,
+  #[structopt(long = "md1", parse(from_os_str))]
+  md1: Option<PathBuf>,
+  #[structopt(long = "md2", parse(from_os_str))]
+  md2: Option<PathBuf>,
+  #[structopt(long = "md3", parse(from_os_str))]
+  md3: Option<PathBuf>,
+  #[structopt(long = "md4", parse(from_os_str))]
+  md4: Option<PathBuf>,
 }
 
 use std::io;
@@ -101,6 +113,21 @@ use std::sync::mpsc;
 
 extern crate termion;
 
+fn md_from_file(file: Option<PathBuf>) -> MagDrive {
+  let mut buf = [0; 1024];
+  match file {
+    None => { }
+    Some(path) => {
+      let mut f = File::open(path).expect("file not found");
+      let     words : Vec<u64> = iter::repeat_with(|| f.read_u64::<BigEndian>().unwrap_or(0)).take(1024).collect();
+
+      buf.copy_from_slice(&words);
+    }
+  }
+
+  MagDrive::new(buf)
+}
+
 fn main() {
   let     opt = Opts::from_args();
   let mut f = File::open(opt.is_file.clone()).expect("file not found");
@@ -109,10 +136,11 @@ fn main() {
   let mut is_buf = [0u64; 1023];
   let mut past_instrs: ArrayDeque<[_; 10], Wrapping> = ArrayDeque::new();
   let mut terminal = Terminal::new(MouseBackend::new().unwrap()).unwrap();
-  let mut term_size = terminal.size().unwrap();
+  let term_size = terminal.size().unwrap();
 
   is_buf.copy_from_slice(&words[..]);
-  let mut x = [MagDrive::new(); 5];
+
+  let mut x = [md_from_file(opt.md0), md_from_file(opt.md1), md_from_file(opt.md2), md_from_file(opt.md3), md_from_file(opt.md4)];
   let mut y = [MagTape::new(); 4];
   let mut vm = VM::new(&mut is_buf, &mut x, &mut y, opt.start_address as u16);
 

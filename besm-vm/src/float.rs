@@ -33,8 +33,8 @@ macro_rules! equalize_exponents {
 
 impl Float {
   pub fn from_bytes(word: u64) -> Float {
-    let exp = (0xFF & word.get_bits(33..38)) as i8;
-    let mant = word.get_bits(0..32) as u32;
+    let exp = (0xFF & word.get_bits(33..39)) as i8;
+    let mant = word.get_bits(0..33) as u32;
     let sign = word.get_bit(32);
     Float { mant: mant, exp: exp, sign: sign, overflow: false }
   }
@@ -47,7 +47,7 @@ impl Float {
     let mut bytes : u64 = 0;
     bytes.set_bits(0..32, self.mant.into());
     bytes.set_bit(32, self.sign);
-    *bytes.set_bits(33..38, self.exp as u64) // oh boy is this correct?
+    *bytes.set_bits(33..39, (self.exp & 0b111111) as u64) // oh boy is this correct?
   }
 
   pub fn normalize(&mut self) {
@@ -56,9 +56,11 @@ impl Float {
       self.mant >>= 1;
       self.mant.set_bit(31, true);
       self.overflow = false
+    } else if (self.mant == 0 && self.exp == -32) {
+      ()
     } else {
       let mut shift = 0;
-      while self.mant.get_bit(31) == false {
+      while self.mant.get_bit(31) == false && shift < 32 {
 
         shift += 1;
         self.mant <<= 1;

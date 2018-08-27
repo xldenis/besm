@@ -8,9 +8,7 @@ pub struct VM<'a> {
   global_ic: u16,
   active_ic: ActiveIC,
   pub stopped: bool,
-
-  mag_drives: &'a mut [MagDrive; 5],
-  mag_tapes: &'a mut [MagTape; 4],
+  mag_system: MagSystem<'a>
 }
 
 #[derive(Copy, Clone)]
@@ -31,18 +29,121 @@ static DS : [u64; 364] = [0; 364];
 #[derive(Debug)]
 pub enum VMError {
   OutOfBounds { },
+  PartialMa(Instruction),
 
 }
 
 impl MagDrive {
-  pub fn new() -> MagDrive {
-    MagDrive { drive: [0; 1024]}
+  pub fn new(vals: [u64; 1024]) -> MagDrive {
+    MagDrive { drive: vals }
   }
 }
 
 impl MagTape {
   pub fn new() -> MagTape {
     MagTape { head: 0, tape: [0; 30_000]}
+  }
+}
+
+struct MagSystem<'a> {
+  mag_drives: &'a mut [MagDrive; 5],
+  mag_tapes: &'a mut [MagTape; 4],
+  partial_operation: Option<DriveOperation>
+}
+
+impl <'a> MagSystem<'a> {
+  fn op_started(&self) -> bool {
+    match self.partial_operation {
+      None => false,
+      Some(_) => true,
+    }
+  }
+
+  fn perform_operation(&mut self, b: u64, is: &mut [u64; 1023]) {
+    use vm::DriveOperation::*;
+    match &self.partial_operation {
+      None => { panic!("return error") }
+
+      Some(WriteMD(id, n1, c)) => {
+        let drive = &mut self.mag_drives[id.to_num() as usize];
+        for (place, data) in drive.drive.iter_mut().skip(*n1 as usize).zip(is.iter().skip((c - 1) as usize)) {
+          *place = *data;
+        }
+      }
+      Some(ReadMD(id, n1, c)) => {
+        let span = b + 1 - n1;
+        let drive = &mut self.mag_drives[id.to_num() as usize];
+
+        for (place, data) in is.iter_mut().skip((*c-1) as usize).zip(drive.drive.iter().skip(*n1 as usize).take(span as usize)) {
+          *place = *data;
+        }
+      }
+      _ => { panic!("NOT DONE") }
+    }
+
+    self.partial_operation = None;
+  }
+}
+
+#[derive(Debug)]
+enum DrumId { Zero, One, Two, Three, Four }
+
+#[derive(Debug)]
+enum TapeId { One, Two, Three, Four }
+
+impl DrumId {
+  pub fn to_num(&self) -> u8 {
+    match self {
+      DrumId::Zero => 0,
+      DrumId::One => 1,
+      DrumId::Two => 2,
+      DrumId::Three => 3,
+      DrumId::Four => 4,
+    }
+  }
+}
+
+#[derive(Debug)]
+enum DriveOperation {
+  WriteMD(DrumId, u64, u64),
+  ReadMD(DrumId, u64, u64),
+  ReadTape(u64),
+  WriteMT(TapeId, u64, u64),
+  ReadMT(TapeId, u64, u64),
+  RewindMT(TapeId, u64),
+}
+fn drum_id_from_num(ix: u64) -> DrumId {
+  match ix {
+    0 => DrumId::Zero,
+    1 => DrumId::One,
+    2 => DrumId::Two,
+    3 => DrumId::Three,
+    4 => DrumId::Four,
+    _ => panic!("bad drum id")
+  }
+}
+fn tape_id_from_num(ix: u64) -> TapeId {
+  match ix {
+    1 => TapeId::One,
+    2 => TapeId::Two,
+    3 => TapeId::Three,
+    4 => TapeId::Four,
+    _ => panic!("bad tape id")
+  }
+}
+
+impl DriveOperation {
+  pub fn from_ma(a: u64, b: u64, c: u64) -> DriveOperation {
+    use vm::DriveOperation::*;
+    match a {
+      0x0300 ... 0x0304 => { WriteMD(drum_id_from_num(a - 0x0300), b, c) }
+      0x0100 ... 0x0104 => { ReadMD(drum_id_from_num(a - 0x0100), b, c) }
+      0x0080            => { ReadTape(c) }
+      0x0281 ... 0x0284 => { WriteMT(tape_id_from_num(a), b, c) }
+      0x0081 ... 0x0084 => { ReadMT(tape_id_from_num(a), b, c) }
+      0x00C1 ... 0x00C4 => { RewindMT(tape_id_from_num(a), b) }
+      _ => panic!("bad drive operation")
+    }
   }
 }
 
@@ -55,16 +156,33 @@ impl<'a> VM<'a> {
       local_ic: 1,
       active_ic: ActiveIC::Global,
       stopped: false,
-      mag_drives: drives,
-      mag_tapes: tapes,
+      mag_system: MagSystem {
+        mag_drives: drives,
+        mag_tapes: tapes,
+        partial_operation: None,
+      }
     }
   }
+
 
   pub fn step(&mut self) -> Result<Instruction, VMError> {
     let opcode = self.is[self.next_instr() as usize - 1];
     let instr = Instruction::from_bytes(opcode);
 
     match instr {
+      Mb { b } if self.mag_system.op_started() => {
+        self.mag_system.perform_operation(b, &mut self.is);
+        self.increment_ic();
+
+      }
+      i if self.mag_system.op_started() => {
+        self.stopped = true;
+        Err(VMError::PartialMa(i))?
+      }
+      Ma { a, b, c } => {
+        self.mag_system.partial_operation = Some(DriveOperation::from_ma(a,b,c));
+        self.increment_ic();
+      }
       Add  { a: l, b: r, c: res, normalize: needs_norm } => {
         let lfloat  = Float::from_bytes(self.get_address(l)?);
         let rfloat  = Float::from_bytes(self.get_address(r)?);
@@ -111,6 +229,15 @@ impl<'a> VM<'a> {
 
         self.set_address(z, result.to_bytes());
       }
+      Shift { a, b, c } => {
+        let val = self.get_address(a)?;
+        if b < 64 {
+          self.set_address(c, val << b);
+        } else {
+          self.set_address(c, val >> (b - 64));
+        }
+        self.increment_ic();
+      }
       TN { a: source, c: target, normalize: needs_norm } => {
         let mut val = Float::from_bytes(self.get_address(source)?);
 
@@ -120,7 +247,7 @@ impl<'a> VM<'a> {
         self.increment_ic();
       }
       CCCC { b: cell, c: addr } => {
-        if cell != 0 { self.is[cell as usize]; }
+        if cell != 0 { self.set_address(cell, self.next_instr() as u64); }
         self.global_ic = addr as u16;
         self.active_ic = ActiveIC::Global;
       }
@@ -186,7 +313,6 @@ impl<'a> VM<'a> {
       Stop => { self.stopped = true; }
       Stop28 => { self.stopped = true; }
       a => {
-        println!("NYI {:?}", a);
         self.stopped = true;
       }
     }
@@ -265,7 +391,7 @@ pub enum Instruction {
   CompWord  { a: Address, b: Address, c: Address },
   CompMod   { a: Address, b: Address, c: Address },
   Ma        { a: Address, b: Address, c: Address },
-  Mb        { a: Address, b: Address, c: Address },
+  Mb        {             b: Address},
   JCC,
   CLCC      { c: Address },
   CCCC      { b: Address, c: Address},
@@ -322,14 +448,14 @@ impl Instruction {
       0x34 => CompWord  {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       0x15 => CompMod   {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       0x16 => Ma        {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x17 => Mb        {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
+      0x17 => Mb        {                                                   b: second_addr(word)},
       0x19 => JCC       { },
       0x1A => CLCC      {                                                                         c: third_addr(word)},
       0x1B => CCCC      {                                                   b: second_addr(word), c: third_addr(word)},
       0x1C => Stop28    { },
       0x1D => LogMult   {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       0x1F => Stop      { },
-      _    => panic!("omg"),
+      i    => panic!("omg {:?} {:016x}", i, word),
     }
   }
 }
