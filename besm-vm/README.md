@@ -4,6 +4,8 @@ A vm for the BESM with debugging capabilities (not yet).
 
 Implemented instructions:
 
+legend: ✅ = working instruction, 🐛 = instruction has known bugs, ❌ = instruction is not implemented.
+
 | op name  | ✅? |
 |:---------|:----|
 | Add      | ✅ |
@@ -23,16 +25,16 @@ Implemented instructions:
 | TMod     | ❌ |
 | TSign    | ❌ |
 | TExp     | ❌ |
-| Shift    | ❌ |
+| Shift    | 🐛 |
 | ShiftAll | ❌ |
 | AI       | ✅ |
 | AICarry  | ✅ |
 | I        | ❌ |
-| Comp     | ❌ |
+| Comp     | ✅ |
 | CompWord | ❌ |
 | CompMod  | ❌ |
-| Ma       | ❌ |
-| Mb       | ❌ |
+| Ma       | 🐛 |
+| Mb       | 🐛 |
 | JCC      | ✅ |
 | CLCC     | ✅ |
 | CCCC     | ✅ |
