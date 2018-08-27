@@ -165,6 +165,24 @@ impl<'a> VM<'a> {
         self.set_address(c, result);
         self.increment_ic();
       }
+      Comp { a, b, c } => {
+        use std::cmp::*;
+
+        let left  = Float::from_bytes(self.get_address(a)?);
+        let right = Float::from_bytes(self.get_address(b)?);
+
+        let branch = match left.exp.cmp(&right.exp) {
+          Ordering::Greater => { left.sign }
+          Ordering::Less => { !right.sign }
+          Ordering::Equal => { left.mant < right.mant }
+        };
+
+        if branch {
+          self.set_ic(c);
+        } else {
+          self.increment_ic();
+        }
+      }
       Stop => { self.stopped = true; }
       Stop28 => { self.stopped = true; }
       a => {
@@ -186,6 +204,13 @@ impl<'a> VM<'a> {
     match &self.active_ic {
       ActiveIC::Global => self.global_ic += 1,
       ActiveIC::Local  => self.local_ic += 1,
+    }
+  }
+
+  fn set_ic(&mut self, ix: u64) -> () {
+    match &self.active_ic {
+      ActiveIC::Global => self.global_ic = ix as u16,
+      ActiveIC::Local  => self.local_ic = ix as u16,
     }
   }
 

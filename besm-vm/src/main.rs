@@ -36,9 +36,6 @@ fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruct
         .title("Current Instruction")
         .render(t, &chunks[0]);
 
-      let empty_space = 0.max(chunks[0].width - (5 + 42 + 10) - 4);
-      let spacer = empty_space / 2;
-
       Group::default()
         .margin(1)
         .direction(Direction::Horizontal)
@@ -110,7 +107,6 @@ fn main() {
   let     words : Vec<u64> = iter::repeat_with(|| f.read_u64::<BigEndian>().unwrap_or(0)).take(1023).collect();
 
   let mut is_buf = [0u64; 1023];
-  let mut t = MouseBackend::new().unwrap();
   let mut past_instrs: ArrayDeque<[_; 10], Wrapping> = ArrayDeque::new();
   let mut terminal = Terminal::new(MouseBackend::new().unwrap()).unwrap();
   let mut term_size = terminal.size().unwrap();
@@ -146,7 +142,7 @@ fn main() {
   let quarter_sec = time::Duration::from_millis(250);
   let mut ui_stop = false;
 
-  while (!vm.stopped && !ui_stop) {
+  while !vm.stopped && !ui_stop {
     draw(&mut terminal, &vm, &past_instrs, &term_size);
 
     use termion::event;
