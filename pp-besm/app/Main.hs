@@ -27,8 +27,12 @@ options =
   simpleOptions "v0.0.1" "BESM Prettyprinter and Coder" "" (pure ()) $ do
     addCommand "pretty" "prettyprint the programme" prettyCommand fileArg
     addCommand "code"
-               "output the binary representation of the program"
+               "output the binary representation of the program (debug)"
                codeCommand
+               fileArg
+    addCommand "print"
+               "output the binary representation of the program"
+               printCommand
                fileArg
 
 parseFromFile file = do
@@ -61,6 +65,15 @@ codeCommand f = do
 
   print "Block K"
   prettyPrint $ blockK qa (programme $ lowered)
+
+printCommand :: String -> IO ()
+printCommand f = do
+  pp <- parseFromFile f
+  let lowered = lowerProgramme pp
+      encoded = encodeProgramme lowered
+
+  mapM_ (Prelude.putStrLn . toHexString) encoded
+
 
 main :: IO ()
 main = do

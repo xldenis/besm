@@ -45,7 +45,7 @@ encodeProgramme p@(PP {..}) = let
   kCells = blockK qa programme
   headerTable = programmeSummaryTable (fromIntegral block0Len) (length vCells) (length cCells)
     (length pCells) (length kCells) (fromIntegral blockGammaLen) (fromIntegral blockAlphaLen)
-  in headerTable ++ vCells ++ pCells ++ cCells ++ kCells
+  in replicate 7 b0 ++  headerTable ++ vCells ++ pCells ++ cCells ++ kCells
 
 {-
   After preparing the programme, we also prepare a summary table will be prepended.
