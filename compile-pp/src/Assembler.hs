@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds, BinaryLiterals #-}
 module Assembler where
 
 import Syntax
@@ -38,6 +38,28 @@ data Section = Text | Data
   deriving (Show, Eq)
 
 data Alignment = AlignLeft | AlignRight
+
+debugAssemble defs a =
+      segmentize
+  >>> resolve    defs
+  >>> absolutize defs a
+  >>> debugRender
+  where
+
+  debugRender :: [RawBlock] -> [(Int, String)]
+  debugRender blks = let
+    (o, dataS) = mapAccumL (\off (s, v) -> (off + constantSize v, (off, s ++ " " ++ show v))) 0 defs
+    text = blks >>= (\bb -> map show (instrs bb) ++ termToString (terminator bb))
+    textS = zip [o..] text
+    len = o + length textS
+    in case a of
+      AlignLeft -> map (\(i, s) -> (16 + i, s)) $ dataS ++ textS
+      AlignRight -> map (\(i, s) -> (1024 - len + i , s)) $ dataS ++ textS
+
+  termToString :: Term Int -> [String]
+  termToString (RetRTC a) = [show $ AI 0b10100001111 (a+1) (a+1), "zero"]
+  termToString (Chain     _) = []
+  termToString c = [show c]
 
 assemble :: ConstantDefs -> Alignment -> [BB Address] -> Output
 assemble defs a =
@@ -143,12 +165,12 @@ segment map addr = case addr `M.lookup` map of
 addJump :: [BB Address] -> [BB Address]
 addJump [bb] = case implicitJumps (terminator bb) of
   Just iJ -> let
-    bb' = bb { terminator = CCCC (baseAddress jB) } -- add hard jump
+    bb' = bb { terminator = Chain (baseAddress jB) } -- add hard jump
     jB = jumpBlk bb iJ
     in [bb', jB]
   Nothing -> [bb]
   where
-  jumpBlk fromB to = BB [] (CCCC to) ((baseAddress fromB) `offAddr` (instLen fromB))
+  jumpBlk fromB to = BB [] (CCCC to) ((baseAddress fromB) `offAddr` (instLen fromB + 1))
 addJump (bb : bbs) = bb : addJump bbs
 addJump [] = []
 

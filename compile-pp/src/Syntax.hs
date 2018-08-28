@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, DeriveFunctor, DeriveFoldable, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DataKinds, DeriveFunctor, DeriveFoldable, GeneralizedNewtypeDeriving, BinaryLiterals #-}
 module Syntax where
 
 import Besm.Put (buildNumber, buildInstruction)
@@ -147,6 +147,7 @@ instToCell (CLCC          c  ) = buildInstruction (bitVector 0x01A) (bitVector 0
 normToBit :: NormalizeResult -> Integer
 normToBit Normalized   = 0
 normToBit UnNormalized = bit 5
+
 termToCell :: Term Integer -> [BitVector 39]
 termToCell (Comp      a b c _) = pure $ buildInstruction (bitVector 0x014) (bitVector a) (bitVector b) (bitVector c)
 termToCell (CompWord  a b c _) = pure $ buildInstruction (bitVector 0x034) (bitVector a) (bitVector b) (bitVector c)
@@ -155,5 +156,5 @@ termToCell (CCCC          c  ) = pure $ buildInstruction (bitVector 0x01B) (bitV
 termToCell (CCCCSnd     b c  ) = pure $ buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector b) (bitVector c)
 termToCell (Stop)              = pure $ buildInstruction (bitVector 0x01F) (bitVector 0) (bitVector 0) (bitVector 0)
 termToCell (SwitchStop)        = pure $ buildInstruction (bitVector 0x01C) (bitVector 0) (bitVector 0) (bitVector 0)
-termToCell (RetRTC a)            = [instToCell (AI 0x110F (a+1) (a+1)), bitVector 0]
+termToCell (RetRTC a)          = [instToCell (AI 0b10100001111 (a+1) (a+1)), bitVector 0]
 termToCell (Chain     _)       = []
