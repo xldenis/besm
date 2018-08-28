@@ -59,7 +59,7 @@ fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruct
             .render(t, &chunks[4]);
 
           Paragraph::default()
-            .text(&format!("{:?}", Instruction::from_bytes(ins).unwrap()))
+            .text(&Instruction::from_bytes(ins).map(|s| format!("{:?}", s)).unwrap_or("ERROR".to_string()))
             .alignment(Alignment::Right)
             .wrap(true)
             .render(t, &chunks[6]);
@@ -86,7 +86,7 @@ fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruct
       TuiLoggerWidget::default()
         .block(
           Block::default()
-            .title("omg")
+            .title("Log")
             .borders(Borders::ALL)
         )
         .render(t, &chunks[2]);
@@ -95,7 +95,7 @@ fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruct
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "omg")]
+#[structopt(name = "besm-vm")]
 struct Opts {
   #[structopt(short = "s", long = "start-address", default_value = "1")]
   start_address: u64,
@@ -182,9 +182,8 @@ fn main() {
   terminal.hide_cursor().unwrap();
 
   let quarter_sec = time::Duration::from_millis(250);
-  let mut ui_stop = false;
 
-  while  !ui_stop {
+  loop {
     draw(&mut terminal, &vm, &past_instrs, &term_size);
 
     use termion::event;
@@ -201,7 +200,7 @@ fn main() {
 
     if !vm.stopped {
       match vm.step() {
-        Err(e) => { ui_stop = true; println!("{:?}", e);},
+        Err(e) => { error!("{:?}", e); vm.stopped = true;},
         Ok(i) => { past_instrs.push_front(i); },
       }
     }

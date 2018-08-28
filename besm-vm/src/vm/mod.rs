@@ -1,9 +1,10 @@
 use bit_field::BitField;
 use float::*;
 
+mod ds;
 pub struct VM<'a> {
   is: &'a mut [u64; 1023],
-  ds: &'a [u64; 364],
+  ds: &'a [u64; 384],
   local_ic: u16,
   global_ic: u16,
   active_ic: ActiveIC,
@@ -24,14 +25,13 @@ pub struct MagTape {
 
 enum ActiveIC { Global, Local}
 
-static DS : [u64; 364] = [0; 364];
-
 #[derive(Debug)]
 pub enum VMError {
   OutOfBounds { },
   PartialMa(Instruction),
   BadDriveOperation,
   InvalidInstruction(u64),
+  NotYetImplemented(Instruction),
 }
 
 impl MagDrive {
@@ -60,14 +60,14 @@ impl <'a> MagSystem<'a> {
     }
   }
 
-  fn perform_operation(&mut self, n2: u64, is: &mut [u64; 1023]) {
+  fn perform_operation(&mut self, n2: u64, is: &mut [u64; 1023]) -> Option<()> {
     use vm::DriveOperation::*;
-    warn!("{:?}", self.partial_operation);
+
     match &self.partial_operation {
       None => { panic!("return error") }
 
       Some(WriteMD(id, n1, c)) => {
-        let span = n2 + 1 - n1;
+        let span = (n2 + 1).checked_sub(*n1)?;
         let drive = &mut self.mag_drives[id.to_num() as usize];
 
         for (place, data) in drive.drive.iter_mut().skip(*n1 as usize).zip(is.iter().skip((c - 1) as usize).take(span as usize)) {
@@ -75,7 +75,6 @@ impl <'a> MagSystem<'a> {
         }
       }
       Some(ReadMD(id, n1, c)) => {
-        warn!("n2 {} n1 {}", n2, n1);
 
         let span = n2 + 1 - n1;
         let drive = &mut self.mag_drives[id.to_num() as usize];
@@ -87,6 +86,8 @@ impl <'a> MagSystem<'a> {
     }
 
     self.partial_operation = None;
+
+    Some(())
   }
 }
 
@@ -156,7 +157,7 @@ impl<'a> VM<'a> {
   pub fn new(is: &'a mut [u64; 1023], drives: &'a mut [MagDrive; 5], tapes: &'a mut [MagTape; 4], start: u16) -> VM<'a> {
     VM {
       is: is,
-      ds: &DS,
+      ds: &ds::DS,
       global_ic: start,
       local_ic: 1,
       active_ic: ActiveIC::Global,
@@ -176,7 +177,6 @@ impl<'a> VM<'a> {
 
     match instr {
       Mb { b } if self.mag_system.op_started() => {
-        info!("omg");
         self.mag_system.perform_operation(b, &mut self.is);
         self.increment_ic();
 
@@ -284,6 +284,7 @@ impl<'a> VM<'a> {
         let raddrs = self.get_address(q)?.get_bits(0..33);
 
         let mut result = laddrs + raddrs;
+        info!("AI {:039b}", self.get_address(p)?);
 
         result.set_bits(33..39, self.get_address(p)?.get_bits(33..39));
 
@@ -318,8 +319,9 @@ impl<'a> VM<'a> {
       }
       Stop => { self.stopped = true; }
       Stop28 => { self.stopped = true; }
-      _ => {
+      i => {
         self.stopped = true;
+        return Err(VMError::NotYetImplemented(i));
       }
     }
     Ok(instr)
