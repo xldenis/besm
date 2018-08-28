@@ -469,3 +469,44 @@ impl Instruction {
     Ok(instr)
   }
 }
+
+use std::fmt;
+impl fmt::Display for Instruction {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      Add     {a,b,c, normalize} => write!(f, "Add {:4} {:4} {:4}"      , a, b, c),
+      Sub     {a,b,c, normalize} => write!(f, "Sub {:4} {:4} {:4}"      , a, b, c),
+      Mult    {a,b,c, normalize} => write!(f, "Mult {:4} {:4} {:4}"     , a, b, c),
+      Div     {a,b,c, normalize} => write!(f, "Div {:4} {:4} {:4}"      , a, b, c),
+      AddE    {a,b,c, normalize} => write!(f, "AddE {:4} {:4} {:4}"     , a, b, c),
+      SubE    {a,b,c, normalize} => write!(f, "SubE {:4} {:4} {:4}"     , a, b, c),
+      Ce      {a,b,c, normalize} => write!(f, "Ce {:4} {:4} {:4}"       , a, b, c),
+      Xa      {a,b,c, normalize} => write!(f, "Xa {:4} {:4} {:4}"       , a, b, c),
+      Xb      {c,     normalize} => write!(f, "Xb {:4} {:4} {:4}"       ,"","", c),
+      DivA    {a,b,c, normalize} => write!(f, "DivA {:4} {:4} {:4}"     , a,"", c),
+      DivB    {c,     normalize} => write!(f, "DivB {:4} {:4} {:4}"     ,"","", c),
+      TN      {a,c,   normalize} => write!(f, "TN {:4} {:4} {:4}"       , a,"", c),
+      PN      {a}                => write!(f, "PN {:4} {:4} {:4}"       , a,"",""),
+      TMin    {a,c,   normalize} => write!(f, "TMin {:4} {:4} {:4}"     , a,"", c),
+      TMod    {a,c,   normalize} => write!(f, "TMod {:4} {:4} {:4}"     , a,"", c),
+      TSign   {a,b,c, normalize} => write!(f, "TSign {:4} {:4} {:4}"    , a, b, c),
+      TExp    {a,c,   normalize} => write!(f, "TExp {:4} {:4} {:4}"     , a,"", c),
+      Shift   {a,b,c}            => write!(f, "Shift {:4} {:4} {:4}"    , a, b, c),
+      ShiftAll{a,b,c}            => write!(f, "ShiftAll {:4} {:4} {:4}"  , a, b, c),
+      AI      {a,b,c}            => write!(f, "AI {:4} {:4} {:4}"       , a, b, c),
+      AICarry {a,b,c}            => write!(f, "AICarry {:4} {:4} {:4}"  , a, b, c),
+      I       {a,b,c}            => write!(f, "I {:4} {:4} {:4}"        , a, b, c),
+      Comp    {a,b,c}            => write!(f, "Comp {:4} {:4} {:4}"     , a, b, c),
+      CompWord{a,b,c}            => write!(f, "CompWord {:4} {:4} {:4}" , a, b, c),
+      CompMod {a,b,c}            => write!(f, "CompMod {:4} {:4} {:4}"  , a, b, c),
+      Ma      {a,b,c}            => write!(f, "Ma {:4} {:4} {:4}"       , a, b, c),
+      Mb      {b}                => write!(f, "Mb {:4} {:4} {:4}"       ,"", b,""),
+      JCC                        => write!(f, "JCC"),
+      CLCC    {c}                => write!(f, "CLCC {:4} {:4} {:4}"     ,"","", c),
+      CCCC    {  b,c}            => write!(f, "CCCC {:4} {:4} {:4}"     ,"", b, c),
+      Stop28                     => write!(f, "Stop28"),
+      LogMult {a,b,c}            => write!(f, "LogMult {:4} {:4} {:4}"  , a, b, c),
+      Stop                       => write!(f, "Stop"),
+    }
+  }
+}
