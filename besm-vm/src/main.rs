@@ -2,6 +2,9 @@
 
 extern crate bit_field;
 #[macro_use] extern crate structopt;
+#[macro_use] extern crate log;
+
+extern crate tui_logger;
 extern crate byteorder;
 extern crate num;
 extern crate arraydeque;
@@ -18,7 +21,6 @@ mod vm;
 use vm::*;
 use byteorder::{BigEndian, ReadBytesExt};
 use std::iter;
-
 
 use tui::backend::MouseBackend;
 use tui::Terminal;
@@ -57,7 +59,7 @@ fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruct
             .render(t, &chunks[4]);
 
           Paragraph::default()
-            .text(&format!("{:?}", Instruction::from_bytes(ins)))
+            .text(&format!("{:?}", Instruction::from_bytes(ins).unwrap()))
             .alignment(Alignment::Right)
             .wrap(true)
             .render(t, &chunks[6]);
@@ -81,6 +83,13 @@ fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, ui_state: &ArrayDeque<[Instruct
           }
         });
 
+      TuiLoggerWidget::default()
+        .block(
+          Block::default()
+            .title("omg")
+            .borders(Borders::ALL)
+        )
+        .render(t, &chunks[2]);
     });
   t.draw().unwrap();
 }
@@ -127,8 +136,13 @@ fn md_from_file(file: Option<PathBuf>) -> MagDrive {
 
   MagDrive::new(buf)
 }
+use log::LevelFilter;
+use tui_logger::*;
 
 fn main() {
+  init_logger(LevelFilter::Info).unwrap();
+  set_default_level(LevelFilter::Trace);
+
   let     opt = Opts::from_args();
   let mut f = File::open(opt.is_file.clone()).expect("file not found");
   let     words : Vec<u64> = iter::repeat_with(|| f.read_u64::<BigEndian>().unwrap_or(0)).take(1023).collect();
@@ -170,7 +184,7 @@ fn main() {
   let quarter_sec = time::Duration::from_millis(250);
   let mut ui_stop = false;
 
-  while !vm.stopped && !ui_stop {
+  while  !ui_stop {
     draw(&mut terminal, &vm, &past_instrs, &term_size);
 
     use termion::event;
@@ -185,10 +199,12 @@ fn main() {
       Err(Empty) => { }
     }
 
-    match vm.step() {
-      Err(e) => { ui_stop = true; println!("{:?}", e);},
-      Ok(i) => { past_instrs.push_front(i); },
-    };
+    if !vm.stopped {
+      match vm.step() {
+        Err(e) => { ui_stop = true; println!("{:?}", e);},
+        Ok(i) => { past_instrs.push_front(i); },
+      }
+    }
 
     thread::sleep(quarter_sec);
   }

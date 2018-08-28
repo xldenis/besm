@@ -30,7 +30,8 @@ static DS : [u64; 364] = [0; 364];
 pub enum VMError {
   OutOfBounds { },
   PartialMa(Instruction),
-
+  BadDriveOperation,
+  InvalidInstruction(u64),
 }
 
 impl MagDrive {
@@ -59,21 +60,25 @@ impl <'a> MagSystem<'a> {
     }
   }
 
-  fn perform_operation(&mut self, b: u64, is: &mut [u64; 1023]) {
+  fn perform_operation(&mut self, n2: u64, is: &mut [u64; 1023]) {
     use vm::DriveOperation::*;
+    warn!("{:?}", self.partial_operation);
     match &self.partial_operation {
       None => { panic!("return error") }
 
       Some(WriteMD(id, n1, c)) => {
+        let span = n2 + 1 - n1;
         let drive = &mut self.mag_drives[id.to_num() as usize];
-        for (place, data) in drive.drive.iter_mut().skip(*n1 as usize).zip(is.iter().skip((c - 1) as usize)) {
+
+        for (place, data) in drive.drive.iter_mut().skip(*n1 as usize).zip(is.iter().skip((c - 1) as usize).take(span as usize)) {
           *place = *data;
         }
       }
       Some(ReadMD(id, n1, c)) => {
-        let span = b + 1 - n1;
-        let drive = &mut self.mag_drives[id.to_num() as usize];
+        warn!("n2 {} n1 {}", n2, n1);
 
+        let span = n2 + 1 - n1;
+        let drive = &mut self.mag_drives[id.to_num() as usize];
         for (place, data) in is.iter_mut().skip((*c-1) as usize).zip(drive.drive.iter().skip(*n1 as usize).take(span as usize)) {
           *place = *data;
         }
@@ -133,16 +138,16 @@ fn tape_id_from_num(ix: u64) -> TapeId {
 }
 
 impl DriveOperation {
-  pub fn from_ma(a: u64, b: u64, c: u64) -> DriveOperation {
+  pub fn from_ma(a: u64, b: u64, c: u64) -> Result<DriveOperation, VMError> {
     use vm::DriveOperation::*;
     match a {
-      0x0300 ... 0x0304 => { WriteMD(drum_id_from_num(a - 0x0300), b, c) }
-      0x0100 ... 0x0104 => { ReadMD(drum_id_from_num(a - 0x0100), b, c) }
-      0x0080            => { ReadTape(c) }
-      0x0281 ... 0x0284 => { WriteMT(tape_id_from_num(a), b, c) }
-      0x0081 ... 0x0084 => { ReadMT(tape_id_from_num(a), b, c) }
-      0x00C1 ... 0x00C4 => { RewindMT(tape_id_from_num(a), b) }
-      _ => panic!("bad drive operation")
+      0x0300 ... 0x0304 => { Ok(WriteMD(drum_id_from_num(a - 0x0300), b, c)) }
+      0x0100 ... 0x0104 => { Ok(ReadMD(drum_id_from_num(a - 0x0100), b, c)) }
+      0x0080            => { Ok(ReadTape(c)) }
+      0x0281 ... 0x0284 => { Ok(WriteMT(tape_id_from_num(a), b, c)) }
+      0x0081 ... 0x0084 => { Ok(ReadMT(tape_id_from_num(a), b, c)) }
+      0x00C1 ... 0x00C4 => { Ok(RewindMT(tape_id_from_num(a), b)) }
+      _ => return Err(VMError::BadDriveOperation)
     }
   }
 }
@@ -167,10 +172,11 @@ impl<'a> VM<'a> {
 
   pub fn step(&mut self) -> Result<Instruction, VMError> {
     let opcode = self.is[self.next_instr() as usize - 1];
-    let instr = Instruction::from_bytes(opcode);
+    let instr = Instruction::from_bytes(opcode)?;
 
     match instr {
       Mb { b } if self.mag_system.op_started() => {
+        info!("omg");
         self.mag_system.perform_operation(b, &mut self.is);
         self.increment_ic();
 
@@ -180,7 +186,7 @@ impl<'a> VM<'a> {
         Err(VMError::PartialMa(i))?
       }
       Ma { a, b, c } => {
-        self.mag_system.partial_operation = Some(DriveOperation::from_ma(a,b,c));
+        self.mag_system.partial_operation = Some(DriveOperation::from_ma(a,b,c)?);
         self.increment_ic();
       }
       Add  { a: l, b: r, c: res, normalize: needs_norm } => {
@@ -312,7 +318,7 @@ impl<'a> VM<'a> {
       }
       Stop => { self.stopped = true; }
       Stop28 => { self.stopped = true; }
-      a => {
+      _ => {
         self.stopped = true;
       }
     }
@@ -403,21 +409,21 @@ pub enum Instruction {
 use Instruction::*;
 
 pub fn first_addr(x: u64) -> u64 {
-  x.get_bits(22..32)
+  x.get_bits(22..33)
 }
 
 pub fn second_addr(x: u64) -> u64 {
-  x.get_bits(11..21)
+  x.get_bits(11..22)
 }
 
 pub fn third_addr(x: u64) -> u64 {
-  x.get_bits(0..10)
+  x.get_bits(0..11)
 }
 
 impl Instruction {
   // Eventually this should be Result<(), Instruction>
-  pub fn from_bytes(word: u64) -> Instruction {
-    match word.get_bits(33..38) {
+  pub fn from_bytes(word: u64) -> Result<Instruction, VMError> {
+    let instr = match word.get_bits(33..38) {
       0x01 => Add       { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       0x02 => Sub       { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       0x03 => Mult      { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
@@ -455,7 +461,9 @@ impl Instruction {
       0x1C => Stop28    { },
       0x1D => LogMult   {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       0x1F => Stop      { },
-      i    => panic!("omg {:?} {:016x}", i, word),
-    }
+      _    => return Err(VMError::InvalidInstruction(word))
+    };
+
+    Ok(instr)
   }
 }
