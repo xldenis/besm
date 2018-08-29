@@ -82,7 +82,7 @@ fn render_current_instruction_box(t: &mut Terminal<MouseBackend>, vm: &VM, rect:
             Size::Percent(100),
         ])
         .render(t, &rect, |t, chunks| {
-            let ins = vm.get_address(u64::from(vm.next_instr())).unwrap();
+            let ins = vm.get_address(vm.next_instr()).unwrap();
 
             Paragraph::default()
                 .text(&format!("{:04}", vm.next_instr()))

@@ -67,7 +67,7 @@ impl <'a> MagSystem<'a> {
     }
   }
 
-  fn perform_operation(&mut self, n2: u64, is: &mut [u64; 1023]) -> Option<()> {
+  fn perform_operation(&mut self, n2: u16, is: &mut [u64; 1023]) -> Option<()> {
     use vm::DriveOperation::*;
 
     match &self.partial_operation {
@@ -142,15 +142,15 @@ impl TapeId {
 
 #[derive(Debug, Clone)]
 pub enum DriveOperation {
-  WriteMD(DrumId, u64, u64),
-  ReadMD(DrumId, u64, u64),
-  ReadTape(u64),
-  WriteMT(TapeId, u64, u64),
-  ReadMT(TapeId, u64, u64),
-  RewindMT(TapeId, u64),
+  WriteMD(DrumId, u16, u16),
+  ReadMD(DrumId, u16, u16),
+  ReadTape(u16),
+  WriteMT(TapeId, u16, u16),
+  ReadMT(TapeId, u16, u16),
+  RewindMT(TapeId, u16),
 }
 
-fn drum_id_from_num(ix: u64) -> DrumId {
+fn drum_id_from_num(ix: u16) -> DrumId {
   match ix {
     0 => DrumId::Zero,
     1 => DrumId::One,
@@ -161,7 +161,7 @@ fn drum_id_from_num(ix: u64) -> DrumId {
   }
 }
 
-fn tape_id_from_num(ix: u64) -> TapeId {
+fn tape_id_from_num(ix: u16) -> TapeId {
   match ix {
     1 => TapeId::One,
     2 => TapeId::Two,
@@ -172,7 +172,7 @@ fn tape_id_from_num(ix: u64) -> TapeId {
 }
 
 impl DriveOperation {
-  pub fn from_ma(a: u64, b: u64, c: u64) -> Result<DriveOperation, VMError> {
+  pub fn from_ma(a: u16, b: u16, c: u16) -> Result<DriveOperation, VMError> {
     use vm::DriveOperation::*;
     match a {
       0x0300 ... 0x0304 => { Ok(WriteMD(drum_id_from_num(a - 0x0300), b, c)) }
@@ -387,14 +387,14 @@ impl<'a> VM<'a> {
     }
   }
 
-  fn set_ic(&mut self, ix: u64) -> () {
+  fn set_ic(&mut self, ix: u16) -> () {
     match &self.active_ic {
       ActiveIC::Global => self.global_ic = ix as u16,
       ActiveIC::Local  => self.local_ic = ix as u16,
     }
   }
 
-  pub fn get_address(&self, ix: u64) -> Result<u64, VMError> {
+  pub fn get_address(&self, ix: u16) -> Result<u64, VMError> {
     if ix == 0 {
       Err(VMError::OutOfBounds {})
     } else if ix <= 1023 {
@@ -404,7 +404,7 @@ impl<'a> VM<'a> {
     }
   }
 
-  fn set_address(& mut self, ix: u64, val: u64) -> &mut Self {
+  fn set_address(& mut self, ix: u16, val: u64) -> &mut Self {
     if ix <= 1023 {
       self.is[(ix - 1) as usize] = val
     } else {
@@ -415,7 +415,7 @@ impl<'a> VM<'a> {
 }
 
 
-type Address = u64;
+type Address = u16;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Instruction {
@@ -427,15 +427,15 @@ pub enum Instruction {
   SubE      { a: Address, b: Address, c: Address, normalize: bool},
   Ce        { a: Address, b: Address, c: Address, normalize: bool},
   Xa        { a: Address, b: Address, c: Address, normalize: bool},
-  Xb        { c: Address, normalize: bool },
+  Xb        {                         c: Address, normalize: bool },
   DivA      { a: Address, b: Address, c: Address, normalize: bool},
-  DivB      { c: Address, normalize: bool },
-  TN        { a: Address, c: Address, normalize: bool},
+  DivB      {                         c: Address, normalize: bool },
+  TN        { a: Address,             c: Address, normalize: bool},
   PN        { a: Address },
-  TMin      { a: Address,  c: Address, normalize: bool},
-  TMod      { a: Address,  c: Address, normalize: bool},
+  TMin      { a: Address,             c: Address, normalize: bool},
+  TMod      { a: Address,             c: Address, normalize: bool},
   TSign     { a: Address, b: Address, c: Address, normalize: bool},
-  TExp      { a: Address,  c: Address, normalize: bool},
+  TExp      { a: Address,             c: Address, normalize: bool},
   Shift     { a: Address, b: Address, c: Address },
   ShiftAll  { a: Address, b: Address, c: Address },
   AI        { a: Address, b: Address, c: Address },
@@ -447,8 +447,8 @@ pub enum Instruction {
   Ma        { a: Address, b: Address, c: Address },
   Mb        {             b: Address},
   JCC,
-  CLCC      { c: Address },
-  CCCC      { b: Address, c: Address},
+  CLCC      {                         c: Address },
+  CCCC      {             b: Address, c: Address},
   Stop28,
   LogMult   { a: Address, b: Address, c: Address },
   Stop
@@ -456,16 +456,16 @@ pub enum Instruction {
 
 use Instruction::*;
 
-pub fn first_addr(x: u64) -> u64 {
-  x.get_bits(22..33)
+pub fn first_addr(x: u64) -> u16 {
+  x.get_bits(22..33) as u16
 }
 
-pub fn second_addr(x: u64) -> u64 {
-  x.get_bits(11..22)
+pub fn second_addr(x: u64) -> u16 {
+  x.get_bits(11..22) as u16
 }
 
-pub fn third_addr(x: u64) -> u64 {
-  x.get_bits(0..11)
+pub fn third_addr(x: u64) -> u16 {
+  x.get_bits(0..11) as u16
 }
 
 impl Instruction {
