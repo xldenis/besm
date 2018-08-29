@@ -16,12 +16,18 @@ pub struct VM<'a> {
 pub struct MagDrive {
   drive: [u64; 1024]
 }
+use std::collections::HashMap;
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct MagTape {
-  // Insufficient format to simulate tape drives,
-  //it appears they may have had a dedicated block mark channel
-  tape: [u64; 30_000]
+  /*
+  This may seem like a weird representation for a tape.
+  However, since according to the assembly instruction reference we can write
+  up to 64 blocks of arbitrary length, it appears like it had a block-marker
+  channel to track the start of each data-block. Storing it as a HashMap is
+  conceptually much simpler than other formats.
+  */
+  tape: HashMap<u8, Vec<u64>>
 }
 
 enum ActiveIC { Global, Local}
@@ -41,9 +47,9 @@ impl MagDrive {
   }
 }
 
-impl MagTape {
+impl <'a> MagTape {
   pub fn new() -> MagTape {
-    MagTape { tape: [0; 30_000] }
+    MagTape { tape: HashMap::new() }
   }
 }
 
@@ -85,6 +91,17 @@ impl <'a> MagSystem<'a> {
           *place = *data;
         }
       }
+
+      Some(ReadMT(id, r, c)) => {
+        let tape = &mut self.mag_tapes[id.to_num() as usize];
+
+        if *r > 63 {
+          return None;
+        }
+
+        let range = is[(*c as usize) .. ((c + n2) as usize)].to_vec();
+        tape.tape.insert(*r as u8, range);
+      }
       _ => { panic!("NOT DONE") }
     }
 
@@ -95,10 +112,10 @@ impl <'a> MagSystem<'a> {
 }
 
 #[derive(Debug, Clone)]
-enum DrumId { Zero, One, Two, Three, Four }
+pub enum DrumId { Zero, One, Two, Three, Four }
 
 #[derive(Debug, Clone)]
-enum TapeId { One, Two, Three, Four }
+pub enum TapeId { One, Two, Three, Four }
 
 impl DrumId {
   pub fn to_num(&self) -> u8 {
@@ -112,8 +129,19 @@ impl DrumId {
   }
 }
 
+impl TapeId {
+  pub fn to_num(&self) -> u8 {
+    match self {
+      TapeId::One => 1,
+      TapeId::Two => 2,
+      TapeId::Three => 3,
+      TapeId::Four => 4,
+    }
+  }
+}
+
 #[derive(Debug, Clone)]
-enum DriveOperation {
+pub enum DriveOperation {
   WriteMD(DrumId, u64, u64),
   ReadMD(DrumId, u64, u64),
   ReadTape(u64),
@@ -121,6 +149,7 @@ enum DriveOperation {
   ReadMT(TapeId, u64, u64),
   RewindMT(TapeId, u64),
 }
+
 fn drum_id_from_num(ix: u64) -> DrumId {
   match ix {
     0 => DrumId::Zero,
@@ -131,6 +160,7 @@ fn drum_id_from_num(ix: u64) -> DrumId {
     _ => panic!("bad drum id")
   }
 }
+
 fn tape_id_from_num(ix: u64) -> TapeId {
   match ix {
     1 => TapeId::One,

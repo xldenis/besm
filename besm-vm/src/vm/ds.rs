@@ -1,14 +1,19 @@
-#[allow(unreadable_literal)]
+#[cfg_attr(feature = "cargo-clippy", allow(unreadable_literal))]
 pub static DS : [u64; 384] =
+  // The first nine addresses store the entry for PP
+  // PP-1
   [ 0x0000000000000000
   , 0x0000000000000000
   , 0x0000000000000000
+  // PP-2
   , 0x0000000000000000
   , 0x0000000000000000
   , 0x0000000000000000
+  // PP-3
   , 0x0000000000000000
   , 0x0000000000000000
   , 0x0000000000000000
+
   , 0x0000000000000000
   , 0x0000000000000000
   , 0x0000000000000000
@@ -271,6 +276,8 @@ pub static DS : [u64; 384] =
   , 0x0000000000000000
   , 0x0000000000000000
   , 0x0000000000000000
+    // This constant is the instruction CCCC 1, used when doing a Return-To-Control
+    // aka: a form of subroutine return
   , 0x0000003600000001
   , 0x0000000000000000
   , 0x0000000000000000

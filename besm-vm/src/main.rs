@@ -91,7 +91,7 @@ fn main() {
   is_buf.copy_from_slice(&words[..]);
 
   let mut x = [md_from_file(opt.md0), md_from_file(opt.md1), md_from_file(opt.md2), md_from_file(opt.md3), md_from_file(opt.md4)];
-  let mut y = [MagTape::new(); 4];
+  let mut y = [MagTape::new(), MagTape::new(), MagTape::new(), MagTape::new()];
   let mut vm = VM::new(&mut is_buf, &mut x, &mut y, opt.start_address as u16);
 
   let (tx, rx) = mpsc::channel();
