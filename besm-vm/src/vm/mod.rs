@@ -29,7 +29,7 @@ enum ActiveIC { Global, Local}
 #[derive(Debug)]
 pub enum VMError {
   OutOfBounds { },
-  PartialMa(Instruction),
+  PartialMa(Instruction, DriveOperation),
   BadDriveOperation,
   InvalidInstruction(u64),
   NotYetImplemented(Instruction),
@@ -68,7 +68,9 @@ impl <'a> MagSystem<'a> {
       None => { panic!("return error") }
 
       Some(WriteMD(id, n1, c)) => {
+        warn!("Writing to MD");
         let span = (n2 + 1).checked_sub(*n1)?;
+        warn!("TEST");
         let drive = &mut self.mag_drives[id.to_num() as usize];
 
         for (place, data) in drive.drive.iter_mut().skip(*n1 as usize).zip(is.iter().skip((c - 1) as usize).take(span as usize)) {
@@ -92,10 +94,10 @@ impl <'a> MagSystem<'a> {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum DrumId { Zero, One, Two, Three, Four }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum TapeId { One, Two, Three, Four }
 
 impl DrumId {
@@ -110,7 +112,7 @@ impl DrumId {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum DriveOperation {
   WriteMD(DrumId, u64, u64),
   ReadMD(DrumId, u64, u64),
@@ -178,13 +180,16 @@ impl<'a> VM<'a> {
 
     match instr {
       Mb { b } if self.mag_system.op_started() => {
-        self.mag_system.perform_operation(b, &mut self.is);
+        warn!("{}", instr);
+        self.mag_system.perform_operation(b, &mut self.is).ok_or(VMError::BadDriveOperation)?;
         self.increment_ic();
 
       }
       i if self.mag_system.op_started() => {
         self.stopped = true;
-        Err(VMError::PartialMa(i))?
+
+        let drive_op = self.mag_system.partial_operation.clone().unwrap();
+        Err(VMError::PartialMa(i, drive_op))?
       }
       Ma { a, b, c } => {
         self.mag_system.partial_operation = Some(DriveOperation::from_ma(a,b,c)?);
@@ -252,6 +257,17 @@ impl<'a> VM<'a> {
 
         self.set_address(target, val.to_bytes());
         self.increment_ic();
+      }
+      TExp { a: source, c: target, normalize: needs_norm } => {
+        let val = Float::from_bytes(self.get_address(source)?);
+
+        let mut res = Float::from_bytes(val.exp as u64);
+
+        if needs_norm { res.normalize() };
+
+        self.set_address(target, res.to_bytes());
+        self.increment_ic();
+
       }
       CCCC { b: cell, c: addr } => {
         if cell != 0 { self.set_address(cell, self.next_instr() as u64); }
