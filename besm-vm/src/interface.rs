@@ -95,7 +95,7 @@ fn render_current_instruction_box(t: &mut Terminal<MouseBackend>, vm: &VM, rect:
         .render(t, &chunks[4]);
 
       Paragraph::default()
-        .text(&Instruction::from_bytes(ins).map(|s| format!("{:?}", s)).unwrap_or("ERROR".to_string()))
+        .text(&Instruction::from_bytes(ins).map(|s| format!("{}", s)).unwrap_or("ERROR".to_string()))
         .alignment(Alignment::Right)
         .wrap(true)
         .render(t, &chunks[6]);
