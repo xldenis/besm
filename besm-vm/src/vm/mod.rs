@@ -301,7 +301,6 @@ impl<'a> VM<'a> {
         let raddrs = self.get_address(q)?.get_bits(0..33);
 
         let mut result = laddrs + raddrs;
-        info!("AI {:039b}", self.get_address(p)?);
 
         result.set_bits(33..39, self.get_address(p)?.get_bits(33..39));
 
@@ -492,7 +491,7 @@ use std::fmt;
 impl fmt::Display for Instruction {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     macro_rules! denormed {
-      ($normed:expr, $nm:expr) => (format!("{}{}", if $normed { ","} else {""}, $nm))
+      ($normed:expr, $nm:expr) => (format!("{}{}", if $normed {""} else {","}, $nm))
     }
 
     match self {
@@ -508,27 +507,27 @@ impl fmt::Display for Instruction {
       DivA    {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "DivA")  , a, b, c),
       DivB    {c,     normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "DivB")  ,"","", c),
       TN      {a,c,   normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TN")    , a,"", c),
-      PN      {a}                      => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "PN")    , a,"",""),
+      PN      {a}                      => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "PN")    , a,"",""),
       TMin    {a,c,   normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TMin")  , a,"", c),
       TMod    {a,c,   normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TMod")  , a,"", c),
       TSign   {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TSgn")  , a, b, c),
       TExp    {a,c,   normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TExp")  , a,"", c),
-      Shift   {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "Shft")  , a, b, c),
-      ShiftAll{a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, ",Shft") , a, b, c),
-      AI      {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "AI")    , a, b, c),
-      AICarry {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, ",AI")   , a, b, c),
-      I       {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "I")     , a, b, c),
-      Comp    {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "Cmp")   , a, b, c),
-      CompWord{a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "CmpWd") , a, b, c),
-      CompMod {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "CmpMd") , a, b, c),
-      Ma      {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "Ma")    , a, b, c),
-      Mb      {b}                      => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "Mb")    ,"", b,""),
-      JCC                              => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "JCC")   ,"","",""),
-      CLCC    {c}                      => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "CLCC")  ,"","", c),
-      CCCC    {  b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "CCCC")  ,"", b, c),
-      Stop28                           => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "Stp28") ,"","",""),
-      LogMult {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "BitMl") , a, b, c),
-      Stop                             => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "Stop")  ,"","",""),
+      Shift   {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "Shft")  , a, b, c),
+      ShiftAll{a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "Shft") , a, b, c),
+      AI      {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "AI")    , a, b, c),
+      AICarry {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "AI")   , a, b, c),
+      I       {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "I")     , a, b, c),
+      Comp    {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "Cmp")   , a, b, c),
+      CompWord{a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "CmpWd") , a, b, c),
+      CompMod {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "CmpMd") , a, b, c),
+      Ma      {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "Ma")    , a, b, c),
+      Mb      {b}                      => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "Mb")    ,"", b,""),
+      JCC                              => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "JCC")   ,"","",""),
+      CLCC    {c}                      => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "CLCC")  ,"","", c),
+      CCCC    {  b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "CCCC")  ,"", b, c),
+      Stop28                           => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "Stp28") ,"","",""),
+      LogMult {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "BitMl") , a, b, c),
+      Stop                             => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "Stop")  ,"","",""),
     }
   }
 }
