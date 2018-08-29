@@ -19,7 +19,8 @@ pub struct MagDrive {
 
 #[derive(Copy, Clone)]
 pub struct MagTape {
-  head: u16,
+  // Insufficient format to simulate tape drives,
+  //it appears they may have had a dedicated block mark channel
   tape: [u64; 30_000]
 }
 
@@ -42,7 +43,7 @@ impl MagDrive {
 
 impl MagTape {
   pub fn new() -> MagTape {
-    MagTape { head: 0, tape: [0; 30_000]}
+    MagTape { tape: [0; 30_000] }
   }
 }
 
@@ -148,7 +149,7 @@ impl DriveOperation {
       0x0281 ... 0x0284 => { Ok(WriteMT(tape_id_from_num(a), b, c)) }
       0x0081 ... 0x0084 => { Ok(ReadMT(tape_id_from_num(a), b, c)) }
       0x00C1 ... 0x00C4 => { Ok(RewindMT(tape_id_from_num(a), b)) }
-      _ => return Err(VMError::BadDriveOperation)
+      _ => Err(VMError::BadDriveOperation)
     }
   }
 }
@@ -477,6 +478,7 @@ impl fmt::Display for Instruction {
     macro_rules! denormed {
       ($normed:expr, $nm:expr) => (format!("{}{}", if $normed { ","} else {""}, $nm))
     }
+
     match self {
       Add     {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Add")   , a, b, c),
       Sub     {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Sub")   , a, b, c),
@@ -487,7 +489,7 @@ impl fmt::Display for Instruction {
       Ce      {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Ce")    , a, b, c),
       Xa      {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Xa")    , a, b, c),
       Xb      {c,     normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Xb")    ,"","", c),
-      DivA    {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "DivA")  , a,"", c),
+      DivA    {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "DivA")  , a, b, c),
       DivB    {c,     normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "DivB")  ,"","", c),
       TN      {a,c,   normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TN")    , a,"", c),
       PN      {a}                      => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "PN")    , a,"",""),

@@ -29,8 +29,8 @@ pub fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, app: &Interface) {
     .direction(Direction::Vertical)
     .sizes(&chunks)
     .render(t, &app.size, |t, chunks| {
-      render_current_instruction_box(t, vm, &chunks[0]);
-      render_past_instructions(t, app, &chunks[1]);
+      render_current_instruction_box(t, vm, chunks[0]);
+      render_past_instructions(t, app, chunks[1]);
 
       // Only render the log if we have enough space
       if chunks.len() > 2 {
@@ -48,17 +48,17 @@ pub fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, app: &Interface) {
   t.draw().unwrap();
 }
 
-fn render_past_instructions<T : Backend>(t: &mut Terminal<T>, app: &Interface, rect: &Rect) {
+fn render_past_instructions<T : Backend>(t: &mut Terminal<T>, app: &Interface, rect: Rect) {
   Block::default()
         .borders(Borders::ALL)
         .title("Past Instructions")
-        .render(t, rect);
+        .render(t, &rect);
 
   Group::default()
     .margin(1)
     .direction(Direction::Vertical)
     .sizes(&[Size::Fixed(1); 20])
-    .render(t, rect, |t, chunks| {
+    .render(t, &rect, |t, chunks| {
       for (instr, chunk) in app.past_instrs.iter().zip(chunks.iter()) {
         Paragraph::default()
           .text(&format!("{}", instr))
@@ -68,18 +68,18 @@ fn render_past_instructions<T : Backend>(t: &mut Terminal<T>, app: &Interface, r
     });
 }
 
-fn render_current_instruction_box(t: &mut Terminal<MouseBackend>, vm: &VM, rect: &Rect) {
+fn render_current_instruction_box(t: &mut Terminal<MouseBackend>, vm: &VM, rect: Rect) {
   Block::default()
     .borders(Borders::ALL)
     .title("Current Instruction")
-    .render(t, rect);
+    .render(t, &rect);
 
   Group::default()
     .margin(1)
     .direction(Direction::Horizontal)
     .sizes(&[Size::Fixed(5), Size::Fixed(2), Size::Fixed(42), Size::Fixed(2), Size::Fixed(10), Size::Fixed(2), Size::Percent(100)])
-    .render(t, rect, |t, chunks| {
-      let ins = vm.get_address(vm.next_instr() as u64).unwrap();
+    .render(t, &rect, |t, chunks| {
+      let ins = vm.get_address(u64::from(vm.next_instr())).unwrap();
 
       Paragraph::default()
         .text(&format!("{:04}", vm.next_instr()))
@@ -95,7 +95,7 @@ fn render_current_instruction_box(t: &mut Terminal<MouseBackend>, vm: &VM, rect:
         .render(t, &chunks[4]);
 
       Paragraph::default()
-        .text(&Instruction::from_bytes(ins).map(|s| format!("{}", s)).unwrap_or("ERROR".to_string()))
+        .text(&Instruction::from_bytes(ins).map(|s| format!("{}", s)).unwrap_or_else(|_| "ERROR".to_string()))
         .alignment(Alignment::Right)
         .wrap(true)
         .render(t, &chunks[6]);

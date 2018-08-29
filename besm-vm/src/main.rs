@@ -71,7 +71,6 @@ fn md_from_file(file: Option<PathBuf>) -> MagDrive {
 }
 use log::LevelFilter;
 use tui_logger::*;
-use interface::*;
 
 fn main() {
   init_logger(LevelFilter::Info).unwrap();
@@ -84,7 +83,7 @@ fn main() {
   let mut is_buf = [0u64; 1023];
   let mut terminal = Terminal::new(MouseBackend::new().unwrap()).unwrap();
 
-  let mut interface = interface::Interface {
+  let mut interface = Interface {
     size: terminal.size().unwrap(),
     past_instrs: ArrayDeque::new(),
   };
@@ -108,10 +107,7 @@ fn main() {
 
       tx.send(evt).unwrap();
 
-      match evt {
-        event::Key::Char('q') => { break; }
-        _ => { }
-      }
+      if let event::Key::Char('q') = evt { break; }
     }
   });
 

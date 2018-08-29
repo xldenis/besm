@@ -10,24 +10,25 @@ pub struct Float {
   pub sign: bool
 }
 
-macro_rules! equalize_exponents {
-  ($left:expr, $right:expr, $left_mant:ident, $left_exp:ident, $right_mant:ident, $right_exp:ident) => {
+macro_rules! equalize_exponents_shift_mant {
+  ($left:expr, $right:expr, $left_mant:ident, $right_mant:ident, $exp:ident) => {
     let mut $left_mant:u32  = $left.mant;
     let mut $right_mant:u32 = $right.mant;
-    let mut $left_exp:i8   = $left.exp;
-    let mut $right_exp:i8  = $right.exp;
+    let left_exp:i8   = $left.exp;
+    let right_exp:i8  = $right.exp;
 
-    match $left_exp.cmp(&$right_exp) {
+
+    let $exp = match left_exp.cmp(&right_exp) {
       Ordering::Less    => {
-        $left_mant = $left_mant.checked_shr(($left_exp - $right_exp) as u32).unwrap_or(0);
-        $left_exp = $right_exp;
+        $left_mant = $left_mant.checked_shr((left_exp - right_exp) as u32).unwrap_or(0);
+        right_exp
       }
       Ordering::Greater => {
-        $right_mant = $right_mant.checked_shr(($left_exp - $right_exp) as u32).unwrap_or(0);
-        $right_exp = $left_exp;
+        $right_mant = $right_mant.checked_shr((left_exp - right_exp) as u32).unwrap_or(0);
+        left_exp
       }
-      Ordering::Equal => { }
-    }
+      Ordering::Equal => { left_exp }
+    };
   };
 }
 
@@ -36,11 +37,11 @@ impl Float {
     let exp = (0xFF & word.get_bits(33..39)) as i8;
     let mant = word.get_bits(0..33) as u32;
     let sign = word.get_bit(32);
-    Float { mant: mant, exp: exp, sign: sign, overflow: false }
+    Float { mant, exp, sign: sign, overflow: false }
   }
 
   pub fn new(mant: u32, exp: i8,) -> Float {
-    Float { mant: mant, exp: exp, overflow: false, sign: false}
+    Float { mant, exp, overflow: false, sign: false}
   }
 
   pub fn to_bytes(&mut self) -> u64 {
@@ -56,7 +57,8 @@ impl Float {
       self.mant >>= 1;
       self.mant.set_bit(31, true);
       self.overflow = false
-    } else if (self.mant == 0 && self.exp == -32) {
+
+    } else if self.mant == 0 && self.exp == -32 {
       ()
     } else {
       let mut shift = 0;
@@ -71,9 +73,7 @@ impl Float {
   }
 
   pub fn add_unnormalized(&self, other: &Float) -> Float {
-    equalize_exponents!(self, other, left_mant, left_exp, right_mant, right_exp);
-
-    let exp = right_exp;
+    equalize_exponents_shift_mant!(self, other, left_mant, right_mant, exp);
 
     let (res_mant, overflow) = left_mant.overflowing_add(right_mant);
     let res_sign = match left_mant.cmp(&right_mant) {
@@ -82,13 +82,11 @@ impl Float {
       Ordering::Equal   => false,
     };
 
-    Float { mant: res_mant, overflow: overflow, sign: res_sign, exp: exp }
+    Float { mant: res_mant, overflow: overflow, sign: res_sign, exp }
   }
 
   pub fn sub_unnormalized(&self, other: &Float) -> Float {
-    equalize_exponents!(self, other, left_mant, left_exp, right_mant, right_exp);
-
-    let exp:i8 = right_exp;
+    equalize_exponents_shift_mant!(self, other, left_mant, right_mant, exp);
 
     let (res_mant, overflow) = left_mant.overflowing_sub(right_mant);
     let res_sign = match overflow {
@@ -96,17 +94,17 @@ impl Float {
       false => self.sign,
     };
 
-    Float { mant: res_mant, overflow: false, sign: res_sign, exp: exp }
+    Float { mant: res_mant, overflow: false, sign: res_sign, exp }
   }
 
   // what is un normalized floating point multiplication?
   pub fn mul_unnormalized(&self, other: &Float) -> Float {
-    equalize_exponents!(self, other, left_mant, left_exp, right_mant, right_exp);
+    equalize_exponents_shift_mant!(self, other, left_mant, right_mant, exp_half);
 
-    let exp:i8 = right_exp + left_exp;
+    let exp:i8 = exp_half + exp_half;
 
-    let res_mant = (left_mant as u64) * (right_mant as u64);
+    let res_mant = u64::from(left_mant) * u64::from(right_mant);
 
-    Float { mant: res_mant.get_bits(32..64) as u32, overflow: false, sign: self.sign ^ other.sign, exp: exp}
+    Float { mant: res_mant.get_bits(32..64) as u32, overflow: false, sign: self.sign ^ other.sign, exp}
   }
 }
