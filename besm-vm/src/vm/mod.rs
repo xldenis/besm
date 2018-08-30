@@ -370,6 +370,7 @@ impl<'a> VM<'a> {
         return Err(VMError::NotYetImplemented(i));
       }
     }
+
     Ok(instr)
   }
 

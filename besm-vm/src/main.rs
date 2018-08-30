@@ -62,8 +62,8 @@ fn md_from_file(file: Option<PathBuf>) -> MagDrive {
         Some(path) => {
             let mut f = File::open(path).expect("file not found");
             let words: Vec<u64> = iter::repeat_with(|| f.read_u64::<BigEndian>().unwrap_or(0))
-                .take(1024)
-                .collect();
+            .take(1024)
+            .collect();
 
             buf.copy_from_slice(&words);
         }
@@ -74,24 +74,32 @@ fn md_from_file(file: Option<PathBuf>) -> MagDrive {
 use log::LevelFilter;
 use tui_logger::*;
 
+use termion::event;
+
+enum Event {
+    Key(event::Key),
+    Tick,
+}
+
 fn main() {
     init_logger(LevelFilter::Info).unwrap();
     set_default_level(LevelFilter::Trace);
 
     let opt = Opts::from_args();
+
+    let mut terminal = Terminal::new(MouseBackend::new().unwrap()).unwrap();
+    let mut interface = Interface {
+        size: terminal.size().unwrap(),
+        past_instrs: ArrayDeque::new(),
+        step_mode: interface::StepMode::Step,
+    };
+
     let mut f = File::open(opt.is_file.clone()).expect("file not found");
     let words: Vec<u64> = iter::repeat_with(|| f.read_u64::<BigEndian>().unwrap_or(0))
         .take(1023)
         .collect();
 
     let mut is_buf = [0u64; 1023];
-    let mut terminal = Terminal::new(MouseBackend::new().unwrap()).unwrap();
-
-    let mut interface = Interface {
-        size: terminal.size().unwrap(),
-        past_instrs: ArrayDeque::new(),
-    };
-
     is_buf.copy_from_slice(&words[..]);
 
     let mut x = [
@@ -101,37 +109,40 @@ fn main() {
         md_from_file(opt.md3),
         md_from_file(opt.md4),
     ];
+
     let mut y = [
         MagTape::new(),
         MagTape::new(),
         MagTape::new(),
         MagTape::new(),
     ];
+
     let mut vm = VM::new(&mut is_buf, &mut x, &mut y, opt.start_address as u16);
 
     let (tx, rx) = mpsc::channel();
 
+    let tx2 = tx.clone();
     thread::spawn(move || {
-        use termion::event;
+        let quarter_sec = time::Duration::from_millis(250);
+        loop {
+            tx2.send(Event::Tick).unwrap();
+            thread::sleep(quarter_sec);
+        }
+    });
+
+    thread::spawn(move || {
         use termion::input::TermRead;
 
         let stdin = io::stdin();
 
         for e in stdin.keys() {
             let evt = e.unwrap();
-
-            tx.send(evt).unwrap();
-
-            if let event::Key::Char('q') = evt {
-                break;
-            }
+            tx.send(Event::Key(evt)).unwrap();
         }
     });
 
     terminal.clear().unwrap();
     terminal.hide_cursor().unwrap();
-
-    let quarter_sec = time::Duration::from_millis(250);
 
     loop {
         let size = terminal.size().unwrap();
@@ -142,36 +153,43 @@ fn main() {
 
         draw(&mut terminal, &vm, &interface);
 
-        use termion::event;
+        use termion::event::Key::*;
+        use interface::StepMode::*;
 
-        let evt = rx.try_recv();
-        use std::sync::mpsc::TryRecvError::*;
-
-        match evt {
-            Ok(event::Key::Char('q')) => {
+        match rx.recv() {
+            Err(_) => {
                 break;
+            }
+            Ok(Event::Key(Char('q'))) => {
+                break;
+            }
+            Ok(Event::Key(Char(' '))) => {
+                interface.toggle_step();
+            }
+            Ok(Event::Tick) if interface.step_mode == Run => {
+                step_vm(&mut vm, &mut interface);
+            }
+
+            Ok(Event::Key(Char('s'))) if interface.step_mode == Step => {
+                step_vm(&mut vm, &mut interface);
             }
             Ok(_) => {}
-            Err(Disconnected) => {
-                break;
-            }
-            Err(Empty) => {}
         }
-
-        if !vm.stopped {
-            match vm.step() {
-                Err(e) => {
-                    error!("{:?}", e);
-                    vm.stopped = true;
-                }
-                Ok(i) => {
-                    interface.past_instrs.push_front(i);
-                }
-            }
-        }
-
-        thread::sleep(quarter_sec);
     }
 
     terminal.show_cursor().unwrap();
+}
+
+fn step_vm(vm: &mut VM, app: &mut Interface) {
+       match vm.step() {
+        Err(e) => {
+            error!("{:?}", e);
+            vm.stopped = true; // vm should handle this internally
+        }
+        Ok(i) => {
+            app.past_instrs.push_front(i);
+        }
+    }
+
+    if vm.stopped { app.halt(); }
 }
