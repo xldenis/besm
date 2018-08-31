@@ -74,14 +74,13 @@ impl <'a> MagSystem<'a> {
       None => { panic!("return error") }
 
       Some(WriteMD(id, n1, c)) => {
-        warn!("Writing to MD");
         let span = (n2 + 1).checked_sub(*n1)?;
-        warn!("TEST");
         let drive = &mut self.mag_drives[id.to_num() as usize];
 
         for (place, data) in drive.drive.iter_mut().skip(*n1 as usize).zip(is.iter().skip((c - 1) as usize).take(span as usize)) {
           *place = *data;
         }
+        info!("Wrote cells {}-{} (len {}) to MD-{:?} from IS {}", n1, n2, span, id, c);
       }
       Some(ReadMD(id, n1, c)) => {
 
@@ -90,6 +89,7 @@ impl <'a> MagSystem<'a> {
         for (place, data) in is.iter_mut().skip((*c-1) as usize).zip(drive.drive.iter().skip(*n1 as usize).take(span as usize)) {
           *place = *data;
         }
+        info!("Read cells {}-{} (len {}) from MD-{:?} to IS {}", n1, n2, span, id, c);
       }
 
       Some(ReadMT(id, r, c)) => {
@@ -210,7 +210,6 @@ impl<'a> VM<'a> {
 
     match instr {
       Mb { b } if self.mag_system.op_started() => {
-        warn!("{}", instr);
         self.mag_system.perform_operation(b, &mut self.is).ok_or(VMError::BadDriveOperation)?;
         self.increment_ic();
 
@@ -284,12 +283,14 @@ impl<'a> VM<'a> {
         let mut val = Float::from_bytes(self.get_address(source)?);
 
         if needs_norm { val.normalize() };
-
+        info!("{:039b}", self.get_address(source)?);
+        info!("Transferring {:?} to {}", val, target);
         self.set_address(target, val.to_bytes());
         self.increment_ic();
       }
       TExp { a: source, c: target, normalize: needs_norm } => {
         let val = Float::from_bytes(self.get_address(source)?);
+        warn!("Transferring exponent from {:?}", val);
 
         let mut res = Float::from_bytes(val.exp as u64);
 
@@ -331,6 +332,10 @@ impl<'a> VM<'a> {
         let raddrs = self.get_address(q)?.get_bits(0..33);
 
         let mut result = laddrs + raddrs;
+        // info!("A1 : {} {} {}", second_addr(laddrs), second_addr(raddrs), second_addr(result));
+        // info!("AI {:011b}", first_addr(laddrs));
+        // info!("AI {:011b}", first_addr(raddrs));
+        // info!("AI {:011b}", first_addr(result));
 
         result.set_bits(33..39, self.get_address(p)?.get_bits(33..39));
 
@@ -351,6 +356,7 @@ impl<'a> VM<'a> {
         let left  = Float::from_bytes(self.get_address(a)?);
         let right = Float::from_bytes(self.get_address(b)?);
 
+        info!("CMP {:?} {:?}", left, right);
         let branch = match left.exp.cmp(&right.exp) {
           Ordering::Greater => { left.sign }
           Ordering::Less => { !right.sign }
@@ -358,6 +364,19 @@ impl<'a> VM<'a> {
         };
 
         if branch {
+          info!("Branching to {}", c);
+          self.set_ic(c);
+        } else {
+          self.increment_ic();
+        }
+      }
+      CompWord { a, b, c } => {
+        let left = self.get_address(a)?;
+        let right = self.get_address(b)?;
+
+        info!("CMPWD {:?} {:?}", left, right);
+        if left != right {
+          info!("Branching to {}", c);
           self.set_ic(c);
         } else {
           self.increment_ic();
@@ -499,8 +518,10 @@ impl Instruction {
         true => AICarry {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       },
       0x13 => I         {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x14 => Comp      {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x34 => CompWord  {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
+      0x14 => match word.get_bit(38) {
+        false => Comp      {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
+        true  => CompWord  {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
+      },
       0x15 => CompMod   {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       0x16 => Ma        {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       0x17 => Mb        {                                                   b: second_addr(word)},
@@ -510,7 +531,7 @@ impl Instruction {
       0x1C => Stop28    { },
       0x1D => LogMult   {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
       0x1F => Stop      { },
-      _    => return Err(VMError::InvalidInstruction(word))
+      _    => { return Err(VMError::InvalidInstruction(word)) }
     };
 
     Ok(instr)

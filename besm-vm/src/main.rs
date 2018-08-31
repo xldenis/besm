@@ -123,10 +123,10 @@ fn main() {
 
     let tx2 = tx.clone();
     thread::spawn(move || {
-        let quarter_sec = time::Duration::from_millis(250);
+        let speed = time::Duration::from_millis(50);
         loop {
             tx2.send(Event::Tick).unwrap();
-            thread::sleep(quarter_sec);
+            thread::sleep(speed);
         }
     });
 
@@ -143,15 +143,16 @@ fn main() {
 
     terminal.clear().unwrap();
     terminal.hide_cursor().unwrap();
+    draw(&mut terminal, &vm, &interface);
 
     loop {
         let size = terminal.size().unwrap();
         if size != interface.size {
             terminal.resize(size).unwrap();
             interface.size = size;
+            draw(&mut terminal, &vm, &interface);
         }
 
-        draw(&mut terminal, &vm, &interface);
 
         use termion::event::Key::*;
         use interface::StepMode::*;
@@ -175,13 +176,14 @@ fn main() {
             }
             Ok(_) => {}
         }
+        draw(&mut terminal, &vm, &interface);
     }
 
     terminal.show_cursor().unwrap();
 }
 
 fn step_vm(vm: &mut VM, app: &mut Interface) {
-       match vm.step() {
+    match vm.step() {
         Err(e) => {
             error!("{:?}", e);
             vm.stopped = true; // vm should handle this internally
