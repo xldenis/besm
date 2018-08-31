@@ -70,15 +70,16 @@ encodeProgramme p@(PP {..}) = let
 
 programmeSummaryTable :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> [BitVector 39]
 programmeSummaryTable olen vlen clen plen klen gammalen alphalen =
-    buildInstruction 0 0 0 (bitVector' $ olen)
-  : buildInstruction 0 0 0 (bitVector' $ lastVAddr)
-  : buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + 1)
-  : buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen)
-  : buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen - 1)
-  : buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen)
-  : buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen)
-  : buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen + gammalen - 1)
-  :[buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen + gammalen + alphalen - 1)]
+  [ buildInstruction 0 0 0 (bitVector' $ olen)
+  , buildInstruction 0 0 0 (bitVector' $ lastVAddr)
+  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + 1)
+  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen) -- last of C
+  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen) -- first of K - 1
+  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen)
+  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen)
+  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen + gammalen - 1)
+  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen + gammalen + alphalen - 1)
+  ]
 
   where
   lastVAddr = 0x0010 + vlen - 1

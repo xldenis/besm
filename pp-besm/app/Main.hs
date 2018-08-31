@@ -52,7 +52,7 @@ codeCommand f = do
   pp <- parseFromFile f
   let qa          = calculateQuantityAddresses lowered
       lowered     = (lowerProgramme pp)
-      prettyPrint = Prelude.putStrLn . show . vcat . map prettyInstruction
+      prettyPrint = Prelude.putStrLn . show . vcat . map (pPrint . toHexString)
 
   print "Block V"
   prettyPrint $ blockV qa (variableAddresses lowered)
