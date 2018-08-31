@@ -121,7 +121,7 @@ blockOffsets off (bb : blks) = let
 blockOffsets _ [] = []
 
 relativize :: Map Address RelativeAddr -> Address -> RelativeAddr
-relativize m (Procedure _) =  Abs 0x1 -- stop instruction
+relativize m (Procedure _) =  Abs 0x99999 -- stop instruction
 relativize m u@(Unknown s)   = case u `M.lookup` m of
   Just cons -> cons
   Nothing -> error $ "Missing constant offset for " ++ show s
@@ -136,36 +136,49 @@ relativize m (Offset a o)  = case relativize m a of
   Rel s i -> Rel s (i + o)
 relativize m (Absolute a) = Abs a
 
-toUnsegmentedMap :: [BB Address] -> Map Address (BB Address)
-toUnsegmentedMap bbs = M.fromList $ L.map (\bb -> (baseAddress bb, bb)) bbs
+toUnsegmentedMap :: [BB Address] -> Map Address (Segment)
+toUnsegmentedMap bbs = M.fromList $ L.map (\bb -> (baseAddress bb, Unsegmented bb)) bbs
 
 {-
   Break up the CFG into a series of linear chunks, add explicit jumps between segments
   and merge it back together in a linearized CF
 -}
 segmentize :: [BB Address] -> [BB Address]
-segmentize blks = join . reverse $ map addJump $ go (toUnsegmentedMap blks) []
+segmentize blks = join $ map (addJump . fromSegment) . M.elems $ go (toUnsegmentedMap blks)
   where
-  go map acc | map == M.empty = acc
-  go map acc = let
-    (map', a) = segment map (head $ M.keys map)
-    in go map' (a : acc)
+  fromSegment (Segmented x) = x
+
+  go map = go' map (M.keys map)
+
+  go' map (k : eys) = go' (segment map k) eys
+  go' map [] = map
 
 {-
   Extract a linear segment from the block map.
 -}
 
-segment :: Map Address (BB Address) -> Address -> (Map Address (BB Address), [BB Address])
+data Segment = Segmented [BB Address] | Unsegmented (BB Address)
+
+segment :: Map Address (Segment) -> Address -> Map Address (Segment)
 segment map addr = case addr `M.lookup` map of
-  Just bb -> case (implicitJumps (terminator bb)) of
-    Just tar -> fmap (bb :) $ segment (M.delete addr map) tar
-    Nothing  -> (M.delete addr map, [bb])
-  Nothing -> (map, [])
+  Just (Unsegmented bb) -> case (implicitJumps (terminator bb)) of
+    Just tar -> let
+      map' = segment (M.delete addr map) tar
+      in case tar `M.lookup` map' of
+        Just (Segmented seg) -> M.insert addr (Segmented $ bb : seg) (M.delete tar map')
+        Nothing -> M.insert addr (Segmented [bb]) map
+        _ -> map
+    Nothing  -> (M.insert addr (Segmented [bb]) map)
+  _ -> map
 
 addJump :: [BB Address] -> [BB Address]
 addJump [bb] = case implicitJumps (terminator bb) of
   Just iJ -> let
-    bb' = bb { terminator = Chain (baseAddress jB) } -- add hard jump
+    bb' = case terminator bb of
+      Comp     l r b i -> bb { terminator = Comp l r b (baseAddress jB)}
+      CompMod  l r b i -> bb { terminator = CompMod l r b (baseAddress jB)}
+      CompWord l r b i -> bb { terminator = CompWord l r b (baseAddress jB)}
+      _ -> bb { terminator = Chain (baseAddress jB) } -- add hard jump
     jB = jumpBlk bb iJ
     in [bb', jB]
   Nothing -> [bb]

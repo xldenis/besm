@@ -1,9 +1,10 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE RecursiveDo, BinaryLiterals #-}
 module PP1 where
 
 
 import Monad
 import Syntax
+import qualified Data.Bits as B
 
 informationBlock      = Unknown "buffer" `offAddr` 0
 completedInstructions = Unknown "buffer" `offAddr` 96
@@ -23,34 +24,40 @@ one  = Unknown "one"
 
 _selectionCounter   = Unknown "selection counter"
 _ninetysix          = Unknown "96"
-cellKlast           = Unknown "last K cell"
+cellKlast           = Unknown "programme header table" `offAddr` 5
 _arrangementCounter = Unknown "arrangement counter"
 _hundredfourtyfour  = Unknown "144"
+maxSelected         = Unknown "max-selected"
 
 constantMap =
   [ ("buffer", Size 240)
+  , ("programme header table", Size 9)
   , ("selection counter", Val 0)
   , ("arrangement counter", Val 0)
-  , ("96", Val 96) -- encode properly
-  , ("144", Val 144) -- encode these properly
+  , ("96", Raw 96) -- encode properly
+  , ("144", Raw 144) -- encode these properly
   , ("cell b", Val 0)
   , ("cell a", Val 0)
   , ("cell a+1", Val 0)
   , ("cell b", Val 0)
   , ("one",  Raw 1)
-  , ("zero", Val 0)
+  , ("one-3rd-addr", Raw $ 1 `B.shift` 22)
+  , ("zero", Raw 0)
   , ("0x18", Val 0)
   , ("snd and third addr mask", Val 0)
   , ("first addr mask", Val 0)
-  , ("K_f", Val 0)
-  , ("K_cr", Val 0)
+  , ("K_f", Raw 0)
+  , ("K_cr", Raw 0)
   , ("start of 144 block", Val 0)
   , ("shift l 11", Val 0)
   , ("last K cell", Val 0)
-  , ("96 shifted", Val 0)
-  , ("start of info block write", Val 0)
-  , ("144 shifted 2nd addr", Val 0)
+  , ("96 shifted", Raw $ 96 `B.shift` 11)
+  , ("start of info block read", Val 0)
+  , ("144 shifted 2nd addr", Raw $ 144 `B.shift` 11)
   , ("end of md write", Val 0)
+  , ("max-selected", Raw 96)
+  , ("-96-shifted",  Raw $ 0b11110100000 `B.shift` 22)
+  , ("-144-shifted", Raw $ 0b11101110000 `B.shift` 22)
   ]
 
 
@@ -70,8 +77,10 @@ mp1 = do
     can be done in one pass by using the upper memory
   -}
   operator 1 $ mdo
-    cellC <- readMD 2 (Absolute 9) (Absolute 9) cellB
-    sub' cellB one cellB
+    let header = Unknown "programme header table"
+
+    cellC <- readMD 2 (Absolute 7) (Absolute 15) header
+    sub' (header `offAddr` 2) one cellB
 
     shift cellB (Absolute 11) cellB
     ai addr cellB addr
@@ -87,6 +96,19 @@ mp1 = do
     ma (Absolute $ 0x0300 + 1) (Absolute 0x10) buffer
     addr' <- mb (Absolute 0)
 
+    tN' (header `offAddr` 4) _selectionCounter
+    tN' (header `offAddr` 4) maxSelected
+
+    -- Absolutely way too brittle
+    -- Initialize values inside of the selection and arrangement subroutines
+
+    shift (header `offAddr` 4) (Absolute 11) cellB
+
+    ai (op 19) cellB (op 19)
+    ai (op 19 `offAddr` 1) cellB (op 19 `offAddr` 1)
+
+    ai (op 22) cellB (op 22)
+    ai (op 22 `offAddr` 1) cellB (op 22 `offAddr` 1)
 
     chain (op 2)
 
@@ -101,14 +123,14 @@ mp1 = do
     Op. 3 extracts the exponent x from (A).
   -}
   operator 3 $ do
-    tExp cellA cellB
+    tExp' cellA cellB
     chain (op 4)
 
   {-
     Op. 4 transfers control to op. 5 if x = 0.
   -}
   operator 4 $ do
-    compWord zero cellB (op 5) (op 6)
+    compWord zero cellB (op 6) (op 5)
   {-
     Op. 5 in the case that (A) != 0, transfers control to the block of
     arithmetical operators since a "non-vacant" line of information with zero
@@ -211,8 +233,6 @@ mp1 = do
     a <- ma (Absolute $ 0x0300 + 1) _startMDKMinus144 completedInstructions
     b <- mb (Absolute 0)
 
-
-
     chain (op 16)
 
   {-
@@ -251,39 +271,44 @@ mp1 = do
   -}
 
   operator 17 $ do
-    comp _selectionCounter cellKlast (op 12) (op 18)
+    compWord _selectionCounter cellKlast (op 18) (op 12)
 
   {-
     Op. 18 tests that the contents of the selection block have been exhausted
   -}
   operator 18 $ do
-    comp _selectionCounter _ninetysix (op 19) (op 20)
+    compWord _selectionCounter maxSelected (op 20) (op 19)
 
-  {-
-    Op. 19 reads the next 96 cells of memory to the selection block.
-  -}
-  operator 19 $ do
-    let startOfK = Unknown "start of info block write"
-    let kPlus96  = startOfK `offAddr` 96
-    a <- ma (Absolute $ 0x0100 + 2) startOfK informationBlock
-    b <- mb kPlus96
+  mdo
+    {-
+      Op. 19 reads the next 96 cells of memory to the selection block.
+    -}
+    operator 19 $ do
+      let startOfK = Absolute 1
+      let kPlus96  = startOfK `offAddr` 95
+      a <- ma (Absolute $ 0x0100 + 2) startOfK informationBlock
+      b <- mb kPlus96
 
-    let _ninetysixSndAddr = Unknown "96 shifted"
-    ai a _ninetysixSndAddr a
-    ai b _ninetysixSndAddr b
+      let _ninetysixSndAddr = Unknown "96 shifted"
+      ai a _ninetysixSndAddr a
+      ai b _ninetysixSndAddr b
 
-    tN zero _selectionCounter
+      ai maxSelected _ninetysix maxSelected -- reset selection counter comp
+      let _minus96 = Unknown "-96-shifted"
+      ai iOp _minus96 iOp -- reset index op
+      chain (op 20)
 
-    chain (op 20)
+    {-
+      Op. 20 sends the contents of the first cell in the block to the standard cell A.
+    -}
+    iOp <- operator 20 $ mdo
+      ta <- tN' (informationBlock `offAddr` 96) cellA -- use AI to modify
+      ai ta (Unknown "one-3rd-addr") ta
+      ai _selectionCounter one _selectionCounter
+      retRTC
+      return ta
 
-  {-
-    Op. 20 sends the contents of the first cell in the block to the standard cell A.
-  -}
-  operator 20 $ mdo
-    ta <- tN informationBlock cellA -- use AI to modify
-    ai ta one ta
-    retRTC
-
+    return ()
   {-
     Op. 21 tests whether the arrangement block has been exhausted
   -}
@@ -291,31 +316,35 @@ mp1 = do
     comp _arrangementCounter _hundredfourtyfour (op 22) (op 23)
 
 
-  {-
-    Op. 22 writes the arrangement block to MD-1
-  -}
-  operator 22 $ do
-    let _startMDK = Unknown "end of md write"
-    let _startMDKMinus144 = _startMDK `offAddr` (negate 144)
-    let _hundredfourtyfourSndAddr = Unknown "144 shifted 2nd addr"
+  mdo
+    {-
+      Op. 22 writes the arrangement block to MD-1
+    -}
+    operator 22 $ do
+      let startMDK = Absolute 0
+      let endOfMDK = startMDK `offAddr` (144)
+      let _hundredfourtyfourSndAddr = Unknown "144 shifted 2nd addr"
 
-    a <- ma (Absolute $ 0x0300 + 1) _startMDK completedInstructions
-    b <- mb _startMDKMinus144
+      a <- ma (Absolute $ 0x0300 + 1) startMDK completedInstructions
+      b <- mb endOfMDK
 
-    ai a _hundredfourtyfourSndAddr a
-    ai b _hundredfourtyfourSndAddr b
+      ai a _hundredfourtyfourSndAddr a
+      ai b _hundredfourtyfourSndAddr b
 
-    tN zero _arrangementCounter
+      tN zero _arrangementCounter
+      ai ta (Unknown "-144-shifted") ta -- reset index op
+      chain (op 23)
 
-    chain (op 23)
+    {-
+      Op. 23 transfers the contesnts of cell A + 1 to the next cell in the arrangement of block.
+    -}
+    ta <- operator 23 $ do
+      ta <- tN cellA1 completedInstructions -- use AI to modify
+      ai ta (Unknown "one-3rd-addr") ta
+      retRTC
+      return ta
+    return ()
 
-  {-
-    Op. 23 transfers the contesnts of cell A + 1 to the next cell in the arrangement of block.
-  -}
-  operator 23 $ do
-    tN cellA1 completedInstructions -- use AI to modify
-
-    retRTC
 
 
 
