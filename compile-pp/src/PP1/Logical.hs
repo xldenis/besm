@@ -1,6 +1,11 @@
+{-# LANGUAGE RecursiveDo #-}
 module PP1.Logical where
 
 {-
+
+  Defn: Internal instructions have either bar(N) or 0202 in the third address.
+  Defn: Output addresses have N_1, N_2, ..., N_k in the third address.
+
   In accordance with teh algorithm for programming operators (section 13) the
   block 1-PP-1 consists of three basic parts.
 
@@ -39,43 +44,165 @@ module PP1.Logical where
   Let us consider the functioning of the first part of block 1-PP-1. THis
   block begins its functioning when the first line of infromation on the
   logical operator is already placed in cell A.
+-}
+import Monad
+import Syntax
+
+thirdAddr  = Unknown ""
+firstAddr  = Unknown ""
+secondAddr = Unknown ""
+
+cellC = Unknown "C"
+
+four = Unknown "4"
+zero = Unknown "0"
+
+pp1_1 = do
+  let constantX = Unknown "template 1"
+  let constantN = Unknown "template 2"
+
+  let alpha1 = Unknown "α+1"
+  let alpha2 = Unknown "α+2"
+  let alpha3 = Unknown "α+3"
+  let alpha4 = Unknown "α+4"
+
+  let cellK0 = alpha1
+  let cellK1 = alpha2
+  let cellK2 = alpha3
+  let cellK3 = alpha4
+
+  let cellY = Unknown "Y"
+  let eight = Unknown "8"
+
+  {-
+
+    Op. 1 forms the constants
+
+    ┌───┬────┬─────┬───┐  ┌───┬───┬───┬───┐
+    │   │    │ "x" │   │  │   │   │   │ N̅ │
+    └───┴────┴─────┴───┘, └───┴───┴───┴───┘
+
+    Notes:
+
+    Since we are coming from MP-1 the first line of information on the logical
+    operator is already in cell A with the form:
+
+    ┌─────┬────┬─────┬───┐
+    │ 018 │    │ "x" │ N̅ │
+    └─────┴────┴─────┴───┘
+  -}
+
+  operator 1 $ do
+    let secondAddr = Unknown ""
+
+    bitAnd cellA secondAddr constantX
+    bitAnd cellA thirdAddr  constantN
+
+    chain (op 2)
+
+  {-
+    Op. 2 selects the next line of information.
+
+    Note
+    ====
+    Has the form:
+    ┌─────┬────┬─────┬───┐
+    │ y   │ a  │ b   │ N │
+    └─────┴────┴─────┴───┘
+
+    where y = segment type, a, b are the bounds, N is the desired operator code.
+  -}
+
+  operator 2 $ do
+    let _mp1_17 = Unknown "mp-1-17"
+    let _mp1_20 = Unknown "mp-1-20"
+
+    callRtc _mp1_17 _mp1_20
+
+    chain (op 3)
+  {-
+    Op. 3 extracts the third address of this line.
+  -}
+
+  operator 3 $ do
+    bitAnd cellA thirdAddr cellB
+    chain (op 4)
+  {-
+    Op. 4 verifies if the extracted address is vacant. If it is not vacant,
+    control is transferred to op. 12, and in the opposite case to op. 5, the
+    third and concluding part of block 1-PP-1.
+  -}
+
+  operator 4 $ do
+    let zero = Unknown "0"
+    compWord zero cellB (op 12) (op 5)
+
+  {-
+    We shall term a comparison containing "x" in the first address a direct
+    comparison, and a comparison having "x" in the second address, inverse.
+
+    Op. 12 extracts from the next line of information the number of the type of
+    segment y and forms the preparation
+
+      ┌───┬────┬────┬──────┐
+      │ < │    │    │ 0202 │
+      └───┴────┴────┴──────┘
 
 
-  Op. 1 forms the constants
+    for the internal comparison and
 
-  +-----------+  +-----------+
-  | | | "x" | |  | | |   | N |
-  +-----------+, +-----------+
+      ┌───┬─────┬─────┬──────┐
+      │   │ "a" │ "x" │      │
+      └───┴─────┴─────┴──────┘
 
-  Op. 2 selects the next line of information.
+    for the inverse comparison.
 
-  Op. 3 extracts the third address of this line.
+  -}
 
-  Op. 4 verifies if the extracted address is vacant. If it is not vacant,
-  control is transferred to op. 12, and in the opposite case to op. 5, the
-  third and concluding part of block 1-PP-1.
+  operator 12 $ mdo
 
-  We shall term a comparison containing "x" in the first address a direct
-  comparison, and a comparison having "x" in the second address, inverse.
+    {-
 
-  Op. 12 extracts from the next line of information the number of the type of
-  segment y and forms the preparation
+      Holds the value:
+      ┌───┬────┬────┬──────┐
+      │ < │    │    │ 0202 │
+      └───┴────┴────┴──────┘
+    -}
 
-    ┌───┬────┬────┬──────┐
-    │ < │    │    │ 0202 │
-    └───┴────┴────┴──────┘
+    let template = Unknown "comp template"
+    tExp' cellA cellY
 
-  for the internal comparison and
+    comp cellY eight direct inverse
 
-    ┌───┬─────┬─────┬──────┐
-    │   │ "a" │ "x" │      │
-    └───┴─────┴─────┴──────┘
 
-  for the inverse comparison.
+    inverse <- block $ do
+      bitAnd cellA firstAddr cellC
+      ai constantX cellC alpha1
+
+      chain direct
+
+    direct <- block $ mdo
+      comp1 <- comp cellY four internal comp2
+      comp2 <- comp eight cellY internal (op 13)
+
+      return comp1
+
+    internal <- block $ do
+      ai' alpha1 template alpha1
+
+      chain (op 13)
+    return ()
+  {-
 
   Op. 13 for y > 8 transfers control to op. 19, forming for this case the
   internal inverse comparison.
 
+  -}
+
+  operator 13 $ do
+    comp eight cellY (op 19) (op 14)
+
+  {-
   For y <= 8
 
   Op. 14 forms the preparation
@@ -83,10 +210,44 @@ module PP1.Logical where
     ┌───┬────┬────┬──────┐
     │ < │    │    │    N │
     └───┴────┴────┴──────┘
+
   for the output comparison.
 
+  Notes
+  =====
+
+  Output comparison are types 4, 8
+
+  Therefore we need to check 4 <= y <= 8
+  -}
+
+  operator 14 $ mdo
+    comp cellY four (op 15) template -- if Y < 4 then next else apply template
+
+    template <- block $ do
+      let compTemplate = Unknown "<" -- cell with just < code
+      ai' alpha1 compTemplate alpha1
+      ai' alpha1 cellB alpha1 -- we stored N in cell B in operator 3x
+
+      chain (op 15)
+
+    return ()
+  {-
   Op. 15 for y = 8 transfers control to op. 19, forming for this case the
   output inverse comparison.
+
+
+  Notes
+  =====
+  We already know that y <= 8 from Op. 14, the possible values are 1, 2, 3, 4, 8
+
+  Can be combined with teh conditional in op 14.
+  -}
+
+  operator 15 $ do
+    comp cellY eight (op 16) (op 19) -- if y < 8 then (op 19) else (op 16)
+
+  {-
 
   For y < 8
 
@@ -97,27 +258,77 @@ module PP1.Logical where
   └───┴─────┴─────┴──────┘
 
   for the direct comparison.
+  -}
 
+  operator 16 $ do
+    shift constantX (Absolute 11) cellC
+    ai alpha1 cellC alpha1
+
+    shift cellB (Absolute 11) cellC
+    ai alpha1 cellC alpha1
+
+    chain (op 17)
+
+  {-
   Op. 17 for y > 3 transfers control to op. 19, forming for this case teh
   output direct comparison.
+  -}
+  operator 17 $ do
+    let three = Unknown "3"
+    comp three cellY (op 19) (op 18)
 
+  {-
   For y <= 3
 
   Op. 18 forms the preparation
 
   ┌───┬────┬────┬──────┐
-  │ < │    │    │    N │
+  │ < │    │    │    N̅ │
   └───┴────┴────┴──────┘
 
   for the internal comparison.
 
+  -}
+  operator 18 $ do
+    let compTemplate = Unknown "<" -- cell with just < code
+
+    ai alpha1 constantN alpha1
+    ai alpha1 compTemplate alpha1
+
+    chain (op 19)
+
+  {-
   Op. 19 forms the the first comparison.
 
-  Op. 20 transfers control to the subroutine "purging".
+  NOTES
+  =====
 
+  Uh what?
+
+  Unclear what "forming the first comparison" means!
+
+  I suppose if all the 'preparations' were held in special memory and then added
+  here that could make sense...
+  -}
+  operator 19 $ do
+    chain (op 20)
+
+  {-
+  Op. 20 transfers control to the subroutine "purging".
+  -}
+
+  operator 20 $ do
+    callRtc (op 35) (op 45)
+
+    chain (op 21)
+
+  {-
   Op. 21 determines if it is necessary to consrtruct an intermediate CCCC and
   for y >= 18
+  -}
 
+
+  {-
   Op. 22 constructs the intermediate CCCC.
 
   Op. 23 transfers control to the sub-routine "purging".
@@ -166,46 +377,136 @@ module PP1.Logical where
   Op. 33 transfers control to the sub-routine "purging".
 
   Op. 34 sends teh next line of information to selection.
+  -}
 
+  {-
   Let us consider the functioning of the second part of the block 1-PP-1,
   realizing the algorithm "purging" S 12.
 
   Op. 35 extracts the first two addresses from instructions K_1, K_2, K_3.
+  -}
+  let temp1 = Unknown "scratch-cell-1"
+  let temp2 = Unknown "scratch-cell-2"
+  let temp3 = Unknown "scratch-cell-3"
 
+  operator 35 $ do
+    let firstAndSndAddr = Unknown "firstAndSndAddr"
+    bitAnd cellK1 firstAndSndAddr temp1
+    bitAnd cellK2 firstAndSndAddr temp2
+    bitAnd cellK3 firstAndSndAddr temp3
+
+  {-
   Op. 36 verifies if K_1 is a comparison. If K_1 is CCCC, control is
-  transferred to op. 42. If K_1 is comparison then op. 37 and op. 38 verify if
-  the first two addresses of instructions K_1 and K_2 coincide. In the case of
-  coincidence control is transferred to op. 41.
+  transferred to op. 42. .
+  -}
 
+  operator 36 $ do
+    let ccccOpCode = Unknown "CCCC"
+    tExp' cellK1 cellC
+    compWord cellC ccccOpCode (op 42) (op 37)
+
+  {-
+  If K_1 is comparison then op. 37 and op. 38 verify if the first two
+  addresses of instructions K_1 and K_2 coincide. In the case of coincidence
+  control is transferred to op. 41
+
+  NOTES
+  =====
+
+  The only reason this would take two operators is if we extracted the first
+  and second address separately.
+  -}
+  operator 37 $ do
+    compWord temp1 temp2 (op 39) (op 41)
+
+
+  {-
   In the case of non-coincidence
 
   Op. 39 verifies if the first two addresses of instructions K_1 and K_3
-  coincide. In the case of coincidence
+  coincide.
+  -}
+  operator 39 $ do
+    compWord temp1 temp3 (op 42) (op 40)
+
+  {-
+
+  In the case of coincidence
 
   Op. 40 transfers K_1 to the place of K_3 and strikes out CCCC, standing in
   cell α+1.
 
+  -}
+  operator 40 $ do
+    tN' cellK1 cellK3
+    tN' zero alpha1
+
+    chain (op 41)
+
+  {-
+
   Op. 41 eliminates comparison K_1.
 
+  -}
+  operator 41 $ do
+    tN' zero cellK1
+
+
+  {-
   Op. 42 compares the contents of cell α+4 with the constant c, having the
   form
 
   ┌───┬────┬────┬──────┐
-  │   │    │    │ 1355 │
+  │   │    │    │ 13FF │
   └───┴────┴────┴──────┘
 
   If (α+4) < c, operators 43 and 44 are by-passed. This form of constant c is
   explained by the fact that N may be added in the third address of the
   elminated comparison by op. 8.
 
+  -}
+  operator 42 $ do
+    let constant = Unknown "0x13FF"
+
+    comp alpha4 constant (op 45) (op 43)
+
+  {-
   Op. 43 and op. 44 transfer K3 to the block of completed instructions.
 
+  NOTES
+  =====
+
+  The book says it calls MP(2) but that seems wrong.. the correct subroutine is at MP(21).
+  What does op 44 do then though?
+
+
+  -}
+
+  operator 43 $ do
+    let cellA1 = Unknown "A + 1"
+    let _mp1_21 = Unknown "MP-1(21)"
+    let _mp1_23 = Unknown "MP-1(23)"
+
+    tN' cellK3 cellA1
+    callRtc _mp1_21 _mp1_23
+
+  {-
   Op. 45 realizes "shift":
 
   (α+3) -> α+4, (α+2) -> α+3, (α+1) -> α+2
 
   and clears α+1.
 
+  -}
+
+  operator 45 $ do
+    tN' alpha3 alpha4
+    tN' alpha2 alpha3
+    tN' alpha1 alpha2
+    tN' zero   alpha1
+
+    retRTC
+  {-
   In the third, concluding part of the block 1-PP-1
 
   Op. 5 clears the "counter of concluding transfers".

@@ -44,12 +44,6 @@ import Debug.Trace
   Symbol Counter is used in successive extraction of the codes of symbols from lines of information.
 -}
 
-cellA :: Address
-cellA = Unknown "A"
-
-cellB :: Address
-cellB = Unknown "B"
-
 cellC :: Address
 cellC = Unknown "C"
 

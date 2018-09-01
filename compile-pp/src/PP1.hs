@@ -9,10 +9,6 @@ import qualified Data.Bits as B
 informationBlock      = Unknown "buffer" `offAddr` 0
 completedInstructions = Unknown "buffer" `offAddr` 96
 
-cellB  = Unknown "cell b"
-cellA  = Unknown "cell a"
-cellA1 = Unknown "cell a+1" -- A + 1
-
 cellKf  = Unknown "K_f"
 cellKcr = Unknown "K_cr"
 
@@ -36,10 +32,9 @@ constantMap =
   , ("arrangement counter", Val 0)
   , ("96", Raw 96) -- encode properly
   , ("144", Raw 144) -- encode these properly
-  , ("cell b", Val 0)
-  , ("cell a", Val 0)
-  , ("cell a+1", Val 0)
-  , ("cell b", Val 0)
+  , ("A", Val 0)
+  , ("A + 1", Val 0)
+  , ("B", Val 0)
   , ("one",  Raw 1)
   , ("one-3rd-addr", Raw $ 1 `B.shift` 22)
   , ("zero", Raw 0)

@@ -1,29 +1,30 @@
 module Main where
 
-import Lib
 
 import Data.GraphViz
 import Data.Graph.Inductive.Graph (nmap, emap)
-import CFG
-
-import Monad
-
-import Data.GraphViz.Commands
-import Syntax
-
-import PP1
 import Data.Function
-import Besm.Put
+import Data.GraphViz.Commands
+
+import CFG
+import Monad
+import Syntax
+import PP1
+import PP1.Logical
+import Lib
 import Assembler
+
+import Besm.Put
 
 main :: IO ()
 main = do
   let cfg = programmeToGraph (runBuilder (op 999) $ arithCoder)
       cf2 = programmeToGraph (runBuilder (op 999) $ mp1)
-
+      lcfg = programmeToGraph (runBuilder (op 999) $ pp1_1)
   runGraphviz (graphToDot params $ (nmap formatAddr cfg)) Png "cfg.png"
   runGraphviz (graphToDot params $ (nmap formatAddr cf2)) Png "cfg-2.png"
 
+  runGraphviz (graphToDot params $ (nmap formatAddr lcfg)) Png "cfg-logi.png"
   -- print $ bb0
 
   mapM_ putStrLn $ assemble constantMap AlignRight (runBuilder (op 999) mp1) & map toHexString
