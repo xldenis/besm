@@ -74,6 +74,9 @@ pp1_1 = do
   let cellY = Unknown "Y"
   let eight = Unknown "8"
 
+  let purge = callRtc (op 35) (op 45)
+
+
   {-
 
     Op. 1 forms the constants
@@ -264,7 +267,8 @@ pp1_1 = do
     shift constantX (Absolute 11) cellC
     ai alpha1 cellC alpha1
 
-    shift cellB (Absolute 11) cellC
+    bitAnd cellA firstAddr cellC
+    shift cellC (Absolute 11) cellC
     ai alpha1 cellC alpha1
 
     chain (op 17)
@@ -318,33 +322,73 @@ pp1_1 = do
   -}
 
   operator 20 $ do
-    callRtc (op 35) (op 45)
+    purge
 
     chain (op 21)
 
   {-
-  Op. 21 determines if it is necessary to consrtruct an intermediate CCCC and
+  Op. 21 determines if it is necessary to construct an intermediate CCCC and
   for y >= 18
+
   -}
 
+  operator 21 $ do
+    let eighteen = Unknown "18"
+    comp cellY eighteen (op 24) (op 22)
 
   {-
   Op. 22 constructs the intermediate CCCC.
+  -}
 
+  operator 22 $ do
+    let ccccOpCode = Unknown "CCCC"
+    tN' constantN alpha1
+    ai ccccOpCode alpha1 alpha1
+
+    chain (op 23)
+  {-
   Op. 23 transfers control to the sub-routine "purging".
+  -}
 
-  Op. 24 extracts y', the contents of the two lowest orders in teh number of
+  operator 23 $ do
+    purge
+
+    chain (op 24)
+
+  {-
+  Op. 24 extracts y', the contents of the two lowest orders in the number of
   the type of segment. The coding of types is so chosen that according to the
   quantity y' it is possible to decide what type of instructions are necessary
   to construct for the right end of the segment.
 
+  -}
+
+  let cellY' = Unknown "Y'"
+  operator 24 $ do
+    bitAnd cellY (Unknown "lowest2") cellY'
+
+    chain (op 25)
+
+  {-
   Op. 25 determines the case y' = 0 (y = 4, y = 8), for which the construction
   of the elementary operator has already been compelted and transfers control
   to selection of the following line of information.
 
+  -}
+  operator 25 $ do
+    compWord cellY' zero (op 26) (op 34)
+  {-
+
   Op. 26 determines the case y' = 1, for which only the last CCCC remains to
   be constructed, formed by op. 32
 
+  -}
+
+  operator 26 $ do
+    let one = Unknown "1"
+    comp cellY' one (op 32) (op 27)
+
+  {-
   Op. 27 forms the preparations
 
     ┌───┬────┬────┬──────┐     ┌───┬─────┬─────┬─────┐
@@ -352,10 +396,31 @@ pp1_1 = do
     └───┴────┴────┴──────┘,    └───┴─────┴─────┴─────┘
 
   for the output direct comparison.
+  -}
 
+  operator 27 $ do
+    let ccccOpCode = Unknown "CCCC"
+    tN' cellB alpha1
+    ai ccccOpCode alpha1 alpha1
+
+    shift constantX (Absolute 11) cellC
+    ai alpha1 cellC alpha1
+
+    bitAnd cellA secondAddr cellC
+    shift cellC (Absolute (negate 11)) cellC
+    ai alpha1 cellC alpha1
+
+  {-
   Op. 28, for y' = 3 (y = 3, y = 19), transfers control to op. 30, forming for
   this case the output direct comparison.
 
+  -}
+
+  operator 28 $ do
+    let three = Unknown "3"
+    compWord three cellY' (op 29) (op 30)
+
+  {-
   For y' != 3, ie for y'=2, (y = 2, y =18)
 
   Op. 29 forms the preparations
@@ -365,19 +430,60 @@ pp1_1 = do
     └───┴────┴────┴──────┘,    └───┴─────┴─────┴─────┘
 
   for the internal inverse comparison.
+  -}
+  operator 29 $ do
+    let template = Unknown "comp template"
 
+    bitAnd cellA secondAddr cellC
+    shift cellC (Absolute 11) cellC
+
+    ai template alpha1 alpha1
+    ai alpha1 constantX alpha1
+    ai alpha1 cellC alpha1
+
+    chain (op 30)
+
+
+  {-
   Op. 30 forms the second comparison and transfers control to the sub-routine
   "purging".
+  -}
+  operator 30 $ do
+    purge
+    chain (op 31)
+
+  {-
 
   Op. 31 determines if it is necessary to construct the last CCCC, and for
   y'=2 (y = 2, y = 18) transfers control to op. 32.
-
-  Op. 32 constructs the last CCCC.
-
-  Op. 33 transfers control to the sub-routine "purging".
-
-  Op. 34 sends teh next line of information to selection.
   -}
+
+  operator 31 $ do
+    let two = Unknown "2"
+    compWord cellY' two (op 34) (op 32)
+
+  {-
+  Op. 32 constructs the last CCCC.
+  -}
+  operator 32 $ do
+    let ccccOpCode = Unknown "CCCC"
+
+    ai ccccOpCode constantN alpha1
+    chain (op 33)
+
+  {-
+  Op. 33 transfers control to the sub-routine "purging".
+  -}
+  operator 33 $ do
+    purge
+    chain (op 34)
+
+  {-
+  Op. 34 sends the next line of information to selection.
+  -}
+
+  operator 34 $ do
+    chain (op 2)
 
   {-
   Let us consider the functioning of the second part of the block 1-PP-1,
