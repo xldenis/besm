@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, BinaryLiterals #-}
+{-# LANGUAGE DataKinds, BinaryLiterals, DeriveFunctor #-}
 module Assembler where
 
 import Syntax
@@ -34,13 +34,13 @@ data RelativeAddr
   | Abs Int -- For statically known addresses 'aka standard cells'
   deriving (Show, Eq)
 
-data Section = Text | Data
+data Section = Text String | Data
   deriving (Show, Eq)
 
 data Alignment = AlignLeft | AlignRight
 
 debugAssemble defs a =
-      segmentize
+  map (Proc . fmap segmentize . unProc)
   >>> resolve    defs
   >>> absolutize defs a
   >>> debugRender
@@ -61,9 +61,10 @@ debugAssemble defs a =
   termToString (Chain     _) = []
   termToString c = [show c]
 
-assemble :: ConstantDefs -> Alignment -> [BB Address] -> Output
+assemble :: ConstantDefs -> Alignment -> [Procedure Address] -> Output
 assemble defs a =
-      segmentize
+  map (Proc . fmap segmentize . unProc)
+  >>> map internalizeAddresses
   >>> resolve    defs
   >>> absolutize defs a
   >>> render     defs a
@@ -82,19 +83,19 @@ constantToCell (Size i) = replicate i (bitVector 0)
 constantToCell (Val  i) = [numberToBesmFloating i]
 constantToCell (Raw  i) = [bitVector $ fromIntegral i]
 
-absolutize :: ConstantDefs -> Alignment -> [BB RelativeAddr] -> [RawBlock]
+absolutize :: ConstantDefs -> Alignment -> [Procedure RelativeAddr] -> [RawBlock]
 absolutize defs align blks = let
   cSize = sum (map (constantSize . snd) defs)
-  bSize = sum (map instLen blks)
-  maxVal = 1023
+  (bSize, textLens) = buildOffsetMap (fst . unProc) (sum . (map instLen) . snd . unProc) blks
   offset = case align of
     AlignLeft  -> 0x10 + cSize
     AlignRight -> 1023 - bSize + 1
-  in map (fmap (absolve cSize offset)) blks
+  in blks >>= \(Proc (_, bbs)) -> map (fmap (absolve cSize offset textLens)) bbs
   where
-  absolve _ offset (Rel Text i) = offset + i
-  absolve c offset (Rel Data i) = offset - c + i
-  absolve _ _      (Abs i)      = i
+  absolve _ offset textLens (Rel (Text p) i) = case p `lookup` textLens of
+    Just off -> offset + off + i
+  absolve c offset textLEns (Rel Data i) = offset - c + i
+  absolve _ _ _    (Abs i)      = i
 
 missingConstants :: ConstantDefs -> [BB Address] -> [Address]
 missingConstants defs blks = let
@@ -103,42 +104,57 @@ missingConstants defs blks = let
 
   in needed \\ have
 
-resolve :: ConstantDefs -> [BB Address] -> [BB RelativeAddr]
+resolve :: ConstantDefs -> [Procedure Address] -> [Procedure RelativeAddr]
 resolve conses blks = let
-  (_, constantOffsets) = mapAccumL (\off (c, info) -> (off + constantSize info, (Unknown c, Rel Data off))) 0 conses
-  bbOffsets = blockOffsets 0 blks
-  in map (fmap (relativize (M.fromList $ bbOffsets ++ constantOffsets))) blks
+  constantOffsets = map (fmap (Rel Data)) . snd $ buildOffsetMap (Unknown . fst) (constantSize . snd) conses
+  bbOffsets = blks >>= \(Proc (nm, bbs)) -> blockOffsets nm 0 bbs
+  offsetDict = bbOffsets ++ constantOffsets
+  in map (\(Proc t@(nm, bbs)) -> Proc $
+    fmap (map (fmap (relativize nm $ M.fromList offsetDict))) t) blks
 
-blockOffsets :: Int -> [BB Address] -> [(Address, RelativeAddr)]
-blockOffsets off (bb : blks) = let
-  rest = blockOffsets (off + instLen bb) blks
-  in case (baseAddress bb, terminator bb) of
-    (o@(Offset a _), RetRTC _) -> (o, Rel Text (off + instLen bb - 1)) : rest -- l + p + 2
-    (o             , RetRTC _) -> (o, Rel Text off) : (RTC o, Rel Text (off + instLen bb - 1) ) : rest
-    (Offset _ _    , _) -> rest
-    (o             , _) ->      (o, Rel Text off) : rest
+blockOffsets :: String -> Int -> [BB Address] -> [(Address, RelativeAddr)]
+blockOffsets nm off (bb : blks) = let
+  rest = blockOffsets nm (off + instLen bb) blks
+  entry = case baseAddress bb of
+    (o             ) ->
+      [ (o, Rel (Text nm) off)
+      ]
+  rtcEntry = case terminator bb of
+    RetRTC _ ->
+      [ ((RTC $ baseAddress bb), Rel (Text nm) (off + instLen bb - 1))
+      ]
+    _ -> []
+  in entry ++ rtcEntry ++ rest
+blockOffsets _ _ [] = []
 
-blockOffsets _ [] = []
-
-relativize :: Map Address RelativeAddr -> Address -> RelativeAddr
-relativize m (Procedure _) =  Abs 0x99999 -- stop instruction
-relativize m u@(Unknown s)   = case u `M.lookup` m of
-  Just cons -> cons
-  Nothing -> error $ "Missing constant offset for " ++ show s
-relativize m o@(Operator n)  = case o `M.lookup` m of
-  Just o -> o
-  Nothing -> error $ "Missing operator offset for " ++ show o
-relativize m r@(RTC a)       = case r `M.lookup` m of
-  Just rtc -> rtc  -- l + p + 2
-  Nothing  -> error $ "Missing RTC return for " ++ show a
-relativize m (Offset a o)  = case relativize m a of
+relativize :: String -> Map Address RelativeAddr -> Address -> RelativeAddr
+relativize nm m p@(Procedure n a) = case p `M.lookup` m of
+  Just relAddr -> relAddr
+  Nothing -> case a of
+    (Procedure _ _) -> error $ "Wtf " ++ show a ++ show p
+    (Operator o) -> error $ "Missing operator offset for " ++ show p
+    (RTC r) -> error $ "Missing RTC return for " ++ show r ++ show p
+relativize nm m a@(Unknown _)  = case a `M.lookup` m of
+  Just constant -> constant
+  Nothing -> error $ "Unknown constant " ++ show a
+relativize nm m a@(Operator _) = relativize nm m (Procedure nm a)
+relativize nm m (RTC a)        = relativize nm m ( a)
+relativize nm m (Offset a o)   = case relativize nm m a of
   Abs i -> Abs (i + o)
   Rel s i -> Rel s (i + o)
-relativize m (Absolute a) = Abs a
+relativize nm m (Absolute a)   = Abs a
 
 toUnsegmentedMap :: [BB Address] -> Map Address (Segment)
 toUnsegmentedMap bbs = M.fromList $ L.map (\bb -> (baseAddress bb, Unsegmented bb)) bbs
 
+internalizeAddresses :: Procedure Address -> Procedure Address
+internalizeAddresses (Proc (nm, bbs)) =
+  Proc (nm, map (fmap internalizeAddress) bbs)
+  where
+  internalizeAddress (Operator n) = Procedure nm (Operator n)
+  internalizeAddress (RTC a) = RTC $ internalizeAddress a
+  internalizeAddress (Offset a o) = Offset (internalizeAddress a) o
+  internalizeAddress i = i
 {-
   Break up the CFG into a series of linear chunks, add explicit jumps between segments
   and merge it back together in a linearized CF
@@ -183,10 +199,16 @@ addJump [bb] = case implicitJumps (terminator bb) of
     in [bb', jB]
   Nothing -> [bb]
   where
-  jumpBlk fromB to = BB [] (CCCC to) ((baseAddress fromB) `offAddr` (instLen fromB + 1))
+  jumpBlk fromB to = BB [] (CCCC to) (baseAddress fromB `offAddr` (instLen fromB + 1))
 addJump (bb : bbs) = bb : addJump bbs
 addJump [] = []
 
+buildOffsetMap :: (a -> nm) -> (a -> Int) -> [a] -> (Int, [(nm, Int)])
+buildOffsetMap key size elems = mapAccumL (\off elem ->
+  (off + size elem, (key elem, off))
+  ) 0 elems
+
+directJumps :: Term a -> Maybe a
 directJumps (Comp      _ _ a _) = Just a
 directJumps (CompWord  _ _ a _) = Just a
 directJumps (CompMod   _ _ a _) = Just a

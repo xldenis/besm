@@ -151,7 +151,7 @@ op1 = operator 1 $ do
 op23 = do
   operator 2 $ tExp cellA cellF
   operator 3 $ compWord cellF zero pp_3_1 (op 4)
-  where pp_3_1 = (Procedure "pp_3_1")
+  where pp_3_1 = (Procedure "PP-3" (op 1))
 {-
   Op 4. extracts the code of the next symbol of the formula and adds 1 to
   the symbol counter.
@@ -180,7 +180,7 @@ op4 = operator 4 $ do
 op5 = mdo
   operator 5 $ comp symbolCounter four (op 6) joinP
   operator 6 $ do
-    callRtc mp_1_17 (Unknown "mp_1_21")
+    callRtc mp_1_17 (Procedure "MP-1" (op 17))
 
   operator 7 $ do
     tN zero symbolCounter
@@ -191,7 +191,7 @@ op5 = mdo
     chain (op 8)
 
   return ()
-  where mp_1_17 = Procedure "MP-1-17"
+  where mp_1_17 = Procedure "MP-1" (op 17)
 
 
 {-

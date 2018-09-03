@@ -10,7 +10,7 @@ import CFG
 import Monad
 import Syntax
 import PP1
-import PP1.Logical
+import qualified PP1.Logical as Logical
 import Lib
 import Assembler
 
@@ -18,16 +18,21 @@ import Besm.Put
 
 main :: IO ()
 main = do
-  let cfg = programmeToGraph (runBuilder (op 999) $ arithCoder)
-      cf2 = programmeToGraph (runBuilder (op 999) $ mp1)
-      lcfg = programmeToGraph (runBuilder (op 999) $ pp1_1)
+  let cfg = programmeToGraph (snd . unProc $ runProcedure "PP-1-2" $ arithCoder)
+      cf2 = programmeToGraph (snd . unProc $ runProcedure "MP-1" $ mp1)
+      lcfg = programmeToGraph (snd . unProc $ runProcedure "PP-1-1" $ Logical.pp1_1)
+
   runGraphviz (graphToDot params $ (nmap formatAddr cfg)) Png "cfg.png"
   runGraphviz (graphToDot params $ (nmap formatAddr cf2)) Png "cfg-2.png"
-
   runGraphviz (graphToDot params $ (nmap formatAddr lcfg)) Png "cfg-logi.png"
-  -- print $ bb0
 
-  mapM_ putStrLn $ assemble constantMap AlignRight (runBuilder (op 999) mp1) & map toHexString
+  mapM_ putStrLn $
+    assemble (Logical.constantMap ++ constantMap) AlignRight (
+      [runProcedure "MP-1" mp1
+      , runProcedure "PP-1" Logical.pp1_1
+      , pp2, mp2
+      ]) & map toHexString
+
   return ()
 
 params :: (Labellable nl) => GraphvizParams n nl el () nl

@@ -48,23 +48,52 @@ module PP1.Logical where
 import Monad
 import Syntax
 
-thirdAddr  = Unknown ""
-firstAddr  = Unknown ""
-secondAddr = Unknown ""
+thirdAddr  = Unknown "third addr mask"
+firstAddr  = Unknown "first addr mask"
+secondAddr = Unknown "second addr mask"
 
 cellC = Unknown "C"
 
 four = Unknown "4"
 zero = Unknown "0"
 
+constantMap =
+  [ ("second addr mask", Raw 0)
+  , ("third addr mask", Raw 0)
+  , ("template 1", Raw 0)
+  , ("template 2", Raw 0)
+  , ("0", Raw 0)
+  , ("1", Raw 0)
+  , ("2", Raw 0)
+  , ("3", Raw 0)
+  , ("4", Raw 0)
+  , ("8", Raw 0)
+  , ("18", Raw 0)
+  , ("concluding transfers", Raw 0)
+  , ("CCCC", Raw 0)
+  , ("α", Size 4)
+  , ("notThirdAddr", Raw 0)
+  , ("Y", Raw 0)
+  , ("Y'", Raw 0)
+  , ("C", Raw 0)
+  , ("<", Raw 0)
+  , ("lowest2", Raw 0)
+  , ("comp template", Raw 0)
+  , ("firstAndSndAddr", Raw 0)
+  , ("scratch-cell-1", Raw 0)
+  , ("scratch-cell-2", Raw 0)
+  , ("scratch-cell-3", Raw 0)
+  , ("0x13FF", Raw 0)
+  ]
+
 pp1_1 = do
   let constantX = Unknown "template 1"
   let constantN = Unknown "template 2"
 
-  let alpha1 = Unknown "α+1"
-  let alpha2 = Unknown "α+2"
-  let alpha3 = Unknown "α+3"
-  let alpha4 = Unknown "α+4"
+  let alpha1 = Unknown "α" `offAddr` 0
+  let alpha2 = Unknown "α" `offAddr` 1
+  let alpha3 = Unknown "α" `offAddr` 2
+  let alpha4 = Unknown "α" `offAddr` 3
 
   let cellK0 = alpha1
   let cellK1 = alpha2
@@ -73,9 +102,11 @@ pp1_1 = do
 
   let cellY = Unknown "Y"
   let eight = Unknown "8"
+  let one = Unknown "1"
 
   let purge = callRtc (op 35) (op 45)
 
+  let ccccOpCode = Unknown "CCCC"
 
   {-
 
@@ -96,8 +127,6 @@ pp1_1 = do
   -}
 
   operator 1 $ do
-    let secondAddr = Unknown ""
-
     bitAnd cellA secondAddr constantX
     bitAnd cellA thirdAddr  constantN
 
@@ -117,8 +146,8 @@ pp1_1 = do
   -}
 
   operator 2 $ do
-    let _mp1_17 = Unknown "mp-1-17"
-    let _mp1_20 = Unknown "mp-1-20"
+    let _mp1_17 = Procedure "MP-1" (op 17)
+    let _mp1_20 = Procedure "MP-1" (op 20)
 
     callRtc _mp1_17 _mp1_20
 
@@ -341,7 +370,6 @@ pp1_1 = do
   -}
 
   operator 22 $ do
-    let ccccOpCode = Unknown "CCCC"
     tN' constantN alpha1
     ai ccccOpCode alpha1 alpha1
 
@@ -590,8 +618,8 @@ pp1_1 = do
 
   operator 43 $ do
     let cellA1 = Unknown "A + 1"
-    let _mp1_21 = Unknown "MP-1(21)"
-    let _mp1_23 = Unknown "MP-1(23)"
+    let _mp1_21 = Procedure "MP-1" (op 21)
+    let _mp1_23 = Procedure "MP-1" (op 23)
 
     tN' cellK3 cellA1
     callRtc _mp1_21 _mp1_23
@@ -617,30 +645,71 @@ pp1_1 = do
 
   Op. 5 clears the "counter of concluding transfers".
 
+  -}
+
+  let counterTransfer = Unknown "concluding transfers"
+
+  operator 5 $ do
+    tN' zero counterTransfer
+    chain (op 6)
+  {-
+
   Op. 6, in accordance with rule III Sec 12 verifies if it is necessary to
   insert in the programme the instruction
 
-
     ┌──────┬────┬────┬──────┐
-    │ CCCC │    │    │    N │
+    │ CCCC │    │    │    N̅ │
     └──────┴────┴────┴──────┘
 
+  ======
+  The rule appears to be: if cell α+2 is a comparison then we set α+1 to a CCCC
+  If it is a CCCC then we change α+3 to point to N̅
+  -}
+
+  operator 6 $ do
+    comp ccccOpCode alpha2 (op 7) (op 8)
+
+  {-
   Op. 7 places the instruction
 
     ┌──────┬────┬────┬──────┐
-    │ CCCC │    │    │    N │
+    │ CCCC │    │    │    N̅ │
     └──────┴────┴────┴──────┘
 
   in cell α+1
+  -}
+  operator 7 $ do
+    ai ccccOpCode alpha1 alpha1
+    ai alpha1 constantN alpha1
 
+    chain (op 9)
+  {-
   Op. 8 sets N in the third address of the comparison located in the cell α+3.
+  -}
 
+  operator 8 $ do
+    let notThirdAddr = Unknown "notThirdAddr"
+    bitAnd alpha3 notThirdAddr alpha3
+
+    ai alpha3 constantN alpha3
+
+    chain (op 9)
+  {-
   Op. 9 transfers control to the sub-routine "purging". Since op. 9 consists
   only of a single instruction, the instruction of RTc located at the end of
   the sub-routine will transfer control to op. 10
+  -}
+  operator 9 $ do
+    purge
 
+    chain (op 10)
+  {-
   Op. 10 adds 1 to the counter of concluding transfers.
+  -}
+  operator 10 $ do
+    add' one counterTransfer counterTransfer
 
+  {-
   Op. 11, using the counter of concluding transfers, ensures repitition of
   operators 42-45 and 10 three times. Transfer of control from op. 45 to op.
   10 is realized by the instruction of RTc, formed during the sub-routine
@@ -651,5 +720,12 @@ pp1_1 = do
   After termiantion of the functioning of the block of logical operators
   control is transferred to op. 3 of MP-1 for examining the selected line, no
   longer constituting information on the given logical operators.
-
 -}
+  operator 11 $ mdo
+    let _mp1_3 = Procedure "MP-1" (op 3)
+    comp counterTransfer four b11 _mp1_3
+
+    b11 <- block $ do
+      callRtc (op 42) (op 45)
+      chain (op 10)
+    return ()

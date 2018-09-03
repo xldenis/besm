@@ -9,7 +9,7 @@ data Address
   = Operator Int
   | Offset Address Int
   | Absolute Int
-  | Procedure String
+  | Procedure String Address
   | Unknown String
   | RTC Address
   deriving (Show, Eq, Ord)
@@ -17,7 +17,7 @@ data Address
 formatAddr (Operator i) = "op. " ++ show i
 formatAddr (Offset a i) = formatAddr a ++ " + " ++ show i
 formatAddr (Absolute i) = "abs. " ++ show i
-formatAddr (Procedure s) = show s
+formatAddr (Procedure s op) = show s ++ formatAddr op
 formatAddr (Unknown str) = "uk. " ++ str
 
 offAddr (Offset a o) i = Offset a (o + i)
@@ -47,13 +47,15 @@ data BB a = BB
   , baseAddress :: a
   } deriving (Show, Functor, Foldable, Eq)
 
+newtype Procedure a = Proc { unProc :: (String, [BB a]) }
+  deriving (Show, Eq, Functor)
+
 instLen :: BB a -> Int
 instLen bb = length (instrs bb) + termLen (terminator bb)
   where
   termLen (RetRTC _) = 2
   termLen (Chain _) = 0
   termLen _        = 1
-
 
 data NormalizeResult
   = Normalized

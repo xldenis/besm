@@ -38,6 +38,8 @@ emptyCurrentBlock addr = CurrentBlock mempty addr addr
 newtype Builder a = Builder { unBuilder :: State BuilderState a }
   deriving (Functor, Applicative, Monad, MonadState BuilderState, MonadFix)
 
+runProcedure nm bbs = Proc (nm, runBuilder (op 999) bbs)
+
 runBuilder i = getSnocList . builtBlocks . flip execState (BuilderState (emptyCurrentBlock i) (SnocList [])) . unBuilder
 
 modifyBlock f = do

@@ -56,6 +56,9 @@ constantMap =
   ]
 
 
+pp2 = Proc ("PP-2", [BB { baseAddress = Operator 1, instrs = [], terminator = Stop}])
+mp2 = Proc ("MP-2", [BB { baseAddress = Operator 1, instrs = [], terminator = Stop}])
+
 {-
   Known Bugs
   ==========
@@ -132,7 +135,7 @@ mp1 = do
     exponent is information on an arithmetical operator.
   -}
   operator 5 $ do
-    let pp_2 = Procedure "PP-2"
+    let pp_2 = Procedure "PP-2" (op 1)
     compWord zero cellA (pp_2) (op 6)
   {-
     Op. 6 transfers control to op. 11 if x != 018. In this case in cell A is
@@ -181,7 +184,7 @@ mp1 = do
 
   -}
   operator 10 $ do
-    compWord zero cellA (op 2) (Procedure "1-PP")
+    compWord zero cellA (op 2) (Procedure "PP-1" (op 1))
   {-
     Op. 11 sends this line to cell A + 1 and from there to the block of
     completed instructions.
@@ -244,7 +247,7 @@ mp1 = do
     ma (Absolute $ 0x0100 + 2) (Absolute 0x10) buffer
     addr <- mb (Absolute 0)
 
-    let _mp2 = Procedure "MP-2"
+    let _mp2 = Procedure "MP-2" (op 1)
 
     chain _mp2
 
