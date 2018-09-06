@@ -41,6 +41,7 @@ data Alignment = AlignLeft | AlignRight
 
 debugAssemble defs a =
   map (Proc . fmap segmentize . unProc)
+  >>> map internalizeAddresses
   >>> resolve    defs
   >>> absolutize defs a
   >>> debugRender
@@ -105,12 +106,15 @@ missingConstants defs blks = let
   in needed \\ have
 
 resolve :: ConstantDefs -> [Procedure Address] -> [Procedure RelativeAddr]
-resolve conses blks = let
-  constantOffsets = map (fmap (Rel Data)) . snd $ buildOffsetMap (Unknown . fst) (constantSize . snd) conses
-  bbOffsets = blks >>= \(Proc (nm, bbs)) -> blockOffsets nm 0 bbs
-  offsetDict = bbOffsets ++ constantOffsets
+resolve conses procs = let
   in map (\(Proc t@(nm, bbs)) -> Proc $
-    fmap (map (fmap (relativize nm $ M.fromList offsetDict))) t) blks
+    fmap (map (fmap (relativize nm (mkRelativizationDict conses procs)))) t) procs
+
+mkRelativizationDict :: ConstantDefs -> [Procedure Address] -> Map Address RelativeAddr
+mkRelativizationDict consts procs = let
+  constantOffsets = map (fmap (Rel Data)) . snd $ buildOffsetMap (Unknown . fst) (constantSize . snd) consts
+  bbOffsets = procs >>= \(Proc (nm, bbs)) -> blockOffsets nm 0 bbs
+  in M.fromList $ bbOffsets ++ constantOffsets
 
 blockOffsets :: String -> Int -> [BB Address] -> [(Address, RelativeAddr)]
 blockOffsets nm off (bb : blks) = let
@@ -131,6 +135,7 @@ relativize :: String -> Map Address RelativeAddr -> Address -> RelativeAddr
 relativize nm m p@(Procedure n a) = case p `M.lookup` m of
   Just relAddr -> relAddr
   Nothing -> case a of
+    _ -> Abs 0x9999
     (Procedure _ _) -> error $ "Wtf " ++ show a ++ show p
     (Operator o) -> error $ "Missing operator offset for " ++ show p
     (RTC r) -> error $ "Missing RTC return for " ++ show r ++ show p
@@ -138,7 +143,9 @@ relativize nm m a@(Unknown _)  = case a `M.lookup` m of
   Just constant -> constant
   Nothing -> error $ "Unknown constant " ++ show a
 relativize nm m a@(Operator _) = relativize nm m (Procedure nm a)
-relativize nm m (RTC a)        = relativize nm m ( a)
+relativize nm m r@(RTC a)        = case r `M.lookup` m of
+  Just relAddr -> relAddr
+  Nothing -> error $ "could not find rtc for " ++ show a
 relativize nm m (Offset a o)   = case relativize nm m a of
   Abs i -> Abs (i + o)
   Rel s i -> Rel s (i + o)
