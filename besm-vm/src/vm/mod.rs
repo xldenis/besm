@@ -283,8 +283,7 @@ impl<'a> VM<'a> {
         let mut val = Float::from_bytes(self.get_address(source)?);
 
         if needs_norm { val.normalize() };
-        info!("{:039b}", self.get_address(source)?);
-        info!("Transferring {:?} to {}", val, target);
+
         self.set_address(target, val.to_bytes());
         self.increment_ic();
       }
@@ -328,16 +327,16 @@ impl<'a> VM<'a> {
         self.increment_ic();
       }
       AI { a: p, b: q, c: r} => {
-        let laddrs = self.get_address(p)?.get_bits(0..33);
-        let raddrs = self.get_address(q)?.get_bits(0..33);
+        let left = self.get_address(p)?;
+        let right = self.get_address(q)?;
 
-        let mut result = laddrs + raddrs;
-        // info!("A1 : {} {} {}", second_addr(laddrs), second_addr(raddrs), second_addr(result));
-        // info!("AI {:011b}", first_addr(laddrs));
-        // info!("AI {:011b}", first_addr(raddrs));
-        // info!("AI {:011b}", first_addr(result));
-
+        let mut result = left.get_bits(0..33) + right.get_bits(0..33);
         result.set_bits(33..39, self.get_address(p)?.get_bits(33..39));
+        // info!("A1 : {} {} {}", p, q, r);
+
+        // info!("AI {:039b}", left);
+        // info!("AI {:039b}", right);
+        // info!("AI {:039b}", result);
 
         self.set_address(r, result);
         self.increment_ic();

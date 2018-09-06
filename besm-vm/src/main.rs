@@ -76,6 +76,7 @@ use tui_logger::*;
 
 use termion::event;
 
+#[derive(Debug)]
 enum Event {
     Key(event::Key),
     Tick,
@@ -158,7 +159,7 @@ fn main() {
         use interface::StepMode::*;
 
         match rx.recv() {
-            Err(_) => {
+            Err(e) => {
                 break;
             }
             Ok(Event::Key(Char('q'))) => {
@@ -174,7 +175,7 @@ fn main() {
             Ok(Event::Key(Char('s'))) if interface.step_mode == Step => {
                 step_vm(&mut vm, &mut interface);
             }
-            Ok(_) => {}
+            Ok(ev) => { continue }
         }
         draw(&mut terminal, &vm, &interface);
     }
