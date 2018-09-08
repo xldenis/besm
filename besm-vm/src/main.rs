@@ -80,6 +80,7 @@ use termion::event;
 enum Event {
     Key(event::Key),
     Tick,
+    Goto(usize),
 }
 
 fn main() {
@@ -93,6 +94,7 @@ fn main() {
         size: terminal.size().unwrap(),
         past_instrs: ArrayDeque::new(),
         step_mode: interface::StepMode::Step,
+        tabs: interface::TabInfo::default(),
     };
 
     let mut f = File::open(opt.is_file.clone()).expect("file not found");
@@ -133,12 +135,33 @@ fn main() {
 
     thread::spawn(move || {
         use termion::input::TermRead;
+        use termion::event::Key::*;
 
         let stdin = io::stdin();
 
         for e in stdin.keys() {
             let evt = e.unwrap();
-            tx.send(Event::Key(evt)).unwrap();
+            match evt {
+                Char('g') => {
+                    let key_evs : String = io::stdin().keys().take_while(|ev| {
+                        match ev {
+                            Ok(Char('\n')) => false,
+                            Ok(Char(_)) => true,
+                            _           => false,
+                        }
+                    }).map(|ev| {
+                        match ev.unwrap() {
+                            Char(c) => c,
+                            _ => panic!("found non-char in series of chars"),
+                        }
+                    }).collect();
+
+                    if let Ok(off) = key_evs.parse::<usize>() {
+                        tx.send(Event::Goto(off)).unwrap();
+                    };
+                },
+                e => { tx.send(Event::Key(e)).unwrap() }
+            }
         }
     });
 
@@ -157,25 +180,53 @@ fn main() {
 
         use termion::event::Key::*;
         use interface::StepMode::*;
+        use Event::*;
 
-        match rx.recv() {
-            Err(e) => {
+        let evt = match rx.recv() {
+            Err(_) => break,
+            Ok(e) => e,
+        };
+
+        match evt {
+            Key(Char('q')) => {
                 break;
             }
-            Ok(Event::Key(Char('q'))) => {
-                break;
-            }
-            Ok(Event::Key(Char(' '))) => {
+            Key(Char(' ')) => {
                 interface.toggle_step();
             }
-            Ok(Event::Tick) if interface.step_mode == Run => {
+            Key(Char('<')) => {
+                if interface.tabs.prev_tab() {
+                    interface.pause();
+                    terminal.resize(interface.size).unwrap();
+                }
+            }
+            Key(Char('>')) => {
+                if interface.tabs.next_tab() {
+                    interface.pause();
+                    // termion appears to have a bug which causes the UI to glitch out until it's resized
+                    // so I just fake a resize to cause it to fix itself.
+                    terminal.resize(interface.size).unwrap();
+                }
+            }
+            Key(Down) => {
+                interface.tabs.offsets[interface.tabs.selection] += 1;
+            }
+            Key(Up) => {
+                if interface.tabs.offsets[interface.tabs.selection] > 0 {
+                    interface.tabs.offsets[interface.tabs.selection] -= 1;
+                }
+            }
+            Goto(off) => {
+                interface.tabs.offsets[interface.tabs.selection] = off;
+            }
+            Tick if interface.step_mode == Run => {
                 step_vm(&mut vm, &mut interface);
             }
 
-            Ok(Event::Key(Char('s'))) if interface.step_mode == Step => {
+            Key(Char('s')) if interface.step_mode == Step => {
                 step_vm(&mut vm, &mut interface);
             }
-            Ok(ev) => { continue }
+            _ => { continue }
         }
         draw(&mut terminal, &vm, &interface);
     }

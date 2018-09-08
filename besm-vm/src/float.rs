@@ -134,3 +134,12 @@ impl Float {
         }
     }
 }
+
+use std::fmt;
+
+impl fmt::Display for Float {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let num = 2.0f64.powf(self.exp as f64 - 33.0) * (self.mant as f64);
+        write!(f, "{}", num)
+    }
+}

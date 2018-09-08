@@ -3,18 +3,20 @@ use float::*;
 
 mod ds;
 pub struct VM<'a> {
-  is: &'a mut [u64; 1023],
+  pub is: &'a mut [u64; 1023],
   ds: &'a [u64; 384],
   local_ic: u16,
   global_ic: u16,
   active_ic: ActiveIC,
   pub stopped: bool,
-  mag_system: MagSystem<'a>
+  pub mag_system: MagSystem<'a>
 }
+
+enum ActiveIC { Global, Local}
 
 #[derive(Copy, Clone)]
 pub struct MagDrive {
-  drive: [u64; 1024]
+  pub drive: [u64; 1024]
 }
 use std::collections::HashMap;
 
@@ -30,17 +32,6 @@ pub struct MagTape {
   tape: HashMap<u8, Vec<u64>>
 }
 
-enum ActiveIC { Global, Local}
-
-#[derive(Debug)]
-pub enum VMError {
-  OutOfBounds { },
-  PartialMa(Instruction, DriveOperation),
-  BadDriveOperation,
-  InvalidInstruction(u64),
-  NotYetImplemented(Instruction),
-}
-
 impl MagDrive {
   pub fn new(vals: [u64; 1024]) -> MagDrive {
     MagDrive { drive: vals }
@@ -53,8 +44,8 @@ impl <'a> MagTape {
   }
 }
 
-struct MagSystem<'a> {
-  mag_drives: &'a mut [MagDrive; 5],
+pub struct MagSystem<'a> {
+  pub mag_drives: &'a mut [MagDrive; 5],
   mag_tapes: &'a mut [MagTape; 4],
   partial_operation: Option<DriveOperation>
 }
@@ -184,6 +175,15 @@ impl DriveOperation {
       _ => Err(VMError::BadDriveOperation)
     }
   }
+}
+
+#[derive(Debug)]
+pub enum VMError {
+  OutOfBounds { },
+  PartialMa(Instruction, DriveOperation),
+  BadDriveOperation,
+  InvalidInstruction(u64),
+  NotYetImplemented(Instruction),
 }
 
 impl<'a> VM<'a> {
