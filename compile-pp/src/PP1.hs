@@ -337,10 +337,10 @@ mp1 = do
       Op. 23 transfers the contesnts of cell A + 1 to the next cell in the arrangement of block.
     -}
     ta <- operator 23 $ do
-      ta <- tN cellA1 completedInstructions -- use AI to modify
-      ai ta (Unknown "one-3rd-addr") ta
+      ot <- tN cellA1 completedInstructions -- use AI to modify
+      ai ot (Unknown "one-3rd-addr") ot
       retRTC
-      return ta
+      return ot
     return ()
 
 

@@ -39,23 +39,31 @@ data Section = Text String | Data
 
 data Alignment = AlignLeft | AlignRight
 
+data ModuleAssembly a = Mod
+  { offsetMap :: Maybe (Map Address Int)
+  , relativeMap :: Maybe (Map Address RelativeAddr)
+  , procs :: [Procedure a]
+  }
+
 debugAssemble defs a =
-  map (Proc . fmap segmentize . unProc)
-  >>> map internalizeAddresses
+  Mod Nothing Nothing
+  >>> segmentize
+  >>> internalizeModule
   >>> resolve    defs
   >>> absolutize defs a
   >>> debugRender
   where
 
-  debugRender :: [RawBlock] -> [(Int, String)]
-  debugRender blks = let
+  debugRender :: ModuleAssembly Int -> ([(Int, String)], ModuleAssembly Int)
+  debugRender mod = let
     (o, dataS) = mapAccumL (\off (s, v) -> (off + constantSize v, (off, s ++ " " ++ show v))) 0 defs
+    blks  = procs mod >>= snd . unProc
     text = blks >>= (\bb -> map show (instrs bb) ++ termToString (terminator bb))
     textS = zip [o..] text
     len = o + length textS
     in case a of
-      AlignLeft -> map (\(i, s) -> (16 + i, s)) $ dataS ++ textS
-      AlignRight -> map (\(i, s) -> (1024 - len + i , s)) $ dataS ++ textS
+      AlignLeft ->  (map (\(i, s) -> (16 + i, s)) $ dataS ++ textS, mod)
+      AlignRight -> (map (\(i, s) -> (1024 - len + i , s)) $ dataS ++ textS, mod)
 
   termToString :: Term Int -> [String]
   termToString (RetRTC a) = [show $ AI 0b10100001111 (a+1) (a+1), "zero"]
@@ -64,14 +72,16 @@ debugAssemble defs a =
 
 assemble :: ConstantDefs -> Alignment -> [Procedure Address] -> Output
 assemble defs a =
-  map (Proc . fmap segmentize . unProc)
-  >>> map internalizeAddresses
+  Mod Nothing Nothing
+  >>> segmentize
+  >>> internalizeModule
   >>> resolve    defs
   >>> absolutize defs a
   >>> render     defs a
 
-render :: ConstantDefs -> Alignment -> [RawBlock] -> Output
-render defs a blks = let
+render :: ConstantDefs -> Alignment -> ModuleAssembly Int -> Output
+render defs a mod = let
+  blks  = procs mod >>= snd . unProc
   textS = blks >>= asmToCell
   dataS = defs >>= (constantToCell . snd)
   total = dataS ++ textS
@@ -84,15 +94,21 @@ constantToCell (Size i) = replicate i (bitVector 0)
 constantToCell (Val  i) = [numberToBesmFloating i]
 constantToCell (Raw  i) = [bitVector $ fromIntegral i]
 
-absolutize :: ConstantDefs -> Alignment -> [Procedure RelativeAddr] -> [RawBlock]
-absolutize defs align blks = let
+absolutize :: ConstantDefs -> Alignment -> ModuleAssembly RelativeAddr -> ModuleAssembly Int
+absolutize defs align mod = let
   cSize = sum (map (constantSize . snd) defs)
-  (bSize, textLens) = buildOffsetMap (fst . unProc) (sum . (map instLen) . snd . unProc) blks
+  (bSize, segmentOffsets) = buildOffsetMap (fst . unProc) (sum . (map instLen) . snd . unProc) (procs mod)
   offset = case align of
     AlignLeft  -> 0x10 + cSize
     AlignRight -> 1023 - bSize + 1
-  in blks >>= \(Proc (_, bbs)) -> map (fmap (absolve cSize offset textLens)) bbs
+  in mod
+    { procs = map (absolveProc cSize offset segmentOffsets) (procs mod)
+    , offsetMap = Just undefined
+    }
   where
+  absolveProc cSize offset textLens (Proc (nm, bbs)) =
+    Proc (nm, map (fmap (absolve cSize offset textLens)) bbs)
+
   absolve _ offset textLens (Rel (Text p) i) = case p `lookup` textLens of
     Just off -> offset + off + i
   absolve c offset textLEns (Rel Data i) = offset - c + i
@@ -105,10 +121,16 @@ missingConstants defs blks = let
 
   in needed \\ have
 
-resolve :: ConstantDefs -> [Procedure Address] -> [Procedure RelativeAddr]
-resolve conses procs = let
-  in map (\(Proc t@(nm, bbs)) -> Proc $
-    fmap (map (fmap (relativize nm (mkRelativizationDict conses procs)))) t) procs
+resolve :: ConstantDefs -> ModuleAssembly Address -> ModuleAssembly RelativeAddr
+resolve conses mod = let
+  dict = mkRelativizationDict conses (procs mod)
+  in mod { procs = map (relativizeProc dict) (procs mod)
+         , relativeMap = Just dict
+         }
+
+  where
+  relativizeProc dict (Proc t@(nm, bbs)) = Proc $
+    fmap (map (fmap (relativize nm dict))) t
 
 mkRelativizationDict :: ConstantDefs -> [Procedure Address] -> Map Address RelativeAddr
 mkRelativizationDict consts procs = let
@@ -154,6 +176,10 @@ relativize nm m (Absolute a)   = Abs a
 toUnsegmentedMap :: [BB Address] -> Map Address (Segment)
 toUnsegmentedMap bbs = M.fromList $ L.map (\bb -> (baseAddress bb, Unsegmented bb)) bbs
 
+internalizeModule mod = mod {
+  procs = map internalizeAddresses (procs mod)
+  }
+
 internalizeAddresses :: Procedure Address -> Procedure Address
 internalizeAddresses (Proc (nm, bbs)) =
   Proc (nm, map (fmap internalizeAddress) bbs)
@@ -166,9 +192,13 @@ internalizeAddresses (Proc (nm, bbs)) =
   Break up the CFG into a series of linear chunks, add explicit jumps between segments
   and merge it back together in a linearized CF
 -}
-segmentize :: [BB Address] -> [BB Address]
-segmentize blks = join $ map (addJump . fromSegment) . M.elems $ go (toUnsegmentedMap blks)
+segmentize :: ModuleAssembly Address -> ModuleAssembly Address
+segmentize mod = mod
+  { procs = map segmentProcedure (procs mod)
+  }
+
   where
+  segmentProcedure (Proc (nm, blks)) = Proc (nm, join $ map (addJump . fromSegment) . M.elems $ go (toUnsegmentedMap blks))
   fromSegment (Segmented x) = x
 
   go map = go' map (M.keys map)
