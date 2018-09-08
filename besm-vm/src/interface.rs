@@ -145,15 +145,15 @@ fn render_memory_panel<T: Backend>(t: &mut Terminal<T>, tabs: &TabInfo, vm: &VM,
         use float::Float;
         let float = Float::from_bytes(*instr);
         Row::Data(
-            vec![format!("{:04}", addr + addr_offset), instr_string, format!("{}", float), format!("{:039b}", instr)].into_iter()
+            vec![format!("{:04}", addr + addr_offset), instr_string, format!("{}", float), format!("{:010x}", instr), format!("{:039b}", instr)].into_iter()
         )
     });
 
     Table::new(
-            ["Addr", "Instruction", "Number", "Raw"].into_iter(),
+            ["Addr", "Instruction", "Number", "Hex", "Raw"].into_iter(),
             rows
         )
-        .widths(&[4, 20, 10, 39])
+        .widths(&[4, 20, 10, 10, 39])
         .column_spacing(2)
         .block(Block::default().title(tabs.titles[tabs.selection]).borders(Borders::ALL))
         .header_style(Style::default().fg(Color::Yellow))
