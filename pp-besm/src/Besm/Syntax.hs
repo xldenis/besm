@@ -46,14 +46,14 @@ data ComparisonOp
   deriving Show
 
 data Range
-  = LeftImproperInterval      Variable
-  | LeftImproperSemiInterval  Variable
-  | RightImproperInterval     Variable
-  | RightImproperSemiInterval Variable
-  | Interval      Variable Variable
-  | SemiInterval  Variable Variable
-  | SemiSegment   Variable Variable
-  | Segment       Variable Variable
+  = LeftImproperInterval      Quantity
+  | LeftImproperSemiInterval  Quantity
+  | RightImproperInterval     Quantity
+  | RightImproperSemiInterval Quantity
+  | Interval      Quantity Quantity
+  | SemiInterval  Quantity Quantity
+  | SemiSegment   Quantity Quantity
+  | Segment       Quantity Quantity
   deriving Show
 
 -- TODO: Add parentheses
@@ -61,7 +61,7 @@ data LogicalSchema
   = Loop Char LogicalSchema
   | Seq [LogicalSchema]
   | Assign SchemaExpr Variable
-  | LogicalOperator Variable OperatorSign [(OperatorSign, Range)]
+  | LogicalOperator Quantity OperatorSign [(OperatorSign, Range)]
   | OpLabel OperatorSign
   | Print SchemaExpr
   | Stop
@@ -76,10 +76,12 @@ data SchemaExpr
   | Div   SchemaExpr SchemaExpr
   | Add   SchemaExpr SchemaExpr
   | Minus SchemaExpr SchemaExpr
-  | Constant Int
-  | ExpVar Variable
-  | Form   Variable
+  | Primitive Quantity
+  | Form   Quantity
   deriving Show
+
+data Quantity = V Variable | C Int
+  deriving (Show, Eq)
 
 newtype Variable = Var { unVar :: Text }
   deriving (Show, Eq, IsString)
@@ -141,33 +143,35 @@ prettySchema (Seq lss) = prettySchemaEl lss
   prettySchemaEl [] = mempty
 prettySchema (Assign exp var) = prettyExp exp <+> pretty "=>" <+> pretty (unVar var)
 prettySchema (LogicalOperator var op ranges) = pretty "P" <> (parens $ hsep
-  [ pretty (unVar var)
+  [ prettyQuantity var
   , prettyOpSign op <> pretty ";"
   ] <+> concatWith (\a b -> a <+> pretty "," <+> b) (map prettyRange ranges))
   where
   prettyRange (op, range) = prettyOpSign op <+> pretty "/" <+> go range
-  go (LeftImproperInterval      up) = parens $ pretty "-∞" <+> pretty "," <+> pretty (unVar up)
-  go (LeftImproperSemiInterval  up) = pretty "(" <> pretty "-∞" <+> pretty "," <+> pretty (unVar up) <> pretty "]"
-  go (RightImproperInterval     low) = parens $ pretty (unVar low) <+> pretty "," <+> pretty "∞"
-  go (RightImproperSemiInterval low) = pretty "[" <> pretty (unVar low) <+> pretty "," <+> pretty "∞" <> pretty ")"
-  go (Interval      low up) = parens $ pretty (unVar low) <+> pretty "," <+> pretty (unVar up)
-  go (SemiInterval  low up) = pretty "[" <> pretty (unVar low) <+> pretty "," <+> pretty (unVar up) <> pretty ")"
-  go (SemiSegment   low up) = pretty "(" <> pretty (unVar low) <+> pretty "," <+> pretty (unVar up) <> pretty "]"
-  go (Segment       low up) = brackets $  pretty (unVar low) <+> pretty "," <+> pretty (unVar up)
+  go (LeftImproperInterval      up) = parens $ pretty "-∞" <+> pretty "," <+>prettyQuantity up
+  go (LeftImproperSemiInterval  up) = pretty "(" <> pretty "-∞" <+> pretty "," <+>prettyQuantity up <> pretty "]"
+  go (RightImproperInterval     low) = parens $ prettyQuantity low <+> pretty "," <+> pretty "∞"
+  go (RightImproperSemiInterval low) = pretty "[" <> prettyQuantity low <+> pretty "," <+> pretty "∞" <> pretty ")"
+  go (Interval      low up) = parens $ prettyQuantity low <+> pretty "," <+>prettyQuantity up
+  go (SemiInterval  low up) = pretty "[" <> prettyQuantity low <+> pretty "," <+>prettyQuantity up <> pretty ")"
+  go (SemiSegment   low up) = pretty "(" <> prettyQuantity low <+> pretty "," <+>prettyQuantity up <> pretty "]"
+  go (Segment       low up) = brackets $  prettyQuantity low <+> pretty "," <+>prettyQuantity up
 
 prettySchema (OpLabel op) = pretty "L" <> prettyOpSign op
 prettySchema (Print exp)  = prettyExp exp <+> pretty ", => 0"
 prettySchema Semicolon = pretty ";"
 prettySchema Stop = pretty "Stop"
 
+prettyQuantity (V v) = pretty (unVar v)
+prettyQuantity (C c) = pretty c
+
 prettyExp :: SchemaExpr -> Doc a
 prettyExp (Times l r)  = prettyExp l <+> pretty "*" <+> prettyExp r
 prettyExp (Div   l r)  = prettyExp l <+> pretty ":" <+> prettyExp r
 prettyExp (Add   l r)  = prettyExp l <+> pretty "+" <+> prettyExp r
 prettyExp (Minus l r)  = prettyExp l <+> pretty "-" <+> prettyExp r
-prettyExp (Constant c) = pretty c
-prettyExp (ExpVar var) = pretty (unVar var)
-prettyExp (Form   var) = pretty "Form" <+> pretty (unVar var)
+prettyExp (Primitive var) = prettyQuantity var
+prettyExp (Form   var) = pretty "Form" <+> prettyQuantity var
 
 prettyOpSign = pretty . toHex . fromOperatorSign
   where

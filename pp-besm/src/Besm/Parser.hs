@@ -199,6 +199,9 @@ assign = do
 
   return $ Assign exp var
 
+quantity :: Parser Quantity
+quantity = V <$> variable <|> C <$> integer
+
 variable :: Parser Variable
 variable = complexVar <|> simpleVar
 
@@ -220,7 +223,7 @@ printExpr = do
 
 logicalOperator :: Parser LogicalSchema
 logicalOperator = lexeme $ (*>) (char 'P') $ parens $ do
-  var <- variable
+  var <- quantity
   symbol ","
 
   opSign <- operatorNumber
@@ -237,18 +240,18 @@ logicalOperator = lexeme $ (*>) (char 'P') $ parens $ do
 
   range = do
     open <- symbol "(" <|> symbol "["
-    a <- variable <|> (Var <$> symbol "-∞")
+    a <- quantity <|> (V . Var <$> symbol "-∞")
     symbol ","
-    b <- variable <|> (Var <$> symbol "∞")
+    b <- quantity <|> (V . Var <$> symbol "∞")
     close <- symbol ")" <|> symbol "]"
 
     case (open, a, b, close) of
-      ("[", "-∞",  _ ,  _ ) -> fail "Can't have an left-inclusive interval with -∞"
-      ("(", "-∞",  a , ")") -> return $ LeftImproperInterval a
-      ("(", "-∞",  a , "]") -> return $ LeftImproperSemiInterval a
-      ( _ ,   _ , "∞", "]") -> fail "Can't have an left-inclusive interval with -∞"
-      ("[",   a , "∞", ")") -> return $ RightImproperInterval a
-      ("(",   a , "∞", ")") -> return $ RightImproperSemiInterval a
+      ("[", V (Var "-∞"),  _ ,  _ ) -> fail "Can't have an left-inclusive interval with -∞"
+      ("(", V (Var "-∞"),  a , ")") -> return $ LeftImproperInterval a
+      ("(", V (Var "-∞"),  a , "]") -> return $ LeftImproperSemiInterval a
+      ( _ ,   _ , V (Var "∞"), "]") -> fail "Can't have an left-inclusive interval with -∞"
+      ("[",   a , V (Var "∞"), ")") -> return $ RightImproperInterval a
+      ("(",   a , V (Var "∞"), ")") -> return $ RightImproperSemiInterval a
       ("[",   a ,  b , "]") -> return $ Segment a b
       ("[",   a ,  b , ")") -> return $ SemiInterval a b
       ("(",   a ,  b , "]") -> return $ SemiSegment a b
@@ -266,7 +269,7 @@ stop = symbol "stop" *> return Stop
 schemaExpr :: Parser SchemaExpr
 schemaExpr = makeExprParser baseTerm schemaOpTable
   where
-  baseTerm = Constant <$> integer <|> (symbol "Form" *> (Form <$> variable)) <|> ExpVar <$> variable
+  baseTerm = Primitive . C <$> integer <|> (symbol "Form" *> (Form <$> quantity)) <|> Primitive . V <$> variable
 
 schemaOpTable :: [[Operator Parser SchemaExpr]]
 schemaOpTable =

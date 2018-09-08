@@ -270,30 +270,34 @@ lowerSchema (S.Semicolon) = []
 
 lowerVariable = QA . S.unVar
 
-lowerLogicalOperator :: S.Variable -> S.OperatorSign -> [(S.OperatorSign, S.Range)] -> LogicalOperator
+lowerQuantity (S.C c) = QA . T.pack $ show c
+lowerQuantity (S.V v) = lowerVariable v
+
+lowerLogicalOperator :: S.Quantity -> S.OperatorSign -> [(S.OperatorSign, S.Range)] -> LogicalOperator
 lowerLogicalOperator var op ranges = Op
-  { x = (lowerVariable var)
+  { x = (lowerQuantity var)
   , defaultOp = lowerOpSign op
   , choices = map lowerRange ranges
   }
   where
-  lowerRange (nm, S.LeftImproperInterval      r) = (lowerOpSign nm, LeftImproper, lowerVariable r, Nothing)
-  lowerRange (nm, S.LeftImproperSemiInterval  r) = undefined
-  lowerRange (nm, S.RightImproperInterval     r) = undefined
-  lowerRange (nm, S.RightImproperSemiInterval r) = undefined
-  lowerRange (nm, S.Interval      l r) = undefined
-  lowerRange (nm, S.SemiInterval  l r) = undefined
-  lowerRange (nm, S.SemiSegment   l r) = undefined
-  lowerRange (nm, S.Segment       l r) = undefined
+  lowerRange (nm, S.LeftImproperInterval      r) = (lowerOpSign nm, LeftImproper, lowerQuantity r, Nothing)
+  lowerRange (nm, S.LeftImproperSemiInterval  r) = error "LeftImproperSemiInterval not yet implemented."
+  lowerRange (nm, S.RightImproperInterval     r) = error "RightImproperInterval not yet implemented."
+  lowerRange (nm, S.RightImproperSemiInterval r) = error "RightImproperSemiInterval not yet implemented."
+  lowerRange (nm, S.Interval      l r) = error "Interval not yet implemented."
+  lowerRange (nm, S.SemiInterval  l r) = error "SemiInterval not yet implemented."
+  lowerRange (nm, S.SemiSegment   l r) = error "SemiSegment not yet implemented."
+  lowerRange (nm, S.Segment       l r) = error "Segment not yet implemented."
 
 lowerExp :: S.SchemaExpr -> [Operator]
 lowerExp (S.Times l r) = lowerExp l ++ [Arith Times] ++ lowerExp r
 lowerExp (S.Add   l r) = lowerExp l ++ [Arith Plus] ++ lowerExp r
 lowerExp (S.Minus l r) = lowerExp l ++ [Arith Minus] ++ lowerExp r
 lowerExp (S.Div   l r) = lowerExp l ++ [Arith Colon] ++ lowerExp r
-lowerExp (S.Constant c) = [Parameter . QA $ T.pack $ show c]
-lowerExp (S.ExpVar v) = [Parameter $ lowerVariable v]
-lowerExp (S.Form v) = [Arith TransformToDecimal, Parameter (lowerVariable v)]
+lowerExp (S.Primitive var) = [ Parameter $ lowerQuantity var ]
+lowerExp (S.Form v) = [Arith TransformToDecimal, Parameter (lowerQuantity v)]
+
+
 
 lowerConstants = map lowerConstant
   where lowerConstant (S.SConstant i) = Cell (T.pack $ show i) i
