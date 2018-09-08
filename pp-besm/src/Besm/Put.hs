@@ -359,6 +359,7 @@ type BV = BitVector
 -}
 
 data IntermediateValue = Short Word8 | Long Word16 | Full (BitVector 39)
+  deriving (Show, Eq)
 
 packCells :: [IntermediateValue] -> [BitVector 39]
 packCells (Short a : Short b : Short c : Short d : others) = buildArithCodes (packArithCodes a b c d) : packCells others
@@ -370,6 +371,7 @@ packCells (Short a                     : others) = buildArithCodes (packArithCod
 packCells (Long ab : Short c : Short d : others) = buildArithCodes ((bitVector' ab :: BV 16) <:> (bitVector' c  :: BV  8) <:> (bitVector' d  :: BV  8)) : packCells others
 packCells (Long ab           : Long cd : others) = buildArithCodes ((bitVector' ab :: BV 16) <:> (bitVector' cd :: BV 16)) : packCells others
 packCells (Full o                      :  thers) = o : packCells thers
+packCells (Long ab                     : others) = buildArithCodes ((bitVector' ab :: BV 16) <:> b0) : packCells others
 packCells [] = []
 
 encodeCode :: QuantityAddresses -> [Operator] -> [IntermediateValue]

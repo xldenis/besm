@@ -79,7 +79,7 @@ section sectionName sectionParser = do
 
 variableAddressSection :: Parser VASection
 variableAddressSection = do
-  section "Variable Addresses" (VA <$> some variableAddressBlock)
+  section "Variable Addresses" (VA <$> many variableAddressBlock)
 
 variableAddressBlock :: Parser Block
 variableAddressBlock = do
@@ -118,7 +118,7 @@ opTable =
 
 
 parameterSection :: Parser [Parameter]
-parameterSection = section "Parameters" (some parameterDecl)
+parameterSection = section "Parameters" (many parameterDecl)
 
 parameterDecl :: Parser Parameter
 parameterDecl = inFin <|> characteristic

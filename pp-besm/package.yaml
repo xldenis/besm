@@ -32,7 +32,10 @@ library:
   - text
   - prettyprinter
   - digits
-
+  ghc-options:
+  - -fwarn-incomplete-uni-patterns
+  - -fwarn-incomplete-patterns
+  - -fdiagnostics-color=always
 executables:
   pp-besm:
     main:                Main.hs
