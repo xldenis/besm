@@ -8,20 +8,12 @@ use vm::VM;
 use vm::instruction::{first_addr, second_addr, third_addr, Instruction};
 use bit_field::BitField;
 
-use arraydeque::*;
 use tui_logger::*;
-
-use arraydeque::behavior::Wrapping;
 
 #[derive(Eq, PartialEq)]
 pub enum StepMode { Run, Stop, Step }
 
-pub struct Interface {
-    pub size: Rect,
-    pub past_instrs: ArrayDeque<[Instruction; 50], Wrapping>,
-    pub step_mode: StepMode,
-    pub tabs: TabInfo,
-}
+use interface::Interface;
 
 pub struct TabInfo {
     titles: Vec<&'static str>,
@@ -57,29 +49,11 @@ impl TabInfo {
     }
 }
 
-impl Interface {
-    pub fn toggle_step(&mut self) {
-        use StepMode::*;
-        self.step_mode = match self.step_mode {
-            Run  => Step,
-            Step => Run,
-            Stop => Stop,
-        };
-    }
-
-    pub fn halt(&mut self) {
-        self.step_mode = StepMode::Stop;
-    }
-
-    pub fn pause(&mut self) {
-        self.step_mode = StepMode::Step;
-    }
-}
 
 use tui::layout::Size::*;
 use tui::layout::Direction::*;
 
-pub fn draw(t: &mut Terminal<MouseBackend>, vm: &VM, app: &Interface) {
+pub fn draw<T : Backend>(t: &mut Terminal<T>, vm: &VM, app: &Interface) {
     let chunks: &[Size] = &[Min(23), Fixed(3)];
 
     Group::default()

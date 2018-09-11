@@ -88,6 +88,17 @@ impl<'a> VM<'a> {
         self.increment_ic();
 
       },
+      Mult { a: l, b: r, c: res, normalize: needs_norm } => {
+        let lfloat  = Float::from_bytes(self.get_address(l)?);
+        let rfloat  = Float::from_bytes(self.get_address(r)?);
+        let mut val = lfloat.mul_unnormalized(&rfloat);
+
+        if needs_norm { val.normalize() };
+
+        self.set_address(res, val.to_bytes());
+        self.increment_ic();
+
+      }
       AddE { a: x, b: y, c: z, normalize: needs_norm } => {
         let lfloat = Float::from_bytes(self.get_address(x)?);
         let rfloat = Float::from_bytes(self.get_address(y)?);
