@@ -18,12 +18,14 @@ zero = Unknown "zero"
 one :: Address
 one  = Unknown "one"
 
-_selectionCounter   = Unknown "selection counter"
-_ninetysix          = Unknown "96"
-cellKlast           = Unknown "programme header table" `offAddr` 5
-_arrangementCounter = Unknown "arrangement counter"
-_hundredfourtyfour  = Unknown "144"
-maxSelected         = Unknown "max-selected"
+selectionCounter   = Unknown "selection counter"
+ninetysix          = Unknown "96"
+cellKlast          = Unknown "programme header table" `offAddr` 5
+arrangementCounter = Unknown "arrangement counter"
+hundredfourtyfour  = Unknown "144"
+maxSelected        = Unknown "max-selected"
+maxWritten         = Unknown "max-written"
+firstAddr          = Unknown "first addr mask"
 
 constantMap =
   [ ("buffer", Size 240)
@@ -51,6 +53,7 @@ constantMap =
   , ("144 shifted 2nd addr", Raw $ 144 `B.shift` 11)
   , ("end of md write", Val 0)
   , ("max-selected", Raw 96)
+  , ("max-written", Raw 144)
   , ("-96-shifted",  Raw $ 0b11110100000 `B.shift` 22)
   , ("-144-shifted", Raw $ 0b11101110000 `B.shift` 22)
   ]
@@ -94,8 +97,11 @@ mp1 = do
     ma (Absolute $ 0x0300 + 1) (Absolute 0x10) buffer
     addr' <- mb (Absolute 0)
 
-    tN' (header `offAddr` 4) _selectionCounter
+    tN' (header `offAddr` 4) selectionCounter
     tN' (header `offAddr` 4) maxSelected
+
+    tN' (header `offAddr` 2) arrangementCounter
+    tN' (header `offAddr` 2) maxWritten
 
     -- Absolutely way too brittle
     -- Initialize values inside of the selection and arrangement subroutines
@@ -105,8 +111,8 @@ mp1 = do
     ai (op 19) cellB (op 19)
     ai (op 19 `offAddr` 1) cellB (op 19 `offAddr` 1)
 
-    ai (op 22) cellB (op 22)
-    ai (op 22 `offAddr` 1) cellB (op 22 `offAddr` 1)
+    ai (op 22) (header `offAddr` 2) (op 22)
+    ai (op 22 `offAddr` 1) (header `offAddr` 2) (op 22 `offAddr` 1)
 
     chain (op 2)
 
@@ -155,11 +161,10 @@ mp1 = do
     the extracted second and third address of (A).
   -}
   operator 7 $ do
-    let _firstAddr  = Unknown "first addr mask"
-        _secondAndThirdAddr = Unknown "snd and third addr mask"
+    let secondAndThirdAddr = Unknown "snd and third addr mask"
 
-    bitAnd _firstAddr cellA cellA1
-    bitAnd _secondAndThirdAddr cellA cellA
+    bitAnd firstAddr cellA cellA1
+    bitAnd secondAndThirdAddr cellA cellA
 
     chain (op 8)
 
@@ -225,8 +230,11 @@ mp1 = do
     let shiftL11 = (Absolute 11)
     let _startMDKMinus144 = Unknown "start of 144 block"
 
-    cellC <- shift _arrangementCounter shiftL11 cellC
-    ai b cellC b
+    -- SUPER BRITTLE. NEED TO FIND A WAY AROUND THIS.
+
+    tN' (op 22) a
+    tN' (op 22 `offAddr` 1) b
+
 
     a <- ma (Absolute $ 0x0300 + 1) _startMDKMinus144 completedInstructions
     b <- mb (Absolute 0)
@@ -238,13 +246,11 @@ mp1 = do
     PP-2 into IS and located in standard position.
   -}
   operator 16 $ mdo
-    cellC <- readMD 2 (Absolute 9) (Absolute 9) cellB
-    sub cellB one cellB
-
+    shift arrangementCounter (Absolute 11) cellB
     ai addr cellB addr
 
     let buffer = Unknown "buffer"-- Address above the executable, at most we need 256 bytes. (less since we have no constants)
-    ma (Absolute $ 0x0100 + 2) (Absolute 0x10) buffer
+    ma (Absolute $ 0x0100 + 1) (Absolute 0x10) (Absolute 0x10)
     addr <- mb (Absolute 0)
 
     let _mp2 = Procedure "MP-2" (op 1)
@@ -269,13 +275,13 @@ mp1 = do
   -}
 
   operator 17 $ do
-    compWord _selectionCounter cellKlast (op 18) (op 12)
+    compWord selectionCounter cellKlast (op 18) (op 12)
 
   {-
     Op. 18 tests that the contents of the selection block have been exhausted
   -}
   operator 18 $ do
-    compWord _selectionCounter maxSelected (op 20) (op 19)
+    compWord selectionCounter maxSelected (op 20) (op 19)
 
   mdo
     {-
@@ -287,13 +293,13 @@ mp1 = do
       a <- ma (Absolute $ 0x0100 + 2) startOfK informationBlock
       b <- mb kPlus96
 
-      let _ninetysixSndAddr = Unknown "96 shifted"
-      ai a _ninetysixSndAddr a
-      ai b _ninetysixSndAddr b
+      let ninetysixSndAddr = Unknown "96 shifted"
+      ai a ninetysixSndAddr a
+      ai b ninetysixSndAddr b
 
-      ai maxSelected _ninetysix maxSelected -- reset selection counter comp
-      let _minus96 = Unknown "-96-shifted"
-      ai iOp _minus96 iOp -- reset index op
+      ai maxSelected ninetysix maxSelected -- reset selection counter comp
+      let minus96 = Unknown "-96-shifted"
+      ai iOp minus96 iOp -- reset index op
       chain (op 20)
 
     {-
@@ -301,8 +307,8 @@ mp1 = do
     -}
     iOp <- operator 20 $ mdo
       ta <- tN' (informationBlock `offAddr` 96) cellA -- use AI to modify
-      ai ta (Unknown "one-3rd-addr") ta
-      ai _selectionCounter one _selectionCounter
+      ai ta (Unknown "one") ta
+      ai selectionCounter one selectionCounter
       retRTC
       return ta
 
@@ -311,8 +317,7 @@ mp1 = do
     Op. 21 tests whether the arrangement block has been exhausted
   -}
   operator 21 $ do
-    comp _arrangementCounter _hundredfourtyfour (op 22) (op 23)
-
+    comp arrangementCounter maxSelected (op 23) (op 22)
 
   mdo
     {-
@@ -320,7 +325,7 @@ mp1 = do
     -}
     operator 22 $ do
       let startMDK = Absolute 0
-      let endOfMDK = startMDK `offAddr` (144)
+      let endOfMDK = startMDK `offAddr` 143
       let _hundredfourtyfourSndAddr = Unknown "144 shifted 2nd addr"
 
       a <- ma (Absolute $ 0x0300 + 1) startMDK completedInstructions
@@ -329,7 +334,8 @@ mp1 = do
       ai a _hundredfourtyfourSndAddr a
       ai b _hundredfourtyfourSndAddr b
 
-      tN zero _arrangementCounter
+      ai maxWritten hundredfourtyfour maxWritten -- reset selection counter comp
+
       ai ta (Unknown "-144-shifted") ta -- reset index op
       chain (op 23)
 
@@ -338,7 +344,8 @@ mp1 = do
     -}
     ta <- operator 23 $ do
       ot <- tN cellA1 completedInstructions -- use AI to modify
-      ai ot (Unknown "one-3rd-addr") ot
+      ai arrangementCounter one arrangementCounter
+      ai ot (Unknown "one") ot
       retRTC
       return ot
     return ()

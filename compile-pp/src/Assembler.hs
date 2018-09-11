@@ -43,7 +43,7 @@ data ModuleAssembly a = Mod
   { offsetMap :: Maybe (Map Address Int)
   , relativeMap :: Maybe (Map Address RelativeAddr)
   , procs :: [Procedure a]
-  }
+  } deriving (Show)
 
 debugAssemble defs a =
   Mod Nothing Nothing
@@ -103,7 +103,7 @@ absolutize defs align mod = let
     AlignRight -> 1023 - bSize + 1
   in mod
     { procs = map (absolveProc cSize offset segmentOffsets) (procs mod)
-    , offsetMap = Just undefined
+    , offsetMap = (M.map (absolve cSize offset segmentOffsets) <$> (relativeMap mod))
     }
   where
   absolveProc cSize offset textLens (Proc (nm, bbs)) =
