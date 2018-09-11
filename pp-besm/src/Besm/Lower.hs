@@ -237,6 +237,7 @@ lowerVariableAddresses (S.VA blocks) = V
       . NL.sortBy (compare `on` irSlopes)
       $ NL.map unpackVariableAddress vars
 
+    splitConstant :: [S.SimpleExpr] -> ([S.SimpleExpr], Int)
     splitConstant eq = (vars, toInt c)
       where (c, vars) = partition isConstant eq
             toInt [S.SConstant i] =  i
@@ -245,13 +246,14 @@ lowerVariableAddresses (S.VA blocks) = V
             isConstant (S.SConstant _) = True
             isConstant _               = False
 
+    unpackVariableAddress :: (Text, S.SimpleExpr) -> VAIR
     unpackVariableAddress (name, eq) = VAIR name off slopes vars
       where
       ((slopes, vars), off) = unzipLeft $ splitConstant $ unwrapVA eq
       unzipLeft (vars, c) = (unzip $ map vaConstant vars, c)
       vaConstant (S.STimes (S.SConstant c) (S.SExpVar v)) = (c, v)
 
-
+    unwrapVA :: S.SimpleExpr -> [S.SimpleExpr]
     unwrapVA (S.SAdd l r) = unwrapVA l ++ unwrapVA r
     unwrapVA l            = [l]
 
@@ -305,7 +307,7 @@ lowerExp (S.Minus l r) = lowerExp l ++ [Arith Minus] ++ lowerExp r
 lowerExp (S.Div   l r) = lowerExp l ++ [Arith Colon] ++ lowerExp r
 lowerExp (S.Primitive var) = [ Parameter $ lowerQuantity var ]
 lowerExp (S.Form v) = [Arith TransformToDecimal, Parameter (lowerQuantity v)]
-lowerExp (S.Mod v) = [Arith Mod] ++ lowerExp v
+lowerExp (S.Mod v)  = [Arith Mod] ++ lowerExp v
 lowerExp (S.Sqrt v) = [Arith SquareRoot] ++ lowerExp v
 lowerExp (S.Cube v) = [Arith Cube] ++ lowerExp v
 
