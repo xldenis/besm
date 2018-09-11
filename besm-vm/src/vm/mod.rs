@@ -355,7 +355,7 @@ impl<'a> VM<'a> {
         let left  = Float::from_bytes(self.get_address(a)?);
         let right = Float::from_bytes(self.get_address(b)?);
 
-        info!("CMP {:?} {:?}", left, right);
+        info!("CMP {} {}", left, right);
         let branch = match left.exp.cmp(&right.exp) {
           Ordering::Greater => { left.sign }
           Ordering::Less => { !right.sign }
@@ -373,7 +373,7 @@ impl<'a> VM<'a> {
         let left = self.get_address(a)?;
         let right = self.get_address(b)?;
 
-        info!("CMPWD {:?} {:?}", left, right);
+        info!("CMPWD {} {}", left, right);
         if left != right {
           info!("Branching to {}", c);
           self.set_ic(c);

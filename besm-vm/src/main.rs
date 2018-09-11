@@ -194,13 +194,13 @@ fn main() {
             Key(Char(' ')) => {
                 interface.toggle_step();
             }
-            Key(Char('<')) => {
+            Key(Char('<'))| Key(Char(',')) => {
                 if interface.tabs.prev_tab() {
                     interface.pause();
                     terminal.resize(interface.size).unwrap();
                 }
             }
-            Key(Char('>')) => {
+            Key(Char('>')) | Key(Char('.')) => {
                 if interface.tabs.next_tab() {
                     interface.pause();
                     // termion appears to have a bug which causes the UI to glitch out until it's resized
