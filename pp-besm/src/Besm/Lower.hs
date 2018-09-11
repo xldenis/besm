@@ -1,5 +1,9 @@
 {-# LANGUAGE DataKinds #-}
-module Besm.Lower where
+module Besm.Lower (
+  module Besm.Lower
+, S.Address(..)
+, S.unVar
+) where
 
 import qualified Besm.Syntax               as S
 
@@ -11,7 +15,7 @@ import           Data.Text            (Text)
 import qualified Data.Text            as T
 import           Data.Word
 import           Data.Function (on)
-
+import qualified Besm.Syntax.NonStandard as NS
 {-
   """
   All information on the problem is always divided into the following four groups:
@@ -85,6 +89,8 @@ data Operator
   | OperatorSign OperatorSign -- should this be 8 bits? not 11?? ?? ? ? ? ?
   | LoopOpen Quantity
   | LoopClose
+  | NS NS.NonStandardOpcode S.Address S.Address S.Address
+  | Empty
   deriving Show
 
 newtype Quantity = QA { unQ :: Text } deriving Show
@@ -262,14 +268,17 @@ lowerSchema (S.Assign exp var) = lowerExp exp ++ [Arith Assign, Parameter (lower
 lowerSchema (S.LogicalOperator var op ranges) = [LogicalOperator (lowerLogicalOperator var op ranges)]
 lowerSchema (S.OpLabel op) = [OperatorSign (lowerOpSign op)]
 lowerSchema (S.Print exp) = lowerExp exp ++ [Arith Print]
--- I havent found any information on how Stop is coded so I assume it's equivalent to
--- and end-of-input-marker
-lowerSchema (S.Stop) = []
+lowerSchema (S.NS op a b c) = [NS op a b c]
 -- ; is a purely syntactic construct that is parsed solely for prettyprinting purposes
 lowerSchema (S.Semicolon) = []
+lowerSchema (S.CCCC  v)   = [NS NS.CCCC (S.Abs 0) (S.Abs 0) (S.Abs $ S.fromOperatorSign v)]
+lowerSchema (S.CCCC2 w v) = [NS NS.CCCC (S.Abs 0) (S.Abs $ S.fromOperatorSign v) (S.Abs $ S.fromOperatorSign v)]
+lowerSchema (S.RTC   v)   = [NS NS.AI (S.Abs 0x110F) (S.Abs 0) (S.Abs $ S.fromOperatorSign v), Empty]
+lowerSchema (S.CLCC  v)   = [NS NS.CLCC (S.Abs 0) (S.Abs 0) (S.Abs $ S.fromOperatorSign v)]
 
 lowerVariable = QA . S.unVar
 
+lowerQuantity :: S.Quantity -> Quantity
 lowerQuantity (S.C c) = QA . T.pack $ show c
 lowerQuantity (S.V v) = lowerVariable v
 
@@ -283,7 +292,7 @@ lowerLogicalOperator var op ranges = Op
   lowerRange (nm, S.LeftImproperInterval      r) = (lowerOpSign nm, LeftImproper, lowerQuantity r, Nothing)
   lowerRange (nm, S.LeftImproperSemiInterval  r) = error "LeftImproperSemiInterval not yet implemented."
   lowerRange (nm, S.RightImproperInterval     r) = error "RightImproperInterval not yet implemented."
-  lowerRange (nm, S.RightImproperSemiInterval r) = error "RightImproperSemiInterval not yet implemented."
+  lowerRange (nm, S.RightImproperSemiInterval r) = (lowerOpSign nm, RightImproperSemi, lowerQuantity r, Nothing)
   lowerRange (nm, S.Interval      l r) = error "Interval not yet implemented."
   lowerRange (nm, S.SemiInterval  l r) = error "SemiInterval not yet implemented."
   lowerRange (nm, S.SemiSegment   l r) = error "SemiSegment not yet implemented."
@@ -296,8 +305,9 @@ lowerExp (S.Minus l r) = lowerExp l ++ [Arith Minus] ++ lowerExp r
 lowerExp (S.Div   l r) = lowerExp l ++ [Arith Colon] ++ lowerExp r
 lowerExp (S.Primitive var) = [ Parameter $ lowerQuantity var ]
 lowerExp (S.Form v) = [Arith TransformToDecimal, Parameter (lowerQuantity v)]
-
-
+lowerExp (S.Mod v) = [Arith Mod] ++ lowerExp v
+lowerExp (S.Sqrt v) = [Arith SquareRoot] ++ lowerExp v
+lowerExp (S.Cube v) = [Arith Cube] ++ lowerExp v
 
 lowerConstants = map lowerConstant
   where lowerConstant (S.SConstant i) = Cell (T.pack $ show i) i

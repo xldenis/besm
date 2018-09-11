@@ -15,8 +15,9 @@ import           GHC.TypeNats                   (KnownNat)
 
 import           Data.Text                      (Text)
 import           Besm.Lower
+import qualified Besm.Syntax.NonStandard as NS
 import           Data.Digits (digits)
-import           Data.Bits (setBit)
+import           Data.Bits (setBit, bit, (.|.))
 import           Text.Printf
 {-
   A programme has to be prepared for the PP by being coded in binary.
@@ -383,7 +384,64 @@ encodeCode pa (OperatorSign os : ops) = Full (buildInstruction operatorSign (get
 encodeCode pa (LoopOpen p : ops)      = Full (buildInstruction operatorSign (quantityOffsetBits pa p) b0 b0) : encodeCode pa ops
 encodeCode pa (LoopClose : ops)       = Full (buildInstruction (bitVector 0x01F) b13FF b13FF b13FF)       : encodeCode pa ops
   where b13FF = bitVector 0x13FF
+encodeCode pa (NS ns a b c : ops) = Full (buildInstruction (putOpCode ns) (bvAddr pa a) (bvAddr pa b) (bvAddr pa c)) : encodeCode pa ops
+encodeCode pa (Empty : ops) = Full b0 : encodeCode pa ops
+encodeCode pa [LogicalOperator lo] = encodeLogicalOp pa Nothing lo Empty
 encodeCode pa [] = []
+
+{-
+  Non-Standard Operators are simply machine-code carried up to the level of PP.
+
+  To encode them we simply need to encode them in the correct format while placing
+  quantities instead of addresses.
+-}
+
+bvAddr :: QuantityAddresses -> Address -> BitVector 11
+bvAddr qa (Abs a) = bitVector $ fromIntegral a
+bvAddr qa (VarQ v) = bitVector . fromIntegral . fromJust $ unVar v `lookup` qa
+bv :: KnownNat k => Integer -> BitVector k
+bv = bitVector
+
+
+putOpCode :: NS.NonStandardOpcode -> BitVector 6
+putOpCode (NS.Add      n) = bv 0x001
+putOpCode (NS.Sub      n) = bv $ normToBit n .|. 0x002
+putOpCode (NS.Mult     n) = bv $ normToBit n .|. 0x003
+putOpCode (NS.Div      n) = bv $ normToBit n .|. 0x004
+putOpCode (NS.AddE     n) = bv $ normToBit n .|. 0x005
+putOpCode (NS.SubE     n) = bv $ normToBit n .|. 0x006
+putOpCode (NS.Ce       n) = bv $ normToBit n .|. 0x007
+putOpCode (NS.Xa       n) = bv $ normToBit n .|. 0x008
+putOpCode (NS.Xb       n) = bv $ normToBit n .|. 0x009
+putOpCode (NS.DivA     n) = bv $ normToBit n .|. 0x00A
+putOpCode (NS.DivB     n) = bv $ normToBit n .|. 0x00B
+putOpCode (NS.TN       n) = bv $ normToBit n .|. 0x00C
+putOpCode (NS.PN        ) = bv 0x02C
+putOpCode (NS.TMin     n) = bv $ normToBit n .|. 0x00D
+putOpCode (NS.TMod     n) = bv $ normToBit n .|. 0x00E
+putOpCode (NS.TSign    n) = bv $ normToBit n .|. 0x00F
+putOpCode (NS.TExp     n) = bv $ normToBit n .|. 0x010
+putOpCode (NS.Shift     ) = bv 0x011
+putOpCode (NS.ShiftAll  ) = bv 0x031
+putOpCode (NS.AI        ) = bv 0x012
+putOpCode (NS.AICarry   ) = bv 0x032
+putOpCode (NS.I         ) = bv 0x013
+putOpCode (NS.Ma        ) = bv 0x016
+putOpCode (NS.Mb        ) = bv 0x017
+putOpCode (NS.LogMult   ) = bv 0x01D
+putOpCode (NS.JCC       ) = bv 0x019
+putOpCode (NS.CLCC      ) = bv 0x01A
+putOpCode (NS.Comp      ) = bv 0x014
+putOpCode (NS.CompWord  ) = bv 0x034
+putOpCode (NS.CompMod   ) = bv 0x015
+putOpCode (NS.CCCC      ) = bv 0x01B
+putOpCode (NS.CCCCSnd   ) = bv 0x01B
+putOpCode (NS.Stop      ) = bv 0x01F
+putOpCode (NS.SwitchStop) = bv 0x01C
+
+normToBit :: NS.NormalizeResult -> Integer
+normToBit NS.Normalized   = 0
+normToBit NS.UnNormalized = bit 5
 
 {-
   """

@@ -8,7 +8,7 @@ import           Data.String               (IsString)
 import           Data.Text                 (Text)
 import           Data.Text.Prettyprint.Doc
 import           Text.Printf
-
+import qualified Besm.Syntax.NonStandard as NS
 {-
   Source level syntax tree for the PP-BESM language suitable for pretty printing.
 -}
@@ -64,12 +64,26 @@ data LogicalSchema
   | LogicalOperator Quantity OperatorSign [(OperatorSign, Range)]
   | OpLabel OperatorSign
   | Print SchemaExpr
-  | Stop
   | Semicolon
+  | NS NS.NonStandardOpcode Address Address Address
+  | CCCC OperatorSign
+  | CCCC2 OperatorSign OperatorSign
+  | RTC OperatorSign
+  | CLCC OperatorSign
+  | JCC
   deriving Show
 
 newtype OperatorSign = OpSign { fromOperatorSign :: Int }
   deriving (Show)
+
+{-
+  The type of addresses for non standard operators. They are either absolute addresses
+  or variable quantities.
+-}
+data Address
+  = Abs Int
+  | VarQ Variable
+  deriving (Show, Eq)
 
 data SchemaExpr
   = Times SchemaExpr SchemaExpr
@@ -78,6 +92,9 @@ data SchemaExpr
   | Minus SchemaExpr SchemaExpr
   | Primitive Quantity
   | Form   Quantity
+  | Mod SchemaExpr
+  | Sqrt SchemaExpr
+  | Cube SchemaExpr
   deriving Show
 
 data Quantity = V Variable | C Int
@@ -160,7 +177,6 @@ prettySchema (LogicalOperator var op ranges) = pretty "P" <> (parens $ hsep
 prettySchema (OpLabel op) = pretty "L" <> prettyOpSign op
 prettySchema (Print exp)  = prettyExp exp <+> pretty ", => 0"
 prettySchema Semicolon = pretty ";"
-prettySchema Stop = pretty "Stop"
 
 prettyQuantity (V v) = pretty (unVar v)
 prettyQuantity (C c) = pretty c

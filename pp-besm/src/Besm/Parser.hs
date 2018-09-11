@@ -17,6 +17,7 @@ import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import           Data.Void
 import           Besm.Syntax
+import qualified Besm.Syntax.NonStandard as NS
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -54,6 +55,16 @@ binary :: Parser Text -> (a -> a -> a) -> Operator Parser a
 binary op f = InfixL $ do
   op
   return f
+
+prefix :: Parser Text -> (a -> a) -> Operator Parser a
+prefix op f = Prefix $
+  op >> return f
+
+suffix :: Parser Text -> (a -> a) -> Operator Parser a
+suffix op f = Postfix $
+  op >> return f
+
+semicolon = lexeme (char ';') >> scn
 
 -- | Top Level Parser for a PP program
 pp :: Parser ParsedProgramme
@@ -94,17 +105,21 @@ variableAddressBlock = do
 
 variableAddress :: Parser (Text, SimpleExpr)
 variableAddress = do
-  (var, subscripts) <- lexeme . angles $ (,) <$> (letterChar <* char '_') <*> (some letterChar)
+  Var nm <- lexeme . angles $ complexVar
+  let (_, subscripts) = T.break (== '_') nm
   symbol "="
-  exp <- simpleExpr (oneOf subscripts)
+  exp <- simpleExpr (oneOf $ T.unpack subscripts)
   scn
-  return (T.pack $ var : '_' : subscripts, exp)
+  return (nm, exp)
 
 simpleExpr :: Parser Char -> Parser SimpleExpr
 simpleExpr vars = makeExprParser (constant <|> expVar vars) opTable
 
 constant :: Parser SimpleExpr
-constant = lexeme $ SConstant <$> integer
+constant = lexeme $
+  SConstant . negate <$> (char '-' *> integer) <|>
+  SConstant <$> integer
+
 
 expVar :: Parser Char -> Parser SimpleExpr
 expVar vars = lexeme $ SExpVar <$> vars
@@ -116,13 +131,11 @@ opTable =
     ]
   ]
 
-
 parameterSection :: Parser [Parameter]
 parameterSection = section "Parameters" (many parameterDecl)
 
 parameterDecl :: Parser Parameter
 parameterDecl = inFin <|> characteristic
-
 
 -- | A parameter consisting only of upper and lower bounds.
 inFin :: Parser Parameter
@@ -136,7 +149,6 @@ inFin = do
   scn
 
   return $ InFin var init fin
-
 
 -- This syntax is inferred from the book and context, no actual example of a so called 'characteristic loop'
 -- has been found
@@ -175,7 +187,7 @@ schemaSection = section "Logical Scheme"  $ do
 
 -- | Parse a list of schematic statements
 schemaParser :: Parser LogicalSchema
-schemaParser = (Seq . concatTuples) <$> some ((,) <$> schemaTerm <*> optional (symbol ";" >> pure Semicolon) <* scn)
+schemaParser = (Seq . concatTuples) <$> some ((,) <$> schemaTerm <*> optional (semicolon >> pure Semicolon) <* scn)
   where
   concatTuples ((term, Just s ) : ls) = term : s : concatTuples ls
   concatTuples ((term, Nothing) : ls) = term : concatTuples ls
@@ -183,11 +195,11 @@ schemaParser = (Seq . concatTuples) <$> some ((,) <$> schemaTerm <*> optional (s
 
 -- | Parse one schema statement
 schemaTerm :: Parser LogicalSchema
-schemaTerm = loop <|> printExpr <|> assign <|> logicalOperator <|> opSign <|> stop
+schemaTerm = loop <|> printExpr <|> assign <|> logicalOperator <|> opSign <|> stop <|> nonStandard <|> goto
 
 loop :: Parser LogicalSchema
 loop = between (char '[') (char ']') $ do
-  var <- lexeme letterChar
+  var <- lexeme letterChar <* scn
   schema <- schemaParser
 
   return $ Loop var schema
@@ -211,7 +223,7 @@ simpleVar = lexeme $ Var <$> (T.singleton <$> letterChar)
 complexVar :: Parser Variable
 complexVar = liftM Var $ lexeme $ do
   a <- try $ letterChar <* char '_'
-  sub <- some letterChar
+  sub <- some (letterChar) <|> some digitChar
 
   return . T.pack $ a : '_' : sub
 
@@ -227,7 +239,7 @@ logicalOperator = lexeme $ (*>) (char 'P') $ parens $ do
   symbol ","
 
   opSign <- operatorNumber
-  symbol ";"
+  semicolon
 
   branches <- some logicalBranch
   return $ LogicalOperator var opSign branches
@@ -264,7 +276,120 @@ opSign :: Parser LogicalSchema
 opSign = char 'L' *> (OpLabel <$> operatorNumber)
 
 stop :: Parser LogicalSchema
-stop = symbol "stop" *> return Stop
+stop = symbol "stop" *> return (NS NS.Stop (Abs 0) (Abs 0) (Abs 0))
+
+goto :: Parser LogicalSchema
+goto = cccc2 <|> cccc <|> rtc <|> clcc <|> jcc
+  where
+  cccc  = char '/'    *> (CCCC <$> operatorNumber)
+  cccc2 = try $ do
+    a <- operatorNumber
+    string "/="
+    b <- operatorNumber
+    return $ CCCC2 a b
+  rtc = try $ (RTC <$> operatorNumber) <* string "\\="
+  clcc = string "/-"  *> (CLCC <$> operatorNumber)
+  jcc = string "\\-"  *> (pure JCC)
+
+nonStandard :: Parser LogicalSchema
+nonStandard =
+  ma <|> mb <|> pn <|> clcc <|> jcc <|> comp <|>
+  compword <|> compmod <|> cccc <|> ccccsnd <|> i <|>
+  logmult <|> ai <|> aicarry <|> shift <|>
+  shiftall <|>
+
+  add  NS.Normalized <|> sub  NS.Normalized <|> mult  NS.Normalized <|>
+  div  NS.Normalized <|> adde NS.Normalized <|> sube  NS.Normalized <|>
+  ce   NS.Normalized <|> xa   NS.Normalized <|> xb    NS.Normalized <|>
+  diva NS.Normalized <|> divb NS.Normalized <|> tn    NS.Normalized <|>
+  tmin NS.Normalized <|> tmod NS.Normalized <|> tsign NS.Normalized <|>
+  texp NS.Normalized <|>
+
+  add  NS.UnNormalized <|> sub  NS.UnNormalized <|> mult  NS.UnNormalized <|>
+  div  NS.UnNormalized <|> adde NS.UnNormalized <|> sube  NS.UnNormalized <|>
+  ce   NS.UnNormalized <|> xa   NS.UnNormalized <|> xb    NS.UnNormalized <|>
+  diva NS.UnNormalized <|> divb NS.UnNormalized <|> tn    NS.UnNormalized <|>
+  tmin NS.UnNormalized <|> tmod NS.UnNormalized <|> tsign NS.UnNormalized <|>
+  texp NS.UnNormalized
+ where
+  nonStandard str sym = do
+    try $ do
+      lexeme (char '(')
+      symbol str <* symbol ","
+
+    a1 <- address <* symbol ","
+    a2 <- address <* symbol ","
+    a3 <- address
+    lexeme (char ')')
+    return $ NS sym a1 a2 a3
+
+  address = Abs <$> integer <|> VarQ <$> variable
+
+  ma = nonStandard "Ma" NS.Ma
+
+  mb = nonStandard "Mb" NS.Mb
+
+  add norm = nonStandard "Add" (NS.Add norm)
+
+  sub norm = nonStandard "Sub" (NS.Sub norm)
+
+  mult norm = nonStandard "Mult" (NS.Mult norm)
+
+  div norm = nonStandard "Div" (NS.Div norm)
+
+  adde norm = nonStandard "AddE" (NS.AddE norm)
+
+  sube norm = nonStandard "SubE" (NS.SubE norm)
+
+  ce norm = nonStandard "Ce" (NS.Ce norm)
+
+  xa norm = nonStandard "Xa" (NS.Xa norm)
+
+  xb norm = nonStandard "Xb" (NS.Xb norm)
+
+  diva norm = nonStandard "DivA" (NS.DivA norm)
+
+  divb norm = nonStandard "DivB" (NS.DivB norm)
+
+  tn norm = nonStandard "TN" (NS.TN norm)
+
+  pn = nonStandard "PN" NS.PN
+
+  tmin norm = nonStandard "TMin" (NS.TMin norm)
+
+  tmod norm = nonStandard "TMod" (NS.TMod norm)
+
+  tsign norm = nonStandard "TSign" (NS.TSign norm)
+
+  texp norm = nonStandard "TExp" (NS.TExp norm)
+
+  shift = nonStandard "Shift" NS.Shift
+
+  shiftall = nonStandard "ShiftAll" NS.ShiftAll
+
+  ai = nonStandard "AI" NS.AI
+
+  aicarry = nonStandard "AICarry" NS.AICarry
+
+  i = nonStandard "I" NS.I
+
+  logmult = nonStandard "LogMult" NS.LogMult
+
+  clcc = nonStandard "CLCC" NS.CLCC
+
+  jcc = nonStandard "JCC" NS.JCC
+
+  comp = nonStandard "Comp" NS.Comp
+
+  compword = nonStandard "CompWord" NS.CompWord
+
+  compmod = nonStandard "CompMod" NS.CompMod
+
+  cccc = nonStandard "CCCC" NS.CCCC
+
+  ccccsnd = nonStandard "CCCCSnd" NS.CCCCSnd
+
+
 
 schemaExpr :: Parser SchemaExpr
 schemaExpr = makeExprParser baseTerm schemaOpTable
@@ -273,7 +398,12 @@ schemaExpr = makeExprParser baseTerm schemaOpTable
 
 schemaOpTable :: [[Operator Parser SchemaExpr]]
 schemaOpTable =
-  [ [ binary (symbol "*") Times
+  [ [ prefix (symbol "mod") Mod
+    ]
+  , [ prefix (symbol "sqrt") Sqrt
+    , suffix (symbol "^3") Cube
+    ]
+  , [ binary (symbol "*") Times
     , binary (symbol ":") Div
     ]
   , [ binary (symbol "+") Add
