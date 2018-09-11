@@ -98,7 +98,6 @@ fn render_main_panel<T: Backend>(t: &mut Terminal<T>, app: &Interface, vm: &VM, 
         })
 }
 
-
 fn render_memory_panel<T: Backend>(t: &mut Terminal<T>, tabs: &TabInfo, vm: &VM, rect: Rect) {
     use tui::widgets::Row;
 
@@ -111,6 +110,10 @@ fn render_memory_panel<T: Backend>(t: &mut Terminal<T>, tabs: &TabInfo, vm: &VM,
         }
     };
     let tab_offset = tabs.offsets[tabs.selection].saturating_sub(addr_offset);
+
+    let selected_style = Box::new(Style::default().fg(Color::Yellow)); //.modifier(Modifier::Bold)
+    let basic_style = Box::new(Style::default());
+
     let rows = mem_vec.iter().enumerate().skip(tab_offset).map(|(addr, instr)| {
         let instr_string = Instruction::from_bytes(*instr)
             .map(|s| format!("{} ", s))
@@ -118,8 +121,20 @@ fn render_memory_panel<T: Backend>(t: &mut Terminal<T>, tabs: &TabInfo, vm: &VM,
 
         use float::Float;
         let float = Float::from_bytes(*instr);
-        Row::Data(
-            vec![format!("{:04}", addr + addr_offset), instr_string, format!("{}", float), format!("{:010x}", instr), format!("{:039b}", instr)].into_iter()
+        let style = if vm.next_instr() - 1 == addr as u16 && tabs.selection == 1 {
+            &selected_style
+        } else {
+            &basic_style
+        };
+
+        Row::StyledData(
+            vec![
+                format!("{:04}", addr + addr_offset),
+                instr_string, format!("{}", float),
+                format!("{:010x}", instr),
+                format!("{:039b}", instr)
+            ].into_iter(),
+            style
         )
     });
 

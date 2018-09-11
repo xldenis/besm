@@ -61,11 +61,11 @@ impl<'a> VM<'a> {
               self.is
             ).map_err(VMError::DriveErr)?;
             self.increment_ic();
-            self.increment_ic();
           }
           _ => { return Err(VMError::BadDriveOperation);}
         }
       }
+      Mb { b: _ } => { self.increment_ic(); }
       Add  { a: l, b: r, c: res, normalize: needs_norm } => {
         let lfloat  = Float::from_bytes(self.get_address(l)?);
         let rfloat  = Float::from_bytes(self.get_address(r)?);
@@ -216,7 +216,7 @@ impl<'a> VM<'a> {
         };
 
         if branch {
-          info!("Branching to {}", c);
+          info!("Branching to {} from {}", c, self.next_instr());
           self.set_ic(c);
         } else {
           self.increment_ic();
@@ -228,7 +228,7 @@ impl<'a> VM<'a> {
 
         info!("CMPWD {} {}", left, right);
         if left != right {
-          info!("Branching to {}", c);
+          info!("Branching to {} from {}", c, self.next_instr());
           self.set_ic(c);
         } else {
           self.increment_ic();
