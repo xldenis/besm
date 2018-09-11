@@ -1,4 +1,4 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE RecursiveDo, BinaryLiterals #-}
 module PP1.Logical where
 
 {-
@@ -47,6 +47,7 @@ module PP1.Logical where
 -}
 import Monad
 import Syntax
+import qualified Data.Bits as B (shift)
 
 thirdAddr  = Unknown "third addr mask"
 firstAddr  = Unknown "first addr mask"
@@ -58,8 +59,8 @@ four = Unknown "4"
 zero = Unknown "0"
 
 constantMap =
-  [ ("second addr mask", Raw 0)
-  , ("third addr mask", Raw 0)
+  [ ("second addr mask", Raw $ 0b11111111111 `B.shift` 11)
+  , ("third addr mask", Raw 0b11111111111)
   , ("template 1", Raw 0)
   , ("template 2", Raw 0)
   , ("0", Raw 0)

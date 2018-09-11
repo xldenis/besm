@@ -38,6 +38,7 @@ constantMap =
   , ("A + 1", Val 0)
   , ("B", Val 0)
   , ("one",  Raw 1)
+  , ("one-shifted",  Raw $ 1 `B.shift` 22)
   , ("one-3rd-addr", Raw $ 1 `B.shift` 22)
   , ("zero", Raw 0)
   , ("0x18", Raw $ 0x18)
@@ -111,8 +112,10 @@ mp1 = do
     ai (op 19) cellB (op 19)
     ai (op 19 `offAddr` 1) cellB (op 19 `offAddr` 1)
 
-    ai (op 22) (header `offAddr` 2) (op 22)
-    ai (op 22 `offAddr` 1) (header `offAddr` 2) (op 22 `offAddr` 1)
+    shift (header `offAddr` 2) (Absolute 11) cellB
+
+    ai (op 22) cellB (op 22)
+    ai (op 22 `offAddr` 1) cellB (op 22 `offAddr` 1)
 
     chain (op 2)
 
@@ -189,7 +192,7 @@ mp1 = do
 
   -}
   operator 10 $ do
-    compWord zero cellA (op 2) (Procedure "PP-1" (op 1))
+    compWord zero cellA (Procedure "PP-1" (op 1)) (op 2)
   {-
     Op. 11 sends this line to cell A + 1 and from there to the block of
     completed instructions.
@@ -307,7 +310,7 @@ mp1 = do
     -}
     iOp <- operator 20 $ mdo
       ta <- tN' (informationBlock `offAddr` 96) cellA -- use AI to modify
-      ai ta (Unknown "one") ta
+      ai ta (Unknown "one-shifted") ta
       ai selectionCounter one selectionCounter
       retRTC
       return ta
