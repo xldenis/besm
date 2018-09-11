@@ -17,6 +17,7 @@ pub struct Interface {
     pub past_instrs: ArrayDeque<[Instruction; 50], Wrapping>,
     pub step_mode: StepMode,
     pub tabs: TabInfo,
+    pub breakpoint: Option<u16>,
 }
 
 use termion::event;
@@ -26,6 +27,7 @@ enum Event {
     Key(event::Key),
     Tick,
     Goto(usize),
+    Break(u16),
 }
 
 use self::Event::*;
@@ -75,10 +77,12 @@ impl Interface {
                 Key(Char('q')) => {
                     break;
                 }
-                Key(Char(' ')) => {
+                Key(Char(' ')) if self.step_mode == Step => {
                     self.toggle_step();
+                    step_vm(vm, self);
                 }
-                Key(Char('<'))| Key(Char(',')) => {
+                Key(Char(' ')) => { self.toggle_step() }
+                Key(Char('<')) | Key(Char(',')) => {
                     if self.tabs.prev_tab() {
                         self.pause();
                         terminal.resize(self.size).unwrap();
@@ -103,6 +107,13 @@ impl Interface {
                 Goto(off) => {
                     self.tabs.offsets[self.tabs.selection] = off;
                 }
+                Break(off) => {
+                    if off == 0 {
+                        self.breakpoint = None;
+                    } else {
+                        self.breakpoint = Some(off);
+                    }
+                }
                 Tick if self.step_mode == Run => {
                     step_vm(vm, self);
                 }
@@ -112,6 +123,13 @@ impl Interface {
                 }
                 _ => { continue }
             }
+
+            if let Some(b) = self.breakpoint {
+                if b == vm.next_instr() {
+                    self.pause();
+                }
+            }
+
             draw(terminal, &vm, &self);
         }
 
@@ -158,21 +176,13 @@ fn setup_input_stream() -> Receiver<Event> {
             let evt = e.unwrap();
             match evt {
                 Char('g') => {
-                    let key_evs : String = io::stdin().keys().take_while(|ev| {
-                        match ev {
-                            Ok(Char('\n')) => false,
-                            Ok(Char(_)) => true,
-                            _           => false,
-                        }
-                    }).map(|ev| {
-                        match ev.unwrap() {
-                            Char(c) => c,
-                            _ => panic!("found non-char in series of chars"),
-                        }
-                    }).collect();
-
-                    if let Ok(off) = key_evs.parse::<usize>() {
-                        tx.send(Event::Goto(off)).unwrap();
+                    if let Ok(off) = read_address() {
+                        tx.send(Event::Goto(off as usize)).unwrap();
+                    };
+                },
+                Char('b') => {
+                    if let Ok(off) = read_address() {
+                        tx.send(Event::Break(off)).unwrap();
                     };
                 },
                 e => { tx.send(Event::Key(e)).unwrap() }
@@ -180,4 +190,26 @@ fn setup_input_stream() -> Receiver<Event> {
         }
     });
     return rx;
+}
+
+use std::num::ParseIntError;
+
+fn read_address() -> Result<u16, ParseIntError> {
+    use termion::event::Key::*;
+    use termion::input::TermRead;
+    use std::io;
+
+    let key_evs : String = io::stdin().keys().take_while(|ev| {
+        match ev {
+            Ok(Char('\n')) => false,
+            Ok(Char(_)) => true,
+            _           => false,
+        }
+    }).map(|ev| {
+        match ev.unwrap() {
+            Char(c) => c,
+            _ => panic!("found non-char in series of chars"),
+        }
+    }).collect();
+    key_evs.parse::<u16>()
 }

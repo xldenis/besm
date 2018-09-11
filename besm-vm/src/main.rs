@@ -84,6 +84,7 @@ fn main() {
         past_instrs: ArrayDeque::new(),
         step_mode: interface::StepMode::Step,
         tabs: interface::TabInfo::default(),
+        breakpoint: None,
     };
 
     let mut f = File::open(opt.is_file.clone()).expect("file not found");

@@ -142,7 +142,7 @@ fn render_status_line<T: Backend>(t: &mut Terminal<T>, app: &Interface, rect: Re
     Group::default()
         .margin(1)
         .direction(Horizontal)
-        .sizes(&[Fixed(6), Percent(100)])
+        .sizes(&[Fixed(6), Min(0), Fixed(11)])
         .render(t, &rect, |t, chunks| {
             let (style, text) = match &app.step_mode {
                 StepMode::Run => (Style::default().fg(Color::Green),   "RUN"),
@@ -160,7 +160,14 @@ fn render_status_line<T: Backend>(t: &mut Terminal<T>, app: &Interface, rect: Re
                 .titles(&app.tabs.titles)
                 .select(app.tabs.selection)
                 .highlight_style(Style::default().fg(Color::Yellow))
-                .render(t, &chunks[1])
+                .render(t, &chunks[1]);
+
+            if let Some(b) = app.breakpoint {
+                Paragraph::default()
+                    .style(Style::default().fg(Color::Yellow))
+                    .text(&format!("BREAK {:04} ", b))
+                    .render(t, &chunks[2]);
+            }
         });
 }
 
