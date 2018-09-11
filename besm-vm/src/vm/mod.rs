@@ -1,7 +1,11 @@
-use bit_field::BitField;
 use float::*;
+use bit_field::BitField;
 
 mod ds;
+pub mod mag;
+pub mod instruction;
+use vm::mag::*;
+
 pub struct VM<'a> {
   pub is: &'a mut [u64; 1023],
   ds: &'a [u64; 384],
@@ -14,177 +18,17 @@ pub struct VM<'a> {
 
 enum ActiveIC { Global, Local}
 
-#[derive(Copy, Clone)]
-pub struct MagDrive {
-  pub drive: [u64; 1024]
-}
-use std::collections::HashMap;
-
-#[derive(Clone)]
-pub struct MagTape {
-  /*
-  This may seem like a weird representation for a tape.
-  However, since according to the assembly instruction reference we can write
-  up to 64 blocks of arbitrary length, it appears like it had a block-marker
-  channel to track the start of each data-block. Storing it as a HashMap is
-  conceptually much simpler than other formats.
-  */
-  tape: HashMap<u8, Vec<u64>>
-}
-
-impl MagDrive {
-  pub fn new(vals: [u64; 1024]) -> MagDrive {
-    MagDrive { drive: vals }
-  }
-}
-
-impl <'a> MagTape {
-  pub fn new() -> MagTape {
-    MagTape { tape: HashMap::new() }
-  }
-}
-
-pub struct MagSystem<'a> {
-  pub mag_drives: &'a mut [MagDrive; 5],
-  mag_tapes: &'a mut [MagTape; 4],
-  partial_operation: Option<DriveOperation>
-}
-
-impl <'a> MagSystem<'a> {
-  fn op_started(&self) -> bool {
-    match self.partial_operation {
-      None => false,
-      Some(_) => true,
-    }
-  }
-
-  fn perform_operation(&mut self, n2: u16, is: &mut [u64; 1023]) -> Option<()> {
-    use vm::DriveOperation::*;
-
-    match &self.partial_operation {
-      None => { panic!("return error") }
-
-      Some(WriteMD(id, n1, c)) => {
-        let span = (n2 + 1).checked_sub(*n1)?;
-        let drive = &mut self.mag_drives[id.to_num() as usize];
-
-        for (place, data) in drive.drive.iter_mut().skip(*n1 as usize).zip(is.iter().skip((c - 1) as usize).take(span as usize)) {
-          *place = *data;
-        }
-        info!("Wrote cells {}-{} (len {}) to MD-{:?} from IS {}", n1, n2, span, id, c);
-      }
-      Some(ReadMD(id, n1, c)) => {
-
-        let span = n2 + 1 - n1;
-        let drive = &mut self.mag_drives[id.to_num() as usize];
-        for (place, data) in is.iter_mut().skip((*c-1) as usize).zip(drive.drive.iter().skip(*n1 as usize).take(span as usize)) {
-          *place = *data;
-        }
-        info!("Read cells {}-{} (len {}) from MD-{:?} to IS {}", n1, n2, span, id, c);
-      }
-
-      Some(ReadMT(id, r, c)) => {
-        let tape = &mut self.mag_tapes[id.to_num() as usize];
-
-        if *r > 63 {
-          return None;
-        }
-
-        let range = is[(*c as usize) .. ((c + n2) as usize)].to_vec();
-        tape.tape.insert(*r as u8, range);
-      }
-      _ => { panic!("NOT DONE") }
-    }
-
-    self.partial_operation = None;
-
-    Some(())
-  }
-}
-
-#[derive(Debug, Clone)]
-pub enum DrumId { Zero, One, Two, Three, Four }
-
-#[derive(Debug, Clone)]
-pub enum TapeId { One, Two, Three, Four }
-
-impl DrumId {
-  pub fn to_num(&self) -> u8 {
-    match self {
-      DrumId::Zero => 0,
-      DrumId::One => 1,
-      DrumId::Two => 2,
-      DrumId::Three => 3,
-      DrumId::Four => 4,
-    }
-  }
-}
-
-impl TapeId {
-  pub fn to_num(&self) -> u8 {
-    match self {
-      TapeId::One => 1,
-      TapeId::Two => 2,
-      TapeId::Three => 3,
-      TapeId::Four => 4,
-    }
-  }
-}
-
-#[derive(Debug, Clone)]
-pub enum DriveOperation {
-  WriteMD(DrumId, u16, u16),
-  ReadMD(DrumId, u16, u16),
-  ReadTape(u16),
-  WriteMT(TapeId, u16, u16),
-  ReadMT(TapeId, u16, u16),
-  RewindMT(TapeId, u16),
-}
-
-fn drum_id_from_num(ix: u16) -> DrumId {
-  match ix {
-    0 => DrumId::Zero,
-    1 => DrumId::One,
-    2 => DrumId::Two,
-    3 => DrumId::Three,
-    4 => DrumId::Four,
-    _ => panic!("bad drum id")
-  }
-}
-
-fn tape_id_from_num(ix: u16) -> TapeId {
-  match ix {
-    1 => TapeId::One,
-    2 => TapeId::Two,
-    3 => TapeId::Three,
-    4 => TapeId::Four,
-    _ => panic!("bad tape id")
-  }
-}
-
-impl DriveOperation {
-  pub fn from_ma(a: u16, b: u16, c: u16) -> Result<DriveOperation, VMError> {
-    use vm::DriveOperation::*;
-    match a {
-      0x0300 ... 0x0304 => { Ok(WriteMD(drum_id_from_num(a - 0x0300), b, c)) }
-      0x0100 ... 0x0104 => { Ok(ReadMD(drum_id_from_num(a - 0x0100), b, c)) }
-      0x0080            => { Ok(ReadTape(c)) }
-      0x0281 ... 0x0284 => { Ok(WriteMT(tape_id_from_num(a), b, c)) }
-      0x0081 ... 0x0084 => { Ok(ReadMT(tape_id_from_num(a), b, c)) }
-      0x00C1 ... 0x00C4 => { Ok(RewindMT(tape_id_from_num(a), b)) }
-      _ => Err(VMError::BadDriveOperation)
-    }
-  }
-}
-
 #[derive(Debug)]
 pub enum VMError {
   OutOfBounds { },
-  PartialMa(Instruction, DriveOperation),
   BadDriveOperation,
   InvalidInstruction(u64),
   NotYetImplemented(Instruction),
+  DriveErr(mag::DriveError),
 }
+
+use vm::instruction::*;
+use vm::instruction::Instruction::*;
 
 impl<'a> VM<'a> {
   pub fn new(is: &'a mut [u64; 1023], drives: &'a mut [MagDrive; 5], tapes: &'a mut [MagTape; 4], start: u16) -> VM<'a> {
@@ -198,31 +42,29 @@ impl<'a> VM<'a> {
       mag_system: MagSystem {
         mag_drives: drives,
         mag_tapes: tapes,
-        partial_operation: None,
       }
     }
   }
-
 
   pub fn step(&mut self) -> Result<Instruction, VMError> {
     let opcode = self.is[self.next_instr() as usize - 1];
     let instr = Instruction::from_bytes(opcode)?;
 
     match instr {
-      Mb { b } if self.mag_system.op_started() => {
-        self.mag_system.perform_operation(b, &mut self.is).ok_or(VMError::BadDriveOperation)?;
-        self.increment_ic();
-
-      }
-      i if self.mag_system.op_started() => {
-        self.stopped = true;
-
-        let drive_op = self.mag_system.partial_operation.clone().unwrap();
-        Err(VMError::PartialMa(i, drive_op))?
-      }
       Ma { a, b, c } => {
-        self.mag_system.partial_operation = Some(DriveOperation::from_ma(a,b,c)?);
-        self.increment_ic();
+        let mb = Instruction::from_bytes(self.get_address(self.next_instr() + 1)?)?;
+
+        match mb {
+          Mb { b: b2 } => {
+            self.mag_system.perform_operation(
+              &DriveOperation::from_ma(a,b,c,b2).map_err(VMError::DriveErr)?,
+              self.is
+            ).map_err(VMError::DriveErr)?;
+            self.increment_ic();
+            self.increment_ic();
+          }
+          _ => { return Err(VMError::BadDriveOperation);}
+        }
       }
       Add  { a: l, b: r, c: res, normalize: needs_norm } => {
         let lfloat  = Float::from_bytes(self.get_address(l)?);
@@ -430,155 +272,5 @@ impl<'a> VM<'a> {
       panic!("can't assign to DS")
     }
     self
-  }
-}
-
-
-type Address = u16;
-
-#[derive(Debug, Copy, Clone)]
-pub enum Instruction {
-  Add       { a: Address, b: Address, c: Address, normalize: bool},
-  Sub       { a: Address, b: Address, c: Address, normalize: bool},
-  Mult      { a: Address, b: Address, c: Address, normalize: bool},
-  Div       { a: Address, b: Address, c: Address, normalize: bool},
-  AddE      { a: Address, b: Address, c: Address, normalize: bool},
-  SubE      { a: Address, b: Address, c: Address, normalize: bool},
-  Ce        { a: Address, b: Address, c: Address, normalize: bool},
-  Xa        { a: Address, b: Address, c: Address, normalize: bool},
-  Xb        {                         c: Address, normalize: bool },
-  DivA      { a: Address, b: Address, c: Address, normalize: bool},
-  DivB      {                         c: Address, normalize: bool },
-  TN        { a: Address,             c: Address, normalize: bool},
-  PN        { a: Address },
-  TMin      { a: Address,             c: Address, normalize: bool},
-  TMod      { a: Address,             c: Address, normalize: bool},
-  TSign     { a: Address, b: Address, c: Address, normalize: bool},
-  TExp      { a: Address,             c: Address, normalize: bool},
-  Shift     { a: Address, b: Address, c: Address },
-  ShiftAll  { a: Address, b: Address, c: Address },
-  AI        { a: Address, b: Address, c: Address },
-  AICarry   { a: Address, b: Address, c: Address },
-  I         { a: Address, b: Address, c: Address },
-  Comp      { a: Address, b: Address, c: Address },
-  CompWord  { a: Address, b: Address, c: Address },
-  CompMod   { a: Address, b: Address, c: Address },
-  Ma        { a: Address, b: Address, c: Address },
-  Mb        {             b: Address},
-  JCC,
-  CLCC      {                         c: Address },
-  CCCC      {             b: Address, c: Address},
-  Stop28,
-  LogMult   { a: Address, b: Address, c: Address },
-  Stop
-}
-
-use Instruction::*;
-
-pub fn first_addr(x: u64) -> u16 {
-  x.get_bits(22..33) as u16
-}
-
-pub fn second_addr(x: u64) -> u16 {
-  x.get_bits(11..22) as u16
-}
-
-pub fn third_addr(x: u64) -> u16 {
-  x.get_bits(0..11) as u16
-}
-
-impl Instruction {
-  // Eventually this should be Result<(), Instruction>
-  pub fn from_bytes(word: u64) -> Result<Instruction, VMError> {
-    let instr = match word.get_bits(33..38) {
-      0x01 => Add       { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x02 => Sub       { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x03 => Mult      { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x04 => Div       { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x05 => AddE      { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x06 => SubE      { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x07 => Ce        { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x08 => Xa        { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x09 => Xb        { normalize: !word.get_bit(38),                                            c: third_addr(word)},
-      0x0A => DivA      { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x0B => DivB      { normalize: !word.get_bit(38),                                            c: third_addr(word)},
-      0x0C => TN        { normalize: !word.get_bit(38), a: first_addr(word),                       c: third_addr(word)},
-      0x2C => PN        {                               a: first_addr(word)},
-      0x0D => TMin      { normalize: !word.get_bit(38), a: first_addr(word),                       c: third_addr(word)},
-      0x0E => TMod      { normalize: !word.get_bit(38), a: first_addr(word),                       c: third_addr(word)},
-      0x0F => TSign     { normalize: !word.get_bit(38), a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x10 => TExp      { normalize: !word.get_bit(38), a: first_addr(word),                       c: third_addr(word)},
-      0x11 => match word.get_bit(38) {
-        false => Shift  {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-        true => ShiftAll{                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      },
-      0x12 => match word.get_bit(38) {
-        false => AI     {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-        true => AICarry {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      },
-      0x13 => I         {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x14 => match word.get_bit(38) {
-        false => Comp      {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-        true  => CompWord  {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      },
-      0x15 => CompMod   {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x16 => Ma        {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x17 => Mb        {                                                   b: second_addr(word)},
-      0x19 => JCC       { },
-      0x1A => CLCC      {                                                                         c: third_addr(word)},
-      0x1B => CCCC      {                                                   b: second_addr(word), c: third_addr(word)},
-      0x1C => Stop28    { },
-      0x1D => LogMult   {                              a: first_addr(word), b: second_addr(word), c: third_addr(word)},
-      0x1F => Stop      { },
-      _    => { return Err(VMError::InvalidInstruction(word)) }
-    };
-
-    Ok(instr)
-  }
-}
-
-use std::fmt;
-
-impl fmt::Display for Instruction {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    macro_rules! denormed {
-      ($normed:expr, $nm:expr) => (format!("{}{}", if $normed {""} else {","}, $nm))
-    }
-
-    match self {
-      Add     {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Add")   , a, b, c),
-      Sub     {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Sub")   , a, b, c),
-      Mult    {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Mult")  , a, b, c),
-      Div     {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Div")   , a, b, c),
-      AddE    {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "AddE")  , a, b, c),
-      SubE    {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "SubE")  , a, b, c),
-      Ce      {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Ce")    , a, b, c),
-      Xa      {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Xa")    , a, b, c),
-      Xb      {c,     normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Xb")    ,"","", c),
-      DivA    {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "DivA")  , a, b, c),
-      DivB    {c,     normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "DivB")  ,"","", c),
-      TN      {a,c,   normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TN")    , a,"", c),
-      PN      {a}                      => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "PN")    , a,"",""),
-      TMin    {a,c,   normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TMin")  , a,"", c),
-      TMod    {a,c,   normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TMod")  , a,"", c),
-      TSign   {a,b,c, normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TSgn")  , a, b, c),
-      TExp    {a,c,   normalize: norm} => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TExp")  , a,"", c),
-      Shift   {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "Shft")  , a, b, c),
-      ShiftAll{a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "Shft")  , a, b, c),
-      AI      {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "AI")    , a, b, c),
-      AICarry {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "AI")    , a, b, c),
-      I       {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "I")     , a, b, c),
-      Comp    {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "Cmp")   , a, b, c),
-      CompWord{a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "CmpWd") , a, b, c),
-      CompMod {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "CmpMd") , a, b, c),
-      Ma      {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "Ma")    , a, b, c),
-      Mb      {b}                      => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "Mb")    ,"", b,""),
-      JCC                              => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "JCC")   ,"","",""),
-      CLCC    {c}                      => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "CLCC")  ,"","", c),
-      CCCC    {  b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "CCCC")  ,"", b, c),
-      Stop28                           => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "Stp28") ,"","",""),
-      LogMult {a,b,c}                  => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "BitMl") , a, b, c),
-      Stop                             => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true,  "Stop")  ,"","",""),
-    }
   }
 }

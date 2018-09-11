@@ -4,8 +4,8 @@ use tui::style::{Alignment, Style, Color};
 use tui::widgets::{Block, Borders, Paragraph, Widget, Tabs, Table};
 use tui::Terminal;
 
-use vm::{first_addr, second_addr, third_addr, Instruction, VM};
-
+use vm::VM;
+use vm::instruction::{first_addr, second_addr, third_addr, Instruction};
 use bit_field::BitField;
 
 use arraydeque::*;

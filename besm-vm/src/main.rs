@@ -54,6 +54,7 @@ struct Opts {
 }
 
 extern crate termion;
+use vm::mag::MagDrive;
 
 fn md_from_file(file: Option<PathBuf>) -> MagDrive {
     let mut buf = [0; 1024];
@@ -113,6 +114,7 @@ fn main() {
         md_from_file(opt.md4),
     ];
 
+    use vm::mag::MagTape;
     let mut y = [
         MagTape::new(),
         MagTape::new(),
