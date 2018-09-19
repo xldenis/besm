@@ -278,13 +278,13 @@ mp1 = do
   -}
 
   operator 17 $ do
-    compWord selectionCounter cellKlast (op 18) (op 12)
+    comp selectionCounter cellKlast (op 18) (op 12)
 
   {-
     Op. 18 tests that the contents of the selection block have been exhausted
   -}
   operator 18 $ do
-    compWord selectionCounter maxSelected (op 20) (op 19)
+    comp maxSelected selectionCounter (op 20) (op 19)
 
   mdo
     {-

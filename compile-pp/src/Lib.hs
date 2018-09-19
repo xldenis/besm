@@ -75,6 +75,13 @@ cellJ = Unknown "J"
 counterK :: Address
 counterK = undefined
 
+{-
+  Based off contextual information, the counters B_1, B_2, and B_3 each store
+  addresses that refer to locations of the partial programme.
+
+  Ref: Op. 42
+-}
+
 counterB1 :: Address
 counterB1 = undefined
 
@@ -98,6 +105,8 @@ completedOperator = Unknown "completed operators"
 -- Apparently the first addresses of the DS store some constants
 zero :: Address
 zero = Unknown "0"
+
+-- this is the address of unity which I assume is a denomarlized 1 aka lowest bit set.
 
 one :: Address
 one = Absolute 0x1081
@@ -131,7 +140,7 @@ arithCoder = do
   {-
     Op 2 - 3
 
-    Op. 2 extracts the exponeent of the line of information located in cell A.
+    Op. 2 extracts the exponent of the line of information located in cell A.
 
     Op. 3 in the case of a non-zero exponent, denoting that the selected line is no
     longer information on an arithmetical opterator, transfers control to the
@@ -151,13 +160,12 @@ arithCoder = do
     let left8   = undefined
         right22 = undefined
 
-    shift cellA left8 cellA
-    tMod cellA cellF
-    shift cellF right22 cellF
+    shift cellF right22 cellA
+    shift cellF left8 cellF
 
     add one symbolCounter symbolCounter
 
-    cccc (op 5)
+    chain (op 5)
   {-
     Op. 5 compares the indication of the symbol counter  with the number 4 and
     in the case of extraction of the last code from the line transfers control
@@ -178,8 +186,8 @@ arithCoder = do
       callRtc mp_1_17 (Procedure "MP-1" (op 21))
 
     operator 7 $ do
-      tN zero symbolCounter
-      cccc joinP
+       tN zero symbolCounter
+       chain joinP
 
     joinP <- block $ do
       jcc
@@ -195,7 +203,7 @@ arithCoder = do
     formula  coding, transferring control to Op. 2
   -}
 
-  operator 8 $ add cellF cellB cellB >> chain (op 9)
+  operator 8 $ tN' cellF cellB >> chain (op 9)
   operator 9 $ compWord zero cellB (op 2) (op 10)
 
   {-
@@ -382,11 +390,10 @@ arithCoder = do
     clcc (op 2)
     chain (op 33)
 
-    operator 33 $ do
-      shift cellB left11 cellB
-      add cellF cellB cellB
+  operator 33 $ do
+    shift cellB left11 cellB
 
-      cccc (op 34)
+    cccc (op 34)
 
   {-
 
@@ -493,7 +500,7 @@ arithCoder = do
   -}
 
   operator 40 $ mdo
-    let two = undefined
+    let two = Unknown "2"
 
     comp two cellB (op 30) (op 41) -- cellB > 2
 
@@ -507,11 +514,11 @@ arithCoder = do
   -}
 
   operator 41 $ do
-    let six = undefined
+    let six = Unknown "6"
 
     compWord six cellB (op 42) (op 55)
   {-
-  Op. 42 sets in counter B_2 the address of the start o the partial programme.
+  Op. 42 sets in counter B_2 the address of the start of the partial programme.
 
   TODO: Decide, is partialProgramme the address of the partial programme
     or the address of the address of the partial programme.
@@ -540,14 +547,23 @@ arithCoder = do
   unctions, NO -- op. 47). This test determines the case when the arithmetical
   operator begins with the formula a => y.
 
+  Notes
+  =====
+
+  Counter K seems to store the address of the last completed operator.
+  This means that if a constant stores the address of the _start_ of the completed
+  operators then we can easily check whether any have been stored.
+
+  Confirmed: the original code stored the start address of the block and then compared K to it.
   -}
 
   operator 44 $ do
-    undefined -- not sure how yet...
+    let pointerToCompletedOps = Unknown ("&completed operator")
+    compWord counterK pointerToCompletedOps (op 45) (op 47)
 
   {-
 
-  Op. 45 selects the last instructioon from the block of the completed operator
+  Op. 45 selects the last instruction from the block of the completed operator
   and extracts its third address.
 
   -}
@@ -563,10 +579,10 @@ arithCoder = do
   {-
 
   Op. 46  compares the contents of the selected address with zero. If it is
-  different from zero, this dnotes that in programming the formula to which the
+  different from zero, this denotes that in programming the formula to which the
   selected sign => relates, no instruction has been transferred to the block of
   the completed operator, which is possible if the formula has the form a => y
-  or if the right part of the formula is comppletely included in the already
+  or if the right part of the formula is completely included in the already
   programmed expression. In these cases either the code of the quantity a or the
   contitional code r of the working cell with the result of the programmed
   expression is in cell D, and then control is transferred to op. 47.
@@ -585,31 +601,83 @@ arithCoder = do
     where x is equal to "a" or r.
 
   -}
-  operator 47 $ do
-    undefined
+  let completedInstr = Unknown "transfer cell" -- cell taht's used to transfer to block 106
 
+  operator 47 $ do
+    let tnTemplate = Unknown "tn template"
+    shift cellD (Unknown "right 22") completedInstr
+    ai tnTemplate completedInstr completedInstr
+
+    chain (op 48)
   {-
   Op. 48 shifts the code with the result of the formula to the third address.
 
+  NOTES
+  =====
+
+  According to the operator diagram, no routine is called to select the next code
+  segment from the input... This means it's farily unclear how we're supposed to
+  get the code of the result which could be on separate line of information!
+
+  -}
+
+  let resultCode = Unknown "how the fuck do i get this"
+  operator 48 $ do
+    shift cellB (Absolute 11) resultCode
+
+  {-
   Op. 49 verifies if this code is equal to zero (YES -- op. 50 functions, NO --
   op. 51).
+  -}
+  operator 49 $ do
+    compWord resultCode zero (op 51) (op 50)
 
+  {-
   Op. 50, in accordance with the coding rules (sec 8), forms the instruction for
   printing the result of the formula.
-
-  Op. 51 palces the code with the result in the third address of the last
+  -}
+  operator 50 $ do
+    let pnTemplate = Unknown "pn template"
+    ai completedInstr pnTemplate completedInstr
+    chain (op 51)
+  {-
+  Op. 51 places the code with the result in the third address of the last
   instruction of the programme of the formula.
+  -}
 
+  operator 51 $ do
+    ai completedInstr resultCode completedInstr
+
+    chain (op 52)
+  {-
   Op. 52 determines the case of the symbol =>, for which
+  -}
 
-  Op. 53 places inhibition of normalization in the operatio ncode of hte last
+  operator 52 $ do
+    let eight = Unknown "8"
+    compWord cellB eight (op 53) (op 54)
+
+  {-
+  Op. 53 places inhibition of normalization in the operation code of the last
   isntruction.
+  -}
+  operator 53 $ do
+    let inhibitFlag = Unknown "inhibition flag"
+    ai completedInstr inhibitFlag completedInstr
+
+    chain (op 54)
+  {-
 
   Op. 54 sends the last instruction, in the third address of which is placed the
   code of the result, to the block of the completed operator and transfers
   control to selection of the next symbol of the arithmetical operator.
 
   -}
+
+  operator 54 $ do
+    clcc (op 106) -- CLCC or callRTC?
+
+    chain (op 2)
 
   {-
   Operaotrs 55-68 function if in cell B there is locatred the code of a single
@@ -642,8 +710,8 @@ arithCoder = do
   -}
 
   operator 57 $ do
-    let right22 = undefined
-        two = undefined
+    let right22 = Absolute 22
+        two = Unknown "2"
 
     tN cellE cellF
     shift cellF right22 cellF
@@ -676,12 +744,13 @@ arithCoder = do
   Op. 60 determines the case of m-multiple open-parentheses, transferring
   conrtol to op. 61.
 
+  Notes
+
   By Op. 57, cell e is either a multiple or single open paren.
 
   -}
   operator 60 $ do
-    shift cellE left22 cellF
-    comp one cellF (op 61) (op 64)
+    compWord two cellE (op 64) (op 61)
 
   {-
   Op. 61 reduces m by 1.
@@ -740,12 +809,10 @@ arithCoder = do
   Op. 64 determines the case of n-multiple close-parentheses, transferring
   control to op. 65
 
-  WHERE ARE WE SUPPOSED TO FIND THE CLOSE PAREN? Cell b?
-
   -}
 
   operator 64 $ do
-    undefined
+    compWord cellE six (op 67) (op 65)
   {-
 
   Op. 65 reduces n by 1.
@@ -758,7 +825,7 @@ arithCoder = do
     chain (op 66)
 
   {-
-  Op. 66 transfers control to op. 67, if n.= 0.
+  Op. 66 transfers control to op. 67, if n = 0.
 
     ┌───┬────┬───┬───┐
     │ 0 │ 06 │ 0 │ 0 │ => hex: 0x1800000
@@ -776,17 +843,23 @@ arithCoder = do
 
   Op. 67 sends the code of the result of the programmed operation within
   parentheses to cell C.
+  -}
 
+  -- operator 67 $ do
+
+  {-
   For n != 0
 
-  Op. 68 transfers the code fo the result of the programmed operation in
+  Op. 68 transfers the code of the result of the programmed operation in
   parentheses to cell C and transfers control to the sub-routine testing the
   presence of a single-place operation, which amy be located before the
   open-parentheses. After this control is again transferred to op. 34.
 
-  Let us now consider the functioning of the sub-routine of the blaock of
+  Let us now consider the functioning of the sub-routine of the block of
   arithmetical operators.
   -}
+
+  operator 68 $ do
 
 
   {-
@@ -800,7 +873,7 @@ arithCoder = do
   operator 69 $ mdo
     add' one counterB1 counterB1
     ai counterB1 addr addr
-    addr <- tN cellD (Abs 0)
+    addr <- tN cellD (Absolute 0)
 
     chain (op 70)
   {-
@@ -819,37 +892,64 @@ arithCoder = do
     jcc' <- block (jcc >> cccc (op 2))
 
     return ()
+  {-
+  Op 71. is the first-sub-routine of selection from the partial programme,
+  transferring to cell E the contents of the next cell of the partial programme
+  and subtracticing 1 from counter B_2.
+
+  -}
+  operator 71 $ mdo
+    shift counterB2 (Absolute 22) cellE
+    ai trans cellE trans
+    trans <- tN (Absolute 0) cellE
+    sub' counterB2 one counterB2
+
+  {-
+  Op 72. is the second sub-routine of selection from the partial programme,
+  transferring to cell D the contents of the next cell of the partial programme
+  and adding 1 to the counter B_3.
+  -}
+  operator 72 $ mdo
+    shift counterB3 (Absolute 22) cellD
+    ai trans cellD trans
+    trans <- tN (Absolute 0) cellE
+    add' counterB3 one counterB3
+
+  {-
+  Operators 73 - 78 constitute the sub-routine for testing the presence of a
+  single-place operation. This sub-routine realizes operator 6 in the scheme of
+  the algorithm for programming formulae (section 9).
+
+  Op. 73 compares (C) with zero. IF (C) = 0, exixt from the subroutine takes
+  place.
+  -}
+  operator 73 $ mdo
+    compWord cellC zero (op 74) exit
+    exit <- block (retRTC)
+    return ()
+  {-
+  Op. 74 sends (C) to cell D and the contents of counter B_1 to the counter B_2.
+  -}
+
+  operator 74 $ do
+    tN' cellC cellD
+    tN' counterB1 counterB2
+  {-
+  Op. 75 transfers the contents of the next cell of the partial programme to cell
+  E.
+
+  Op. 76 transfers control to op. 77 if in cell E is the code of the symbol of a
+  single-place operatiotn and to op. 77 in the contrary case.
+
+  Op. 77 programmes a singel-palce operation according to the codes of the
+  argument and the sign of the operation located simultaneously in cells D and E.
+  The conditional code of the working cell with the result of the programmed
+  operation is sent to cell D.
+
+  Op 78. subtracts  1 from counter B_1, "erasing" the programme operation.
+  -}
+
 {-
-Op 71. is the first-sub-routine of selection from the partial programme,
-transferring to cell E the contents of the next cell of the partial programme
-and subtracticing 1 from counter B_2.
-
-Op 72. is the second sub-routine of selection from the partial programme,
-transferring to cell D the contents of the next cell of the partial programme
-and adding 1 to the counter B_3.
-
-Operators 73 - 78 constitute the sub-routine for testing the presence of a
-single-place operation. This sub-routine realizes operator 6 in the scheme of
-the algorithm for programming formulae (s 9).
-
-Op. 73 compares (C) with zero. IF (C) = 0, exixt from the subroutine takes
-place.
-
-Op. 74 sends (C) to cell D and the contents of counter B_1 to the counter B_2.
-
-Op. 75 transfers the contents of the next cell of the partial programme to cell
-E.
-
-Op. 76 transfers control to op. 77 if in cell E is the code of the symbol of a
-single-place operatiotn and to op. 77 in the contrary case.
-
-Op. 77 programmes a singel-palce operation according to the codes of the
-argument and the sign of the operation located simultaneously in cells D and E.
-The conditional code of the working cell with the result of the programmed
-operation is sent to cell D.
-
-Op 78. subtracts  1 from counter B_1, "erasing" the programme operation.
-
 Op 79. transfers (D) to the partial programme and clears counter C.
 
 The sub-routine for programming two-palce operations (operatios 80 - 90)
@@ -979,7 +1079,7 @@ economize. Then the stored indiction is palced in counter K while for the
 conditional code of the result of the constructed instruction the address is
 taken agreeing with that of the instruction in the block of the completed
 operator. In the contrary case the new indication is left in the counter, which
-is transferred as the conditional coe of the result of cell D.
+is transferred as the conditional code of the result of cell D.
 
 In transferring the instructions for carrying out single-place operations
 employing a sub-routine from DS the indication of the counter is fixed only in
@@ -1005,7 +1105,7 @@ sub-routine DS since there is already in the indicated standard cell the
 instruction for reference to the sub-routine, which is compared with the
 instructions in the block of the completed operator.
 
-Op. 111 forms the initial form of rhte instruction for selection from the block
+Op. 111 forms the initial form of the instruction for selection from the block
 of the completed operator.
 
 Op. 112 selects the next instruction from the block of the completed operator,
