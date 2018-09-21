@@ -117,6 +117,8 @@ x1c = undefined
 
 arithCoder :: Builder Address
 arithCoder = do
+  let two = Unknown "2"
+  let six = Unknown "6"
 
   {-
     """
@@ -500,8 +502,6 @@ arithCoder = do
   -}
 
   operator 40 $ mdo
-    let two = Unknown "2"
-
     comp two cellB (op 30) (op 41) -- cellB > 2
 
   {-
@@ -514,8 +514,6 @@ arithCoder = do
   -}
 
   operator 41 $ do
-    let six = Unknown "6"
-
     compWord six cellB (op 42) (op 55)
   {-
   Op. 42 sets in counter B_2 the address of the start of the partial programme.
@@ -675,7 +673,7 @@ arithCoder = do
   -}
 
   operator 54 $ do
-    clcc (op 106) -- CLCC or callRTC?
+    clcc (op 106) -- CLCC or callRtc?
 
     chain (op 2)
 
@@ -845,14 +843,15 @@ arithCoder = do
   parentheses to cell C.
   -}
 
-  -- operator 67 $ do
-
+  operator 67 $ do
+    tN' cellD cellC
+    chain (op 2)
   {-
   For n != 0
 
   Op. 68 transfers the code of the result of the programmed operation in
   parentheses to cell C and transfers control to the sub-routine testing the
-  presence of a single-place operation, which amy be located before the
+  presence of a single-place operation, which may be located before the
   open-parentheses. After this control is again transferred to op. 34.
 
   Let us now consider the functioning of the sub-routine of the block of
@@ -860,11 +859,12 @@ arithCoder = do
   -}
 
   operator 68 $ do
-
+    tN' cellD cellC
+    callRtc (op 73) (op 79)
 
   {-
 
-  OP. 69 transfers (D) to the partial programme and adds 1 to counter B_1.
+  Op. 69 transfers (D) to the partial programme and adds 1 to counter B_1.
 
   rofl this operator is bonkers... the idea is to use the AI operation to modify the
   _next_ instruction and change the address we want to set based off counterB1!
@@ -912,7 +912,7 @@ arithCoder = do
   operator 72 $ mdo
     shift counterB3 (Absolute 22) cellD
     ai trans cellD trans
-    trans <- tN (Absolute 0) cellE
+    trans <- tN (Absolute 0) cellD
     add' counterB3 one counterB3
 
   {-
@@ -924,8 +924,7 @@ arithCoder = do
   place.
   -}
   operator 73 $ mdo
-    compWord cellC zero (op 74) exit
-    exit <- block (retRTC)
+    compWord cellC zero (op 74) (RTC (op 79))
     return ()
   {-
   Op. 74 sends (C) to cell D and the contents of counter B_1 to the counter B_2.
@@ -937,64 +936,166 @@ arithCoder = do
   {-
   Op. 75 transfers the contents of the next cell of the partial programme to cell
   E.
+  -}
 
+  operator 75 $ do
+    clcc (op 71)
+    chain (op 76)
+
+  {-
   Op. 76 transfers control to op. 77 if in cell E is the code of the symbol of a
-  single-place operatiotn and to op. 77 in the contrary case.
+  single-place operation and to op. 77 in the contrary case.
+  -}
 
-  Op. 77 programmes a singel-palce operation according to the codes of the
+  operator 76 $ do
+    let xf0 = Unknown "xf0"
+    comp xf0 cellE (op 77) (op 79)
+  {-
+  Op. 77 programmes a single-place operation according to the codes of the
   argument and the sign of the operation located simultaneously in cells D and E.
   The conditional code of the working cell with the result of the programmed
   operation is sent to cell D.
+  -}
+  operator 77 $ do
+    callRtc (op 91) (op 122)
+    chain (op 78)
 
+  {-
   Op 78. subtracts  1 from counter B_1, "erasing" the programme operation.
   -}
 
+  operator 78 $ do
+    sub' counterB1 one counterB1
+    chain (op 75)
+
+  {-
+  Op 79. transfers (D) to the partial programme and clears counter C.
+  -}
+
+  operator 79 $ do
+    clcc (op 79)
+    tN' zero cellC
+
+    retRTC
+
+  {-
+  The sub-routine for programming two-palce operations (operators 80 - 90)
+  programmes expressions existing in coded form in the partial programme. The
+  boundaries of this expression are the addressses of the cells in counters B_2
+  and B_1. At the start of functioning of the sub-routinethe programmed
+  expression represents a sequence of quantities separated by the signs +, - or
+  x, :.
+
+  Op. 80 transfers the contents of counter B_2 to counter B_3.
+  -}
+
+  operator 80 $ do
+    tN' counterB2 counterB3
+    chain (op 81)
+  {-
+  Op. 81 selects from cell D the code of the first quantity of the programmed
+  expression.
+  -}
+
+  operator 81 $ do
+    clcc (op 72)
+    chain (op 82)
+
+  {-
+  Op. 82 sets (D) in the first address of the formed instruction (this will be
+  the first component of the first two-place operation) and transfers control to
+  op. 89, determining the end of functioning of the sub-routine. This also takes
+  into account the case where the programmed expression consists only of a single
+  quantity.
+  -}
+  let formedInstruction = Unknown "formed instruction"
+  operator 82 $ do
+    shift cellD (right 22) formedInstruction
+    chain (op 89)
+  {-
+  Op. 83 selects from cell D the code of the sign of the two-place operation.
+  -}
+
+  operator 83 $ do
+    clcc (op 72)
+    chain (op 84)
+
+  {-
+  Op. 84 forms the code of the operation of the instruction being constructed,
+  according to the sign of the operation. Since the codes of multiplication and
+  division signs were previously reduced by four, the codes of symbols of
+  two-place operations differ from the codes of operations of the corresponding
+  instruction by the same quantity, equal to 2.
+
+  NOTES
+  =====
+
+  In the partial programme, the codes of two-place operations are stored in the
+  first address of the cell. This means that
+  -}
+
+  operator 84 $ do
+    let twoShifted = Unknown "2 << 22"
+    sub' cellD twoShifted cellD
+    shift' cellD (left 11) cellD
+
+    ai cellD formedInstruction formedInstruction
+
+    chain (op 85)
+
+  {-
+  Op. 85 selects from cell D the code of the second componenet of the two-place
+  operation.
+  -}
+
+  operator 85 $ do
+    clcc (op 72)
+
+    chain (op 86)
+
+  {-
+  Op. 86 sets it in the second address of the formed instruction.
+  -}
+
+  operator 86 $ do
+    shift cellD (left 11) cellD
+    ai formedInstruction cellD formedInstruction
+
+    chain (op 87)
+  {-
+  Op. 87 transfers the formed instruction to the block of the completed operator.
+  -}
+  operator 87 $ do
+    callRtc (op 106) (op 122)
+
+    chain (op 88)
+
+  {-
+  Op. 88 sets the conditional code of the working cell with the result of the
+  programmed operation in the first address of the cell in which the instruction
+  is formed, as the first component of the following two-place operation.
+  -}
+
+  operator 88 $ do
+    shift cellD (right 22) formedInstruction
+
+  {-
+  Op. 89 compares the indications of counters B_3 and B_1 and in the case of
+  their agreement transfers control to op. 90.
+  -}
+
+  operator 89 $ do
+    compWord counterB3 counterB1 (op 83) (op 90)
+
+  {-
+  Op. 90 transfers the contents of counter B_2 to counter B_1, "erasing" the
+  programmed part of the formula.
+  -}
+  operator 90 $ do
+    tN' counterB2 counterB1
+    retRTC
+
 {-
-Op 79. transfers (D) to the partial programme and clears counter C.
-
-The sub-routine for programming two-palce operations (operatios 80 - 90)
-programmes ecxpressions existing in coded form in the partial programme. The
-boundaries of this expression are the addressses of the cells in counters B_2
-and B_1. At the start of functioning of the sub-routinethe programmed
-expression represents a sequence of quantities separated by the signs +, - or
-x, :.
-
-Op. 80 transfers the contents of coounter B_2 to counter B_3.
-
-Op. 81 selects from cell D the code of the first quantity of the programmed
-expression.
-
-Op. 82 sets (D) in the first address of the formed instruction (this will be
-the first compenent of the first two-place operation) and transfers control to
-op. 89, determining the end of functioning of the sub-routine. This also takes
-into account the case where the programmed expression consists only of a single
-quantity.
-
-Op. 83 selects from cell D the code of the sign of the two-place operation.
-
-Op. 84 forms the code of the operation of the instruction being constructed,
-according to the sign of the operation. Since the codes of multiplication and
-division signs were previously reduced by four, the codes of symbols of
-two-place operations differ from the codes of oeprations of the corresponding
-instruction by the same quantity, equal to 2.
-
-Op. 85 selects from cell D the code of the second componenet of the two-place
-operation.
-
-Op. 86 sets it in the second address of the formed instruction.
-
-Op. 87 transfers the formed instruction to the block of the completed operator.
-
-Op. 88 sets the conditional code of the working cell with the result of the
-programmed operation in the first address of the cell in which the instruction
-is formed, as the first component of the following two-place operation.
-
-Op. 89 compares the indications of counters B_3 and B_1 and in the case of
-their agreement transfers control to op. 90.
-
-Op. 90 transfers the contents of counter B_2 to counter B_1, "erasing" the
-programmed part of the formula.
-
 The sub-routine for programming single-place operations functions on the
 following principle. In a definite order in the store, correspondng to the
 distribution of symbols of single-place operations in the coding table, are
@@ -1064,6 +1165,9 @@ Op. 105 transfers to the blcok of the completed operator the instruction for
 obtaining the result from 0002 or 0003, and then refers to op. 111 for economy
 of instruction.
 
+-}
+
+{-
 The sub-routine for transferring instructions to the block of competed operator
 and economy of instructions (op 106 - 122) functions according to the following
 principle.
