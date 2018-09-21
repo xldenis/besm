@@ -128,38 +128,43 @@ tN  a c      = emitInstr $ TN   a c   Normalized
 tN' a c      = emitInstr $ TN   a c   UnNormalized
 
 ai, ai' :: Address -> Address -> Address -> Builder Address
-ai a b c     = emitInstr $ AI a b c
+ai  a b c    = emitInstr $ AI a b c
 ai' a b c    = emitInstr $ AICarry a b c
 
 bitAnd :: Address -> Address -> Address -> Builder Address
 bitAnd a b c = emitInstr $ LogMult a b c
+
+{-
+  Control-Flow
+
+  The BESM has two primary mechanism for sub-routine calls.
+
+  The first is the "Local Counter", it has two Instruction Counters and can switch between
+  them with the help of the CLCC and JCC instructions.
+
+  The second is using a Return-To-Control pattern. If an address (a) is stored in the second
+  position of the CCCC instruction, the current central counter value will be written there
+  before jumping to the CCCC target. Then the end of the subroutine contains two cells of like so:
+
+    ┌────┬──────┬───┬───┐
+    │ AI │ 110F │ a │ t │
+    ├────┼──────┼───┼───┤
+  t │ 0  │      │ 0 │ 0 │
+    └────┴──────┴───┴───┘
+
+  Typically, t is taken as cell a.
+
+  This construction allows for a 'general' form of sub-routine calls.
+-}
+
+clcc ::  Address -> Builder Address
+clcc addr   = emitInstr $ CLCC addr
 
 jcc :: Builder Address
 jcc         = emitInstr $ JCC
 
 callRtc :: Address -> Address -> Builder Address
 callRtc op retOp = emitInstr $ CallRTC (rtc retOp) op
-
-shift :: Address -> Address -> Address -> Builder Address
-shift a b c = emitInstr $ Shift a b c
-
-clcc ::  Address -> Builder Address
-clcc addr   = emitInstr $ CLCC addr
-
-readMD :: Int -> Address -> Address -> Address -> Builder Address
-readMD n n1 n2 a = (emitInstr $ Ma (Absolute $ 0x100 + n) n1 a) >> (emitInstr $ Mb n2)
-
-ma :: Address -> Address -> Address -> Builder Address
-ma n n1 a = emitInstr $ Ma n n1 a
-
-mb ::  Address -> Builder Address
-mb n2 = emitInstr $ Mb n2
-
-comp :: Address -> Address -> Address -> Address -> Builder Address
-comp a b c d = emitTerm $ Comp a b c d
-
-compWord :: Address -> Address -> Address -> Address -> Builder Address
-compWord a b c d = emitTerm $ CompWord a b c d
 
 chain ::  Address -> Builder Address
 chain addr = emitTerm $ Chain addr
@@ -173,9 +178,102 @@ stop = emitTerm $ Stop
 checkStop :: Builder Address
 checkStop = emitTerm $ SwitchStop
 
+retRTC :: Builder Address
 retRTC = do
   addr <- gets (currentAddr . currentBlock)
   emitTerm $ RetRTC addr
+
+{-
+  The comp instruction checks if:
+
+  1. Exp(a) = Exp(b) and Mant(a) < Mant(b)
+  2. Exp(a) > Exp(b) and Mant(a) < 0
+  3. Exp(a) < Exp(b) and Mant(b) > 0
+
+  If any of these conditions are met, then instruction c is carried out
+  otherwise we go to instruction d.
+
+  Note: this corresponds to asking x < y if x and y are both normalized.
+
+  Instruction D doesn't actually belong in the machine code, this is a construction
+  which will either disappear by making D the following instruction so it flows naturally
+  or a CCCC <d> to jump there if the conditional fails.
+-}
+
+comp :: Address -> Address -> Address -> Address -> Builder Address
+comp a b c d = emitTerm $ Comp a b c d
+
+{-
+  If a and b are not bit-wise equal then go to c otherwise go to d
+
+  Same as with comp, D is a meta-linguistic construct that will get compiled down into either
+  zero or one instruction.
+-}
+
+compWord :: Address -> Address -> Address -> Address -> Builder Address
+compWord a b c d = emitTerm $ CompWord a b c d
+
+{-
+  Bit-Shifting
+
+  The shift instruction will only shift bits within the mantissa, the exponent will always
+  be set to 0.
+-}
+
+shift :: Address -> Address -> Address -> Builder Address
+shift a b c = emitInstr $ Shift a b c
+
+{-
+  ShiftAll does a full word shift setting any overflow bits to zero.
+-}
+shift' :: Address -> Address -> Address -> Builder Address
+shift' a b c = emitInstr $ ShiftAll a b c
+
+{-
+  The amount to be shifted by (m) is stored as m if the direction is to the left and as
+  64 + m if the direction is to the right. These two helpers help distinguish between
+  those cases and make it less confusing.
+-}
+left :: Int -> Address
+left i = Absolute i
+
+right :: Int -> Address
+right i = Absolute (64 + i)
+
+{-
+  IO
+
+  Mostly incomplete
+
+  There are several forms of IO available to the BESM
+
+  - Magnetic Drums
+  - Tape Drives
+  - Photo-Electric Printer
+  - Punch-Card Reader
+
+  These are all used through the Ma / Mb instruction pair. Providing a different
+  magic value to the first address of Ma tells it which operation to perform and where.
+
+  Codes:
+
+  0x030N: Write to mag drive N
+  0x010N: Read from mag drive N
+  0x0080: Read from tape
+  0x028N: Write to tape drive N
+  0x008N: Read from tape drive N
+  0x02CN: Rewind tape drive
+
+-}
+
+readMD :: Int -> Address -> Address -> Address -> Builder Address
+readMD n n1 n2 a = (emitInstr $ Ma (Absolute $ 0x100 + n) n1 a) >> (emitInstr $ Mb n2)
+
+ma :: Address -> Address -> Address -> Builder Address
+ma n n1 a = emitInstr $ Ma n n1 a
+
+mb ::  Address -> Builder Address
+mb n2 = emitInstr $ Mb n2
 
 cellA :: Address
 cellA = Unknown "A"
