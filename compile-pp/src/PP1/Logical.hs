@@ -294,11 +294,11 @@ pp1_1 = do
   -}
 
   operator 16 $ do
-    shift constantX (Absolute 11) cellC
+    shift constantX (left 11) cellC
     ai alpha1 cellC alpha1
 
     bitAnd cellA firstAddr cellC
-    shift cellC (Absolute 11) cellC
+    shift cellC (left 11) cellC
     ai alpha1 cellC alpha1
 
     chain (op 17)
@@ -432,11 +432,11 @@ pp1_1 = do
     tN' cellB alpha1
     ai ccccOpCode alpha1 alpha1
 
-    shift constantX (Absolute 11) cellC
+    shift constantX (left 11) cellC
     ai alpha1 cellC alpha1
 
     bitAnd cellA secondAddr cellC
-    shift cellC (Absolute (negate 11)) cellC
+    shift cellC (right 11) cellC
     ai alpha1 cellC alpha1
 
   {-
@@ -464,7 +464,7 @@ pp1_1 = do
     let template = Unknown "comp template"
 
     bitAnd cellA secondAddr cellC
-    shift cellC (Absolute 11) cellC
+    shift cellC (left 11) cellC
 
     ai template alpha1 alpha1
     ai alpha1 constantX alpha1

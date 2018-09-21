@@ -97,9 +97,6 @@ symbolCounter = undefined
 partialProgramme :: Address
 partialProgramme = undefined
 
-left11 = undefined
-left22 = undefined
-right22 = Unknown "right 22"
 
 completedOperator = Unknown "completed operators"
 -- Apparently the first addresses of the DS store some constants
@@ -160,9 +157,8 @@ arithCoder = do
   -}
   operator 4 $ do
     let left8   = undefined
-        right22 = undefined
 
-    shift cellF right22 cellA
+    shift cellF (right 22) cellA
     shift cellF left8 cellF
 
     add one symbolCounter symbolCounter
@@ -306,7 +302,7 @@ arithCoder = do
       return ()
 
     op22 <- operator 22 $ do
-      shift cellB left11 cellB
+      shift cellB (left 11) cellB
       clcc (op 2) -- woo subroutines!
 
       cccc (op 24)
@@ -346,7 +342,7 @@ arithCoder = do
   -}
 
   operator 27 $ do
-    shift cellB left22 cellB
+    shift cellB (left 22) cellB
     cccc (op 22)
 
   {-
@@ -393,7 +389,7 @@ arithCoder = do
     chain (op 33)
 
   operator 33 $ do
-    shift cellB left11 cellB
+    shift cellB (left 11) cellB
 
     cccc (op 34)
 
@@ -569,7 +565,7 @@ arithCoder = do
   operator 45 $ mdo
     let addr3bitmask = Unknown "0x7FF" -- 0x7FF
 
-    shift counterK left22 cellF
+    shift counterK (left 22) cellF
     ai cellF addr addr
     addr <- bitAnd completedOperator addr3bitmask cellF
 
@@ -603,7 +599,7 @@ arithCoder = do
 
   operator 47 $ do
     let tnTemplate = Unknown "tn template"
-    shift cellD (Unknown "right 22") completedInstr
+    shift cellD (right 22) completedInstr
     ai tnTemplate completedInstr completedInstr
 
     chain (op 48)
@@ -621,7 +617,7 @@ arithCoder = do
 
   let resultCode = Unknown "how the fuck do i get this"
   operator 48 $ do
-    shift cellB (Absolute 11) resultCode
+    shift cellB (left 11) resultCode
 
   {-
   Op. 49 verifies if this code is equal to zero (YES -- op. 50 functions, NO --
@@ -708,11 +704,10 @@ arithCoder = do
   -}
 
   operator 57 $ do
-    let right22 = Absolute 22
-        two = Unknown "2"
+    let two = Unknown "2"
 
     tN cellE cellF
-    shift cellF right22 cellF
+    shift cellF (right 22) cellF
 
     comp two cellF (op 56) (op 58)
 
@@ -899,7 +894,7 @@ arithCoder = do
 
   -}
   operator 71 $ mdo
-    shift counterB2 (Absolute 22) cellE
+    shift counterB2 (left 22) cellE
     ai trans cellE trans
     trans <- tN (Absolute 0) cellE
     sub' counterB2 one counterB2
@@ -910,7 +905,7 @@ arithCoder = do
   and adding 1 to the counter B_3.
   -}
   operator 72 $ mdo
-    shift counterB3 (Absolute 22) cellD
+    shift counterB3 (left 22) cellD
     ai trans cellD trans
     trans <- tN (Absolute 0) cellD
     add' counterB3 one counterB3

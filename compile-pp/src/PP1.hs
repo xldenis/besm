@@ -84,7 +84,7 @@ mp1 = do
     cellC <- readMD 2 (Absolute 7) (Absolute 15) header
     sub' (header `offAddr` 2) one cellB
 
-    shift cellB (Absolute 11) cellB
+    shift cellB (left 11) cellB
     ai addr cellB addr
 
     let buffer = Unknown "buffer" -- Address above the executable, at most we need 256 bytes. (less since we have no constants)
@@ -107,12 +107,12 @@ mp1 = do
     -- Absolutely way too brittle
     -- Initialize values inside of the selection and arrangement subroutines
 
-    shift (header `offAddr` 4) (Absolute 11) cellB
+    shift (header `offAddr` 4) (left 11) cellB
 
     ai (op 19) cellB (op 19)
     ai (op 19 `offAddr` 1) cellB (op 19 `offAddr` 1)
 
-    shift (header `offAddr` 2) (Absolute 11) cellB
+    shift (header `offAddr` 2) (left 11) cellB
 
     ai (op 22) cellB (op 22)
     ai (op 22 `offAddr` 1) cellB (op 22 `offAddr` 1)
@@ -230,7 +230,6 @@ mp1 = do
     instructions located in the arrangement block.
   -}
   operator 15 $ mdo
-    let shiftL11 = (Absolute 11)
     let _startMDKMinus144 = Unknown "start of 144 block"
 
     -- SUPER BRITTLE. NEED TO FIND A WAY AROUND THIS.
@@ -249,7 +248,7 @@ mp1 = do
     PP-2 into IS and located in standard position.
   -}
   operator 16 $ mdo
-    shift arrangementCounter (Absolute 11) cellB
+    shift arrangementCounter (left 11) cellB
     ai addr cellB addr
 
     let buffer = Unknown "buffer"-- Address above the executable, at most we need 256 bytes. (less since we have no constants)
