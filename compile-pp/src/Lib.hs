@@ -279,7 +279,7 @@ arithCoder = do
   -}
   let xf0 = undefined
 
-  operator 19 $ callRtc (op 73) (Unknown "FIXME")
+  operator 19 $ callRtc (op 73) (op 78)
   operator 20 $ comp xf0 cellB (op 21) (op 25)
 
   {-
@@ -898,6 +898,7 @@ arithCoder = do
     ai trans cellE trans
     trans <- tN (Absolute 0) cellE
     sub' counterB2 one counterB2
+    jcc
 
   {-
   Op 72. is the second sub-routine of selection from the partial programme,
@@ -909,6 +910,7 @@ arithCoder = do
     ai trans cellD trans
     trans <- tN (Absolute 0) cellD
     add' counterB3 one counterB3
+    jcc
 
   {-
   Operators 73 - 78 constitute the sub-routine for testing the presence of a
@@ -1090,161 +1092,410 @@ arithCoder = do
     tN' counterB2 counterB1
     retRTC
 
-{-
-The sub-routine for programming single-place operations functions on the
-following principle. In a definite order in the store, correspondng to the
-distribution of symbols of single-place operations in the coding table, are
-distributed the preparations for instructions for carrying out single-place
-operations in such form, that they only lack indications of the addresses of
-the argument (and the quantuty n for instructiosn CEn and <-n). The sub-routine
-locates the necessary intermediate results according to the magnitude of the
-code of the single-place operation and, utilizing the code of the argument
-located in cell D, forms the necessary instruction. For single-place operations
-carried out by means of standard sub-routines in DS, only the intermediate
-result of the instructions of reference to the sub-routine is retained. The
-instructions for dispatching the argument to cell 0001 and producing the result
-from 0002 (from 0003 for the cosine) are formed additionally.
+  {-
+  The sub-routine for programming single-place operations functions on the
+  following principle. In a definite order in the store, correspondng to the
+  distribution of symbols of single-place operations in the coding table, are
+  distributed the preparations for instructions for carrying out single-place
+  operations in such form, that they only lack indications of the addresses of
+  the argument (and the quantuty n for instructiosn CEn and <-n). The sub-routine
+  locates the necessary intermediate results according to the magnitude of the
+  code of the single-place operation and, utilizing the code of the argument
+  located in cell D, forms the necessary instruction. For single-place operations
+  carried out by means of standard sub-routines in DS, only the intermediate
+  result of the instructions of reference to the sub-routine is retained. The
+  instructions for dispatching the argument to cell 0001 and producing the result
+  from 0002 (from 0003 for the cosine) are formed additionally.
 
-Op. 91 installs the code of the argument in the first address and the parameter
-(if there is one) in the second address of cell D.
+  Op. 91 installs the code of the argument in the first address and the parameter
+  (if there is one) in the second address of cell D.
 
-Op. 92 determines the case of the operation "sign", for which
+  -}
+  let secondAddr = Unknown "2nd-addr"
+  operator 91 $ mdo
+    shift cellD (left 22) cellD
+    bitAnd cellE secondAddr cellF
+    ai cellD cellF cellD
 
-OP. 93 shifts the code of the argument to the second address (s 1).
+    let lowerFour = Unknown "15"
+    bitAnd cellE lowerFour cellE
 
-Op. 94 forms the instruction for carrying out the single-place operation by
-combining the intermediate results of the instruction with the contents of cell
-D.
+    chain (op 92)
 
-Op. 95 transfers control top op. 106 in the sub-routine for transferring the
-instructions to the block of completed operators and economy of instructions,
-if the single-place operation fulfilled does not require reference to a
-sub-routine in DS. In the contrary cse control is transferred to op. 96
+  {-
+  Op. 92 determines the case of the operation "sign", for which
+  -}
 
-Op. 96 forms the instruction for sending the argument to cell 0001.
+  operator 92 $ do
+    let fifteen = Unknown "15"
+    comp cellE fifteen (op 94) (op 93)
 
-Op. 97 determines the sign of the operation "cot", for which:
+  {-
+  Op. 93 shifts the code of the argument to the second address (s 1).
+  -}
 
-Op. 98 forms the instruction or dispatching the argument in the form
+  operator 93 $ do
+    shift cellD (right 11) cellD
+    chain (op 94)
+  {-
+  Op. 94 forms the instruction for carrying out the single-place operation by
+  combining the intermediate results of the instruction with the contents of cell
+  D.
+  -}
+  let outCell = completedInstr
+  let builder = Unknown "scratch cell"
+  let templateDispatch = Unknown "templateDispatch" -- holds AI template-table cellD builder
 
-  ┌───┬──────┬─────┬──────┐
-  │ - │ 1101 │ "x" │ 0001 │
-  └───┴──────┴─────┴──────┘
+  operator 94 $ mdo
+    shift cellE (left 22) jumpCell
 
-  where 1101 is the address of the constant pi / 2 (cot is calcuated according
-  to the formula cot x = tan (pi / 2 - x)).
+    ai templateDispatch jumpCell jumpCell
+    jumpCell <- empty -- this instruction gets replaced with a tN of the correct instruction into the builder cell
 
-Op 99. transfers the completed instructio for dispatch of the argument to the
-block of the completed operator.
+    tN' builder outCell
+    chain (op 95)
 
-Op 100 and op 101. transfers the instruction for resference to the sub-routine
-in DS to the block of the completed operator.
+  {-
+  Op. 95 transfers control to op. 106 in the sub-routine for transferring the
+  instructions to the block of completed operators and economy of instructions,
+  if the single-place operation fulfilled does not require reference to a
+  sub-routine in DS. In the contrary case control is transferred to op. 96
+  -}
+  let nine = Unknown "9"
 
-Op. 102 sets, in the standard cell for the succeeding transfer to the block of
-the completed operator, the instruction
+  operator 95 $ do
+    comp nine cellE (op 106) (op 96)
 
-  ┌───┬──────┬─────┬──────┐
-  │ T │ 0002 │     │      │
-  └───┴──────┴─────┴──────┘
+  {-
+  Op. 96 forms the instruction for sending the argument to cell 0001.
+  -}
 
-Op. 103 determines the sign of the operation "Cos", for which control is
-transferred to op. 104
+  operator 96 $ do
+    let temp = Unknown "AI _ _ 0001"
 
-Op. 104 sets in the standard cell the instruction
+    ai temp cellD outCell
+    chain (op 97)
 
-  ┌───┬──────┬─────┬──────┐
-  │ T │ 0003 │     │      │
-  └───┴──────┴─────┴──────┘
+  {-
+  Op. 97 determines the sign of the operation "cot", for which:
+  -}
 
-Op. 105 transfers to the blcok of the completed operator the instruction for
-obtaining the result from 0002 or 0003, and then refers to op. 111 for economy
-of instruction.
+  operator 97 $ do
+    compWord zero cellD (op 98) (op 99)
 
--}
+  {-
+  Op. 98 forms the instruction or dispatching the argument in the form
 
-{-
-The sub-routine for transferring instructions to the block of competed operator
-and economy of instructions (op 106 - 122) functions according to the following
-principle.
+    ┌───┬──────┬─────┬──────┐
+    │ - │ 1101 │ "x" │ 0001 │
+    └───┴──────┴─────┴──────┘
 
-In transferring the instructions the indication of counter K is fixed in a
-certain cell and then increased by unity. The transferred instruction is
-compared with instructions standing in the block of the completed operator. If
-it agrees with one of them (with regard to the possibility of interchange of
-addresses in instructions carrying out commutative operations), while the codes
-in its first and second addresses do not figure as the codes of the resutls of
-formulae of the given arithemtical operator, the transferred instruction is
-economize. Then the stored indiction is palced in counter K while for the
-conditional code of the result of the constructed instruction the address is
-taken agreeing with that of the instruction in the block of the completed
-operator. In the contrary case the new indication is left in the counter, which
-is transferred as the conditional code of the result of cell D.
+    where 1101 is the address of the constant pi / 2 (cot is calcuated according
+    to the formula cot x = tan (pi / 2 - x)).
+  -}
 
-In transferring the instructions for carrying out single-place operations
-employing a sub-routine from DS the indication of the counter is fixed only in
-transferring the fist instruction. The transfer of all three instructions to
-the block of the completed operator takes place under local control. As is
-evident from the scheme, such transfer is not accompanied by economy of
-instructions. Economy is carried out at one time for the three instructions
-after transfer of the last instruction.
+  operator 98 $ do
+    let temp = Unknown "- 1101 _ 0001"
 
-Op 106. fixed the indication of counter K.
+    shift cellD (right 11) cellD
+    ai temp cellD outCell
 
-Op 107. adds unity to counter K and forms the instruction for transfer to the
-block of the completed operator.
+    chain (op 99)
 
-Op. 108 tests for "overflow" of the block of the completed operator (it
-occupies 160 cells of IS). In the case of "overflow" a check stop takes place.
 
-Op. 109 transfers the instruction to the block fo the completed operator.
+  {-
+  Op 99. transfers the completed instruction for dispatch of the argument to the
+  block of the completed operator.
+  -}
 
-Op. 110 stores the transferred instruction in the standard cell. This operator
-does not function for instructions of single-place operations utilizing the
-sub-routine DS since there is already in the indicated standard cell the
-instruction for reference to the sub-routine, which is compared with the
-instructions in the block of the completed operator.
+  operator 99 $ do
+    clcc (op 106)
+    chain (op 100)
 
-Op. 111 forms the initial form of the instruction for selection from the block
-of the completed operator.
+  {-
+  Op 100 and op 101. transfers the instruction for reference to the sub-routine
+  in DS to the block of the completed operator.
+  -}
 
-Op. 112 selects the next instruction from the block of the completed operator,
-beginning with the next to the last instruction.
+  operator 100 $ do
+    tN' builder outCell -- we haven't used the builder again so the original instruction is still there
+    clcc (op 107)
 
-Op. 113 verifies if all instructions have been taken from the block. After
-termination of selection control is transferred to the instruction JCC located
-before op. 120.
+    chain (op 102)
+  {-
+  Op. 102 sets, in the standard cell for the succeeding transfer to the block of
+  the completed operator, the instruction
 
-Op. 114 verifies if the third address of the next instruction from the block of
-the completed operator coincides with the first or second address of the tested
-instruction (YES -- op. 122 fucntions, NO -- op. 115).
+    ┌───┬──────┬─────┬──────┐
+    │ T │ 0002 │     │      │
+    └───┴──────┴─────┴──────┘
+  -}
 
-Op. 115 compares the tested instruction with the next instruction from the
-block of the completed operator, transferring control to op. 116 in case of
-agreement.
+  operator 102 $ do
+    let temp = Unknown "T 0002 _ _"
 
-Op. 116 transfers to the third address of cell D the address of the instruction
-in the block of the completed oeprator coinciding with the tested instruction,
-which ocnstitues the conditional code of the working cell with the rsult of the
-tested instruction.
+    tN' temp outCell
 
-Op. 117 determines the cse when the coindiding instructions constutute CLCC to
-the sub-routine in DS, trnasferring conrtol to op. 118.
+    chain (op 103)
+  {-
+  Op. 103 determines the sign of the operation "Cos", for which control is
+  transferred to op. 104
+  -}
 
-Op. 118 increases the third address in cell D by 1, since the code of the
-result in this cse is found in the following instruction calling up exit from
-the sub-routine.
+  operator 103 $ do
+    comp cellE nine (op 105) (op 104)
 
-Op. 119 transfers to counter K the stored indication, then callign up exit from
-the sub-routine.
+  {-
+  Op. 104 sets in the standard cell the instruction
 
-Op. 120 determines the case of commutative operations of multiplcation and
-addition, in which case control is transferred to op. 121
+    ┌───┬──────┬─────┬──────┐
+    │ T │ 0003 │     │      │
+    └───┴──────┴─────┴──────┘
+  -}
 
-Op. 121 interchange the first and second addresses of the tested instruction
-and transfers control to op. 111 with transfer to the local system of control,
-since after repeating the test of the instruction JCC gives control to op. 122.
+  operator 104 $ do
+    ai outCell (Unknown "1-first-addr") outCell
 
-Op. 122 transfers the indication of counter K to the third address of cell D
-and realizes exit from the sub-routine.
--}
+    chain (op 105)
+  {-
+  Op. 105 transfers to the block of the completed operator the instruction for
+  obtaining the result from 0002 or 0003, and then refers to op. 111 for economy
+  of instruction.
+
+  -}
+
+  operator 105 $ do
+    clcc (op 107)
+
+    chain (op 111)
+
+  {-
+  The sub-routine for transferring instructions to the block of competed operator
+  and economy of instructions (op 106 - 122) functions according to the following
+  principle.
+
+  In transferring the instructions the indication of counter K is fixed in a
+  certain cell and then increased by unity. The transferred instruction is
+  compared with instructions standing in the block of the completed operator. If
+  it agrees with one of them (with regard to the possibility of interchange of
+  addresses in instructions carrying out commutative operations), while the codes
+  in its first and second addresses do not figure as the codes of the resutls of
+  formulae of the given arithemtical operator, the transferred instruction is
+  economize. Then the stored indiction is placed in counter K while for the
+  conditional code of the result of the constructed instruction the address is
+  taken agreeing with that of the instruction in the block of the completed
+  operator. In the contrary case the new indication is left in the counter, which
+  is transferred as the conditional code of the result of cell D.
+
+  In transferring the instructions for carrying out single-place operations
+  employing a sub-routine from DS the indication of the counter is fixed only in
+  transferring the fist instruction. The transfer of all three instructions to
+  the block of the completed operator takes place under local control. As is
+  evident from the scheme, such transfer is not accompanied by economy of
+  instructions. Economy is carried out at one time for the three instructions
+  after transfer of the last instruction.
+
+  Op 106. fixed the indication of counter K.
+  -}
+
+  let fixedCounter = Unknown "fixed K"
+
+  operator 106 $ do
+    tN' counterK fixedCounter
+
+    chain (op 107)
+
+  {-
+  Op 107. adds unity to counter K and forms the instruction for transfer to the
+  block of the completed operator.
+  -}
+
+  operator 107 $ do
+    ai counterK one counterK
+
+    chain (op 108)
+
+  {-
+  Op. 108 tests for "overflow" of the block of the completed operator (it
+  occupies 160 cells of IS). In the case of "overflow" a check stop takes place.
+  -}
+
+  operator 108 $ mdo
+    let maxK = Unknown "&K + 160"
+
+    compWord counterK maxK (op 109) addr
+
+    addr <- block checkStop
+
+    chain (op 109)
+
+  {-
+  Op. 109 transfers the instruction to the block fo the completed operator.
+  -}
+
+  let transferTemplate = Unknown "transfer template" -- holds ,TN outCell _
+  operator 109 $ mdo
+    ai transferTemplate counterK transferI
+
+    transferI <- empty
+
+    jcc
+    chain (op 110)
+
+  {-
+  Op. 110 stores the transferred instruction in the standard cell. This operator
+  does not function for instructions of single-place operations utilizing the
+  sub-routine DS since there is already in the indicated standard cell the
+  instruction for reference to the sub-routine, which is compared with the
+  instructions in the block of the completed operator.
+  -}
+
+  operator 110 $ do
+    tN' outCell builder
+
+    chain (op 111)
+
+  {-
+  Op. 111 forms the initial form of the instruction for selection from the block
+  of the completed operator.
+  -}
+  mdo
+    operator 111 $ do
+      let kComp = Unknown "k comp" -- ,< 0001 builder 112
+
+      shift fixedCounter (left 22) cmp
+
+      ai kComp cmp cmp
+
+      tExp builder (Unknown "trans-opcode")
+      chain (op 112)
+
+    {-
+    Op. 112 selects the next instruction from the block of the completed operator,
+    beginning with the next to the last instruction.
+    -}
+
+    operator 112 $ mdo
+      ai _ negativeOne _
+
+      chain (op 113)
+    {-
+    Op. 113 verifies if all instructions have been taken from the block. After
+    termination of selection control is transferred to the instruction JCC located
+    before op. 120.
+    -}
+    operator 113 $ do
+      let firstK = Unknown "first-k-cell"
+      compMod cmp firstK (op _) (op 114)
+
+    {-
+    Op. 114 verifies if the third address of the next instruction from the block of
+    the completed operator coincides with the first or second address of the tested
+    instruction (YES -- op. 122 functions, NO -- op. 115).
+    -}
+
+    operator 114 $ mdo
+      let lastTested = Unknown "3rd-addr-of-tested"
+      let scratch = Unknown "scratch-cell"
+      let testedCell = Unknown "tested-cell"
+
+      shift (op 115) (right 22) testedCell
+
+      bitAnd builder thirdAddr lastTested
+      bitAnd testedCell secondAddr scratch
+
+      shift scratch (right 11) scratch
+
+      compWord scratch lastTested secondTest (op 122)
+
+      secondTest <- block $ do
+        b <- shift testedCell (right 22) scratch
+        compWord scratch lastTested (op 115) (op 122)
+        return b
+
+    {-
+    Op. 115 compares the tested instruction with the next instruction from the
+    block of the completed operator, transferring control to op. 116 in case of
+    agreement.
+    -}
+
+    cmp <- operator 115 $ do
+      _ <- empty
+      return _
+
+  {-
+  Op. 116 transfers to the third address of cell D the address of the instruction
+  in the block of the completed operator coinciding with the tested instruction,
+  which constitues the conditional code of the working cell with the rsult of the
+  tested instruction.
+  -}
+
+  operator 116 $ do
+    shift (op 115) (right 22) cellD
+
+    chain (op 117)
+
+  {-
+  Op. 117 determines the case when the coindiding instructions constitute CLCC to
+  the sub-routine in DS, transferring conrtol to op. 118.
+  -}
+
+  operator 117 $ do
+    let clccCode = Unknown "CLCC"
+    let opCode   = Unknown "trans-opcode"
+    compWord opCode clccCode (op 119) (op 118)
+
+  {-
+  Op. 118 increases the third address in cell D by 1, since the code of the
+  result in this case is found in the following instruction calling up exit from
+  the sub-routine.
+  -}
+
+  operator 118 $ do
+    ai cellD one cellD
+
+    chain (op 119)
+  {-
+  Op. 119 transfers to counter K the stored indication, then calling up exit from
+  the sub-routine.
+  -}
+
+  operator 119 $ do
+    tN' fixedCounter counterK
+
+    chain _exit
+
+  {-
+  Op. 120 determines the case of commutative operations of multiplication and
+  addition, in which case control is transferred to op. 121
+  -}
+
+  operation 120 $ do
+    comp two opCode (op 121) (op 122)
+
+  {-
+  Op. 121 interchange the first and second addresses of the tested instruction
+  and transfers control to op. 111 with transfer to the local system of control,
+  since after repeating the test of the instruction JCC gives control to op. 122.
+  -}
+
+  operation 121 $ do
+    bitAnd builder firstAddr _
+    shift builder (left 11) _b
+
+    shift _ (right 11) _
+
+    ai _b _ _b
+
+    tSign _b builder builder
+
+    clcc (op 111)
+  {-
+  Op. 122 transfers the indication of counter K to the third address of cell D
+  and realizes exit from the sub-routine.
+  -}
+
+  operator 122 $ do
+    tN' counterK cellD
+    retRTC
 

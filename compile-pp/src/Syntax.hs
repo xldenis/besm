@@ -94,6 +94,7 @@ data Instr a
   | CallRTC     a a
   | CLCC          a
   | JCC
+  | Empty
   deriving (Show, Eq, Functor, Foldable)
 
 type Terminator = Term Address
@@ -145,6 +146,7 @@ instToCell (LogMult   a b c  ) = buildInstruction (bitVector 0x01D) (bitVector a
 instToCell (CallRTC     b c  ) = buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector b) (bitVector c)
 instToCell (JCC              ) = buildInstruction (bitVector 0x019) (bitVector 0) (bitVector 0) (bitVector 0)
 instToCell (CLCC          c  ) = buildInstruction (bitVector 0x01A) (bitVector 0) (bitVector 0) (bitVector c)
+instToCell (Empty)             = bitVector 0
 
 normToBit :: NormalizeResult -> Integer
 normToBit Normalized   = 0

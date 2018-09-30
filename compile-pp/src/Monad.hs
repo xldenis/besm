@@ -87,6 +87,8 @@ block body = do
     CurrentBlock (SnocList []) _ _ -> body >> return (currentAddr bb)
     CurrentBlock a  _ _ -> emitTerm (Chain (currentAddr bb)) >> block body
 
+empty = emitInstr $ Empty
+
 add, add' :: Address -> Address -> Address -> Builder Address
 add   a b c  = emitInstr $ Add  a b c Normalized
 add'  a b c  = emitInstr $ Add  a b c UnNormalized
