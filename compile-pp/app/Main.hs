@@ -9,11 +9,11 @@ import Data.GraphViz.Commands
 import           Besm.Assembler.CFG
 import           Besm.Assembler.Monad
 import           Besm.Assembler.Syntax
-import           Besm.PP1
+import           Besm.PP1 as PP1
 import qualified Besm.PP1.Logical as Logical
 import qualified Besm.PP1.Arithmetic as Arith
 import           Besm.Assembler
-
+import           Control.Monad
 import Besm.Put
 
 main :: IO ()
@@ -26,13 +26,13 @@ main = do
   runGraphviz (graphToDot params $ (nmap formatAddr cf2)) Png "cfg-2.png"
   runGraphviz (graphToDot params $ (nmap formatAddr lcfg)) Png "cfg-logi.png"
 
-  mapM_ putStrLn $
-    assemble (Logical.constantMap ++ constantMap ++ Arith.constantMap) AlignRight (
+  mapM_ putStrLn  . either id id $
+    assemble (Logical.constantMap ++ PP1.constantMap ++ Arith.constantMap) AlignRight (
       [ runProcedure "MP-1" mp1
       , runProcedure "PP-1" Logical.pp1_1
       , runProcedure "PP-1-2" Arith.arithCoder
       , pp2, mp2
-      ]) & map toHexString
+      ]) & liftM (map toHexString)
 
   return ()
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, BinaryLiterals, DeriveFunctor #-}
+{-# LANGUAGE DataKinds, BinaryLiterals, DeriveFunctor, LambdaCase #-}
 module Besm.Assembler where
 
 import Besm.Assembler.Syntax
@@ -17,6 +17,9 @@ import Data.Function ((&))
 import Data.BitVector.Sized
 
 import Besm.Put
+
+import Data.Either (partitionEithers)
+import Data.Bifunctor (first)
 
 -- Dummy Definitions
 type ConstantDefs = [(String, ConstantInfo)] -- map of constant name to value
@@ -46,12 +49,12 @@ data ModuleAssembly a = Mod
   } deriving (Show)
 
 debugAssemble defs a =
-  Mod Nothing Nothing
-  >>> segmentize
-  >>> internalizeModule
-  >>> resolve    defs
-  >>> absolutize defs a
-  >>> debugRender
+  pure . Mod Nothing Nothing
+  >=> pure . segmentize
+  >=> pure . internalizeModule
+  >=> resolve    defs
+  >=> pure . absolutize defs a
+  >=> pure . debugRender
   where
 
   debugRender :: ModuleAssembly Int -> ([(Int, String)], ModuleAssembly Int)
@@ -70,15 +73,28 @@ debugAssemble defs a =
   termToString (Chain     _) = []
   termToString c = [show c]
 
-assemble :: ConstantDefs -> Alignment -> [Procedure Address] -> Output
-assemble defs a =
-  Mod Nothing Nothing
-  >>> segmentize
-  >>> internalizeModule
-  >>> resolve    defs
-  >>> absolutize defs a
-  >>> render     defs a
+prop1 :: Monad m => (a -> m b) -> (b -> m c) -> (a -> m c)
+prop1 a b = a >=> b
 
+assemble :: ConstantDefs -> Alignment -> [Procedure Address] -> Either [String] Output
+assemble defs a =
+  pure . Mod Nothing Nothing
+  >=> checkForMissingConstantDefs defs
+  >=> pure . segmentize
+  >=> pure . internalizeModule
+  >=> resolve    defs
+  >=> pure . absolutize defs a
+  >=> pure . render     defs a
+
+  where
+
+  checkForMissingConstantDefs defs mod = let
+    missing = unzip $ map (missingConstants defs) (procs mod)
+    in case missing of
+      ([], []) -> Right mod
+      (ms, []) -> Left $ "Missing constants: " : map show ms
+      ([], es) -> Left $ "Extra constants: " : map show es
+      (ms, es) -> Left $ "Why??" : ("Missing constants" : map show ms ++ "extra constants" : map show es)
 render :: ConstantDefs -> Alignment -> ModuleAssembly Int -> Output
 render defs a mod = let
   blks  = procs mod >>= blocks
@@ -93,6 +109,7 @@ constantToCell :: ConstantInfo -> [BitVector 39]
 constantToCell (Size i) = replicate i (bitVector 0)
 constantToCell (Val  i) = [numberToBesmFloating i]
 constantToCell (Raw  i) = [bitVector $ fromIntegral i]
+constantToCell (Addr _) = [bitVector 0] -- FINISH LATER
 
 absolutize :: ConstantDefs -> Alignment -> ModuleAssembly RelativeAddr -> ModuleAssembly Int
 absolutize defs align mod = let
@@ -116,24 +133,33 @@ absolutize defs align mod = let
   absolve c offset textLEns (Rel Data i) = offset - c + i
   absolve _ _ _    (Abs i)      = i
 
-missingConstants :: ConstantDefs -> Procedure Address -> [Address]
+missingConstants :: ConstantDefs -> Procedure Address -> ([Address], [Address])
 missingConstants defs proc = let
   needed = nub $ map toList (blocks proc) >>= filter isUnknown
   have = nub $ map (Unknown . fst) defs
 
-  in needed \\ have
+  in (needed \\ have, have \\ needed)
 
-resolve :: ConstantDefs -> ModuleAssembly Address -> ModuleAssembly RelativeAddr
+resolve :: ConstantDefs -> ModuleAssembly Address -> Either [String] (ModuleAssembly RelativeAddr)
 resolve conses mod = let
   dict = mkRelativizationDict conses (procs mod)
-  in mod { procs = map (relativizeProc dict) (procs mod)
-         , relativeMap = Just dict
-         }
-  where
-  relativizeProc dict proc = proc
-    { blocks = map (fmap (relativize (procName proc) dict)) (blocks proc)
+  resolved = first concat . unzipEithers $ map (relativizeProc dict) (procs mod)
+  in resolved >>= \procs' -> pure $ mod
+    { procs = procs'
+    , relativeMap = Just dict
     }
+  where
+  relativizeProc :: Map Address RelativeAddr -> Procedure Address -> Either [String] (Procedure RelativeAddr)
+  relativizeProc dict proc = let
+    relativized = unzipEithers $ map (traverse (relativize (procName proc) dict)) (blocks proc)
+    in relativized >>= \rel -> pure $ proc
+      { blocks = rel
+      }
 
+unzipEithers :: [Either a b] -> Either [a] [b]
+unzipEithers es = case partitionEithers es of
+  ([], e) -> Right e
+  (a, _)  -> Left a
 
 mkRelativizationDict :: ConstantDefs -> [Procedure Address] -> Map Address RelativeAddr
 mkRelativizationDict consts procs = let
@@ -156,25 +182,25 @@ blockOffsets nm off (bb : blks) = let
   in entry ++ rtcEntry ++ rest
 blockOffsets _ _ [] = []
 
-relativize :: String -> Map Address RelativeAddr -> Address -> RelativeAddr
+relativize :: String -> Map Address RelativeAddr -> Address -> Either String RelativeAddr
 relativize nm m p@(Procedure n a) = case p `M.lookup` m of
-  Just relAddr -> relAddr
+  Just relAddr -> Right relAddr
   Nothing -> case a of
-    _ -> Abs 0x9999
-    (Procedure _ _) -> error $ "Wtf " ++ show a ++ show p
-    (Operator o) -> error $ "Missing operator offset for " ++ show p
-    (RTC r) -> error $ "Missing RTC return for " ++ show r ++ show p
+    _ -> Right $ Abs 0x9999
+    (Procedure _ _) -> Left $ "Wtf " ++ show a ++ show p
+    (Operator o) -> Left $ "Missing operator offset for " ++ show p
+    (RTC r) -> Left $ "Missing RTC return for " ++ show r ++ show p
 relativize nm m a@(Unknown _)  = case a `M.lookup` m of
-  Just constant -> constant
-  Nothing -> error $ "Unknown constant " ++ show a
+  Just constant -> Right constant
+  Nothing -> Left $ "Unknown constant " ++ show a
 relativize nm m a@(Operator _) = relativize nm m (Procedure nm a)
 relativize nm m r@(RTC a)        = case r `M.lookup` m of
-  Just relAddr -> relAddr
-  Nothing -> error $ "could not find rtc for " ++ show a
-relativize nm m (Offset a o)   = case relativize nm m a of
-  Abs i -> Abs (i + o)
-  Rel s i -> Rel s (i + o)
-relativize nm m (Absolute a)   = Abs a
+  Just relAddr -> Right relAddr
+  Nothing -> Left $ "could not find rtc for " ++ show a
+relativize nm m (Offset a o)   = relativize nm m a >>= \case
+  Abs i -> Right $ Abs (i + o)
+  Rel s i -> Right $ Rel s (i + o)
+relativize nm m (Absolute a)   = Right $ Abs a
 
 toUnsegmentedMap :: [BB Address] -> Map Address (Segment)
 toUnsegmentedMap bbs = M.fromList $ L.map (\bb -> (baseAddress bb, Unsegmented bb)) bbs

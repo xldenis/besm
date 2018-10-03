@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, DeriveFunctor, DeriveFoldable, GeneralizedNewtypeDeriving, BinaryLiterals #-}
+{-# LANGUAGE DataKinds, DeriveFunctor, DeriveFoldable, GeneralizedNewtypeDeriving, DeriveTraversable, BinaryLiterals #-}
 module Besm.Assembler.Syntax where
 
 import Besm.Put (buildNumber, buildInstruction)
@@ -47,7 +47,7 @@ data BB a = BB
   { instrs      :: [Instr a]
   , terminator  ::  Term  a
   , baseAddress :: a
-  } deriving (Show, Functor, Foldable, Eq)
+  } deriving (Show, Functor, Foldable, Eq, Traversable)
 
 data Procedure a = Proc
   { procName :: String
@@ -99,7 +99,7 @@ data Instr a
   | CLCC          a
   | JCC
   | Empty
-  deriving (Show, Eq, Functor, Foldable)
+  deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type Terminator = Term Address
 
@@ -113,7 +113,7 @@ data Term a
   | SwitchStop
   | Chain     a -- meta-linguistic, chains two basic blocks together
   | RetRTC a
-  deriving (Show, Eq, Functor, Foldable)
+  deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type RawBlock = BB Int
 
