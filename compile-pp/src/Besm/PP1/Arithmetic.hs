@@ -95,10 +95,8 @@ symbolCounter :: Address
 symbolCounter = Unknown "symbol counter"
 
 partialProgramme :: Address
-partialProgramme = Unknown "partial programme"
-
-
-completedOperator = Unknown "completed operators"
+partialProgramme = Unknown "buffer"
+completedOperator = Unknown "buffer" `offAddr` 96
 -- Apparently the first addresses of the DS store some constants
 zero :: Address
 zero = Unknown "0"
@@ -114,8 +112,65 @@ x1c = Unknown "0x1C"
 
 constantMap =
   [ ("K", Raw 0)
-  , ("partial programme", Size undefined)
+  , ("B1", Raw 0)
+  , ("B2", Raw 0)
+  , ("B3", Raw 0)
+  , ("symbol counter", Raw 0)
+  , ("F", Raw 0)
+  , ("&completed operator", Addr (completedOperator))
+  , ("0xb", Raw 0xb)
+  , ("0xf0", Raw 0xf0)
+  , ("0x1b", Raw 0x1b)
+  , ("0x1C", Raw 0x1C)
+  , ("0xfd", Raw 0xfd)
+  , ("0xff", Raw 0xff)
+  , ("15", Raw 15)
+  , ("32", Raw 32)
+  , ("6", Raw 6)
+  , ("E", Raw 0)
+  , ("D", Raw 0)
+  , ("9", Raw 9)
+  , ("mult template", Raw 0)
+  , ("single-open-paren-code", Raw 0)
+  , ("multu-open-paren-code", Raw 0)
+  , ("mult-code", Raw 0)
+  , ("division-code", Raw 0)
+  , ("mult-close-paren-code", Raw 0)
+  , ("=>-code", Raw 0)
+  , ("0x7FF", Raw 0)
+  , ("transfer cell", Raw 0)
+  , ("tn template", Raw 0)
+  , ("how the fuck do i get this", Raw 0)
+  , ("pn template", Raw 0)
+  , ("inhibition flag", Raw 0)
+  , ("op 61-1", Raw 0)
+  , ("0x800000", Raw 0)
+  , ("op 65-1", Raw 0)
+  , ("ai constant", Raw 0)
+  , ("op 65-2", Raw 0)
+  , ("comparison value", Raw 0)
+  , ("formed instruction", Raw 0)
+  , ("2 << 22", Raw 0)
+  , ("2nd-addr", Raw 0)
+  , ("templateDispatch", Raw 0)
+  , ("AI _ _ 0001", Raw 0)
+  , ("- 1101 _ 0001", Raw 0)
+  , ("T 0002 _ _", Raw 0)
+  , ("1-first-addr", Raw 0)
+  , ("fixed K", Raw 0)
+  , ("&K + 160", Raw 0)
+  , ("transfer template", Raw 0)
+  , ("k comp", Raw 0)
+  , ("trans-opcode", Raw 0)
+  , ("-1", Raw 0)
+  , ("first-k-cell", Raw 0)
+  , ("tested-cell", Raw 0)
+  , ("3rd-addr-of-tested", Raw 0)
+  , ("scratch-cell", Raw 0)
+  , ("CLCC", Raw 0)
   ]
+
+
 
 arithCoder :: Builder Address
 arithCoder = do
@@ -161,10 +216,8 @@ arithCoder = do
     the symbol counter.
   -}
   operator 4 $ do
-    let left8   = undefined
-
     shift cellF (right 22) cellA
-    shift cellF left8 cellF
+    shift cellF (left 8) cellF
 
     add one symbolCounter symbolCounter
 
@@ -186,7 +239,7 @@ arithCoder = do
 
     operator 5 $ comp symbolCounter four (op 6) joinP
     operator 6 $ do
-      callRtc mp_1_17 (Procedure "MP-1" (op 21))
+      callRtc mp_1_17 (Procedure "MP-1" (op 20))
 
     operator 7 $ do
        tN zero symbolCounter
@@ -215,8 +268,8 @@ arithCoder = do
   -}
 
   operator 10 $ mdo
-    let xf0 = Unknown "xf0"
-        xb  = Unknown "xb"
+    let xf0 = Unknown "0xf0"
+        xb  = Unknown "0xb"
 
     _   <- comp cellB xb  (op 12) alt
     alt <- comp cellB xf0 (op 11) (op 12)
@@ -235,7 +288,7 @@ arithCoder = do
   -}
 
   operator 12 $ mdo
-    let x1b = undefined
+    let x1b = Unknown "0x1b"
 
     comp cellB x1b (op 13) alt
     alt <- comp cellB x1c (op 13) (op 19)
@@ -250,7 +303,7 @@ arithCoder = do
     Op. 15 determines the case of raising to a cube, and transfers to Op. 16
 
   -}
-  let multTemplate = undefined
+  let multTemplate = Unknown "mult template"
 
   operator 13 $ tN multTemplate cellC -- WRONG
   -- insert the quantity from c into both args
@@ -282,9 +335,9 @@ arithCoder = do
     Op. 20 transfers control to Op. 21 if in cell B is the code of a symbol of
     a single-place operation.
   -}
-  let xf0 = undefined
+  let xf0 = Unknown "0xf0"
 
-  operator 19 $ callRtc (op 73) (op 78)
+  operator 19 $ callRtc (op 73) (op 79)
   operator 20 $ comp xf0 cellB (op 21) (op 25)
 
   {-
@@ -298,8 +351,8 @@ arithCoder = do
 
   -}
   mdo
-    let xff = Unknown "xff"
-        xfd = Unknown "xfd"
+    let xff = Unknown "0xff"
+        xfd = Unknown "0xfd"
 
     operator 21 $ mdo
       _   <- comp     cellB xfd (op 24) alt
@@ -334,8 +387,8 @@ arithCoder = do
   -}
 
   mdo
-    let singOParenCode = undefined
-        multOParenCode = undefined
+    let singOParenCode = Unknown "single-open-paren-code"
+        multOParenCode = Unknown "multu-open-paren-code"
 
     _    <- operator 25 $ compWord cellB singOParenCode (op 30) op26
     op26 <- operator 26 $ compWord cellB multOParenCode (op 27) (op 28)
@@ -357,8 +410,8 @@ arithCoder = do
 
   -}
   operator 28 $ mdo
-    let divCode = undefined
-        multCode = undefined
+    let divCode = Unknown "division-code"
+        multCode = Unknown "mult-code"
 
     compWord cellB multCode (op 29) alt
     alt <- compWord cellB divCode (op 29) (op 31)
@@ -371,8 +424,8 @@ arithCoder = do
 
   -}
   operator 31 $ mdo
-    let correspond = undefined
-        multCParen = undefined
+    let correspond = Unknown "=>-code"
+        multCParen = Unknown "mult-close-paren-code"
 
     comp cellB multCParen (op 32) alt
     alt <- comp cellB correspond (op 32) (op 34)
@@ -950,7 +1003,7 @@ arithCoder = do
   -}
 
   operator 76 $ do
-    let xf0 = Unknown "xf0"
+    let xf0 = Unknown "0xf0"
     comp xf0 cellE (op 77) (op 79)
   {-
   Op. 77 programmes a single-place operation according to the codes of the
@@ -1148,7 +1201,7 @@ arithCoder = do
   D.
   -}
   let outCell = completedInstr
-  let builder = Unknown "scratch cell"
+  let builder = Unknown "scratch-cell"
   let templateDispatch = Unknown "templateDispatch" -- holds AI template-table cellD builder
 
   operator 94 $ mdo
