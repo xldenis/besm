@@ -57,7 +57,7 @@ debugAssemble defs a =
   debugRender :: ModuleAssembly Int -> ([(Int, String)], ModuleAssembly Int)
   debugRender mod = let
     (o, dataS) = mapAccumL (\off (s, v) -> (off + constantSize v, (off, s ++ " " ++ show v))) 0 defs
-    blks  = procs mod >>= snd . unProc
+    blks  = procs mod >>= blocks
     text = blks >>= (\bb -> map show (instrs bb) ++ termToString (terminator bb))
     textS = zip [o..] text
     len = o + length textS
@@ -81,7 +81,7 @@ assemble defs a =
 
 render :: ConstantDefs -> Alignment -> ModuleAssembly Int -> Output
 render defs a mod = let
-  blks  = procs mod >>= snd . unProc
+  blks  = procs mod >>= blocks
   textS = blks >>= asmToCell
   dataS = defs >>= (constantToCell . snd)
   total = dataS ++ textS
@@ -97,7 +97,7 @@ constantToCell (Raw  i) = [bitVector $ fromIntegral i]
 absolutize :: ConstantDefs -> Alignment -> ModuleAssembly RelativeAddr -> ModuleAssembly Int
 absolutize defs align mod = let
   cSize = sum (map (constantSize . snd) defs)
-  (bSize, segmentOffsets) = buildOffsetMap (fst . unProc) (sum . (map instLen) . snd . unProc) (procs mod)
+  (bSize, segmentOffsets) = buildOffsetMap (procName) (sum . (map instLen) . blocks) (procs mod)
   offset = case align of
     AlignLeft  -> 0x10 + cSize
     AlignRight -> 1023 - bSize + 1
@@ -106,17 +106,19 @@ absolutize defs align mod = let
     , offsetMap = (M.map (absolve cSize offset segmentOffsets) <$> (relativeMap mod))
     }
   where
-  absolveProc cSize offset textLens (Proc (nm, bbs)) =
-    Proc (nm, map (fmap (absolve cSize offset textLens)) bbs)
+  absolveProc :: Int -> Int -> [(String, Int)] -> Procedure RelativeAddr -> Procedure Int
+  absolveProc cSize offset textLens proc = proc
+    { blocks = map (fmap (absolve cSize offset textLens)) (blocks proc)
+    }
 
   absolve _ offset textLens (Rel (Text p) i) = case p `lookup` textLens of
     Just off -> offset + off + i
   absolve c offset textLEns (Rel Data i) = offset - c + i
   absolve _ _ _    (Abs i)      = i
 
-missingConstants :: ConstantDefs -> [BB Address] -> [Address]
-missingConstants defs blks = let
-  needed = nub $ map toList blks >>= filter isUnknown
+missingConstants :: ConstantDefs -> Procedure Address -> [Address]
+missingConstants defs proc = let
+  needed = nub $ map toList (blocks proc) >>= filter isUnknown
   have = nub $ map (Unknown . fst) defs
 
   in needed \\ have
@@ -127,15 +129,16 @@ resolve conses mod = let
   in mod { procs = map (relativizeProc dict) (procs mod)
          , relativeMap = Just dict
          }
-
   where
-  relativizeProc dict (Proc t@(nm, bbs)) = Proc $
-    fmap (map (fmap (relativize nm dict))) t
+  relativizeProc dict proc = proc
+    { blocks = map (fmap (relativize (procName proc) dict)) (blocks proc)
+    }
+
 
 mkRelativizationDict :: ConstantDefs -> [Procedure Address] -> Map Address RelativeAddr
 mkRelativizationDict consts procs = let
   constantOffsets = map (fmap (Rel Data)) . snd $ buildOffsetMap (Unknown . fst) (constantSize . snd) consts
-  bbOffsets = procs >>= \(Proc (nm, bbs)) -> blockOffsets nm 0 bbs
+  bbOffsets = procs >>= \proc -> blockOffsets (procName proc) 0 (blocks proc)
   in M.fromList $ bbOffsets ++ constantOffsets
 
 blockOffsets :: String -> Int -> [BB Address] -> [(Address, RelativeAddr)]
@@ -181,10 +184,10 @@ internalizeModule mod = mod {
   }
 
 internalizeAddresses :: Procedure Address -> Procedure Address
-internalizeAddresses (Proc (nm, bbs)) =
-  Proc (nm, map (fmap internalizeAddress) bbs)
+internalizeAddresses proc =
+  proc { blocks = map (fmap internalizeAddress) (blocks proc) }
   where
-  internalizeAddress (Operator n) = Procedure nm (Operator n)
+  internalizeAddress (Operator n) = Procedure (procName proc) (Operator n)
   internalizeAddress (RTC a) = RTC $ internalizeAddress a
   internalizeAddress (Offset a o) = Offset (internalizeAddress a) o
   internalizeAddress i = i
@@ -198,7 +201,10 @@ segmentize mod = mod
   }
 
   where
-  segmentProcedure (Proc (nm, blks)) = Proc (nm, join $ map (addJump . fromSegment) . M.elems $ go (toUnsegmentedMap blks))
+
+  segmentProcedure proc = proc
+    { blocks = join $ map (addJump . fromSegment) . M.elems $ go (toUnsegmentedMap (blocks proc))
+    }
   fromSegment (Segmented x) = x
 
   go map = go' map (M.keys map)

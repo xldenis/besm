@@ -19,6 +19,7 @@ formatAddr (Offset a i) = formatAddr a ++ " + " ++ show i
 formatAddr (Absolute i) = "abs. " ++ show i
 formatAddr (Procedure s op) = show s ++ formatAddr op
 formatAddr (Unknown str) = "uk. " ++ str
+formatAddr (RTC a) = "rtc. " ++ formatAddr a
 
 offAddr (Offset a o) i = Offset a (o + i)
 offAddr a i = Offset a i
@@ -36,6 +37,7 @@ data ConstantInfo
   = Size Int -- number of cells to reserve
   | Val  Int -- Value to store in one cell
   | Raw  Int -- Raw value to store
+  | Addr Address -- Pointer to an address
   deriving (Show, Eq)
 
 constantSize (Size i) = i
@@ -47,8 +49,10 @@ data BB a = BB
   , baseAddress :: a
   } deriving (Show, Functor, Foldable, Eq)
 
-newtype Procedure a = Proc { unProc :: (String, [BB a]) }
-  deriving (Show, Eq, Functor)
+data Procedure a = Proc
+  { procName :: String
+  , blocks :: [BB a]
+  } deriving (Show, Eq, Functor)
 
 instLen :: BB a -> Int
 instLen bb = length (instrs bb) + termLen (terminator bb)

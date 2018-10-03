@@ -18,9 +18,9 @@ import Besm.Put
 
 main :: IO ()
 main = do
-  let cfg = programmeToGraph (snd . unProc $ runProcedure "PP-1-2" $ arithCoder)
-      cf2 = programmeToGraph (snd . unProc $ runProcedure "MP-1" $ mp1)
-      lcfg = programmeToGraph (snd . unProc $ runProcedure "PP-1-1" $ Logical.pp1_1)
+  let cfg = programmeToGraph (blocks $ runProcedure "PP-1-2" $ Lib.arithCoder)
+      cf2 = programmeToGraph (blocks $ runProcedure "MP-1" $ mp1)
+      lcfg = programmeToGraph (blocks $ runProcedure "PP-1-1" $ Logical.pp1_1)
 
   runGraphviz (graphToDot params $ (nmap formatAddr cfg)) Png "cfg.png"
   runGraphviz (graphToDot params $ (nmap formatAddr cf2)) Png "cfg-2.png"

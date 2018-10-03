@@ -38,7 +38,7 @@ emptyCurrentBlock addr = CurrentBlock mempty addr addr
 newtype Builder a = Builder { unBuilder :: State BuilderState a }
   deriving (Functor, Applicative, Monad, MonadState BuilderState, MonadFix)
 
-runProcedure nm bbs = Proc (nm, runBuilder (op 999) bbs)
+runProcedure nm bbs = Proc nm (runBuilder (op 999) bbs)
 
 runBuilder i = getSnocList . builtBlocks . flip execState (BuilderState (emptyCurrentBlock i) (SnocList [])) . unBuilder
 
@@ -124,6 +124,10 @@ tExp' a c    = emitInstr $ TExp a c   UnNormalized
 tMod, tMod' ::  Address -> Address -> Builder Address
 tMod  a c    = emitInstr $ TMod a c   Normalized
 tMod' a c    = emitInstr $ TMod a c   UnNormalized
+
+tSign, tSign' ::  Address -> Address -> Address -> Builder Address
+tSign  a b c    = emitInstr $ TSign a b c   Normalized
+tSign' a b c    = emitInstr $ TSign a b c   UnNormalized
 
 tN, tN' ::  Address -> Address -> Builder Address
 tN  a c      = emitInstr $ TN   a c   Normalized
@@ -214,6 +218,18 @@ comp a b c d = emitTerm $ Comp a b c d
 
 compWord :: Address -> Address -> Address -> Address -> Builder Address
 compWord a b c d = emitTerm $ CompWord a b c d
+
+{-
+  Compares the absolute value of a and b, executing c if:
+
+  1. E(x) = E(y) and |M(x)| < |M(y)|
+  2. E(x) < E(y) and |M(y)| != 0
+
+  Otherwise d is carried out
+-}
+
+compMod :: Address -> Address -> Address -> Address -> Builder Address
+compMod a b c d = emitTerm $ CompWord a b c d
 
 {-
   Bit-Shifting
