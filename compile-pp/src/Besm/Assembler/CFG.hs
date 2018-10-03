@@ -1,7 +1,7 @@
-module CFG where
+module Besm.Assembler.CFG where
 
-import Monad
-import Syntax
+import Besm.Assembler.Monad
+import Besm.Assembler.Syntax
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree

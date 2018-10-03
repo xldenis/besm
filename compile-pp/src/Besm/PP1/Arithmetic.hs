@@ -1,8 +1,8 @@
 {-# LANGUAGE TemplateHaskell, FlexibleContexts, DeriveFunctor, GeneralizedNewtypeDeriving, RecursiveDo #-}
-module Lib where
+module Besm.PP1.Arithmetic where
 
-import Monad
-import Syntax
+import Besm.Assembler.Monad
+import Besm.Assembler.Syntax
 
 import Debug.Trace
 {-

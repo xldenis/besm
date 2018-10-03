@@ -6,19 +6,19 @@ import Data.Graph.Inductive.Graph (nmap, emap)
 import Data.Function
 import Data.GraphViz.Commands
 
-import CFG
-import Monad
-import Syntax
-import PP1
-import qualified PP1.Logical as Logical
-import qualified Lib
-import Assembler
+import           Besm.Assembler.CFG
+import           Besm.Assembler.Monad
+import           Besm.Assembler.Syntax
+import           Besm.PP1
+import qualified Besm.PP1.Logical as Logical
+import qualified Besm.PP1.Arithmetic as Arith
+import           Besm.Assembler
 
 import Besm.Put
 
 main :: IO ()
 main = do
-  let cfg = programmeToGraph (blocks $ runProcedure "PP-1-2" $ Lib.arithCoder)
+  let cfg = programmeToGraph (blocks $ runProcedure "PP-1-2" $ Arith.arithCoder)
       cf2 = programmeToGraph (blocks $ runProcedure "MP-1" $ mp1)
       lcfg = programmeToGraph (blocks $ runProcedure "PP-1-1" $ Logical.pp1_1)
 
@@ -27,10 +27,10 @@ main = do
   runGraphviz (graphToDot params $ (nmap formatAddr lcfg)) Png "cfg-logi.png"
 
   mapM_ putStrLn $
-    assemble (Logical.constantMap ++ constantMap ++ Lib.constantMap) AlignRight (
+    assemble (Logical.constantMap ++ constantMap ++ Arith.constantMap) AlignRight (
       [ runProcedure "MP-1" mp1
       , runProcedure "PP-1" Logical.pp1_1
-      , runProcedure "PP-1-2" Lib.arithCoder
+      , runProcedure "PP-1-2" Arith.arithCoder
       , pp2, mp2
       ]) & map toHexString
 

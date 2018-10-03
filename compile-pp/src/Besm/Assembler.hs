@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds, BinaryLiterals, DeriveFunctor #-}
-module Assembler where
+module Besm.Assembler where
 
-import Syntax
+import Besm.Assembler.Syntax
 
 import qualified Data.Map as M
 import           Data.Map (Map)

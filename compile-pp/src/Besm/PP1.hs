@@ -1,9 +1,9 @@
 {-# LANGUAGE RecursiveDo, BinaryLiterals #-}
-module PP1 where
+module Besm.PP1 where
 
 
-import Monad
-import Syntax
+import Besm.Assembler.Monad
+import Besm.Assembler.Syntax
 import qualified Data.Bits as B
 
 informationBlock      = Unknown "buffer" `offAddr` 0

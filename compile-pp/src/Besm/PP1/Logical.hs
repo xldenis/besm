@@ -1,5 +1,5 @@
 {-# LANGUAGE RecursiveDo, BinaryLiterals #-}
-module PP1.Logical where
+module Besm.PP1.Logical where
 
 {-
 
@@ -45,8 +45,8 @@ module PP1.Logical where
   block begins its functioning when the first line of infromation on the
   logical operator is already placed in cell A.
 -}
-import Monad
-import Syntax
+import Besm.Assembler.Monad
+import Besm.Assembler.Syntax
 import qualified Data.Bits as B (shift)
 
 thirdAddr  = Unknown "third addr mask"

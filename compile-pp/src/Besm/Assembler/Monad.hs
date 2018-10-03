@@ -1,7 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleContexts #-}
-module Monad where
+module Besm.Assembler.Monad where
 
-import Syntax
+import Besm.Assembler.Syntax
 import Control.Monad.State
 import Control.Monad.Fix
 

@@ -1,5 +1,5 @@
 {-# LANGUAGE DataKinds, DeriveFunctor, DeriveFoldable, GeneralizedNewtypeDeriving, BinaryLiterals #-}
-module Syntax where
+module Besm.Assembler.Syntax where
 
 import Besm.Put (buildNumber, buildInstruction)
 import Data.BitVector.Sized
