@@ -11,7 +11,7 @@ import Monad
 import Syntax
 import PP1
 import qualified PP1.Logical as Logical
-import Lib
+import qualified Lib
 import Assembler
 
 import Besm.Put
@@ -27,9 +27,10 @@ main = do
   runGraphviz (graphToDot params $ (nmap formatAddr lcfg)) Png "cfg-logi.png"
 
   mapM_ putStrLn $
-    assemble (Logical.constantMap ++ constantMap) AlignRight (
-      [runProcedure "MP-1" mp1
+    assemble (Logical.constantMap ++ constantMap ++ Lib.constantMap) AlignRight (
+      [ runProcedure "MP-1" mp1
       , runProcedure "PP-1" Logical.pp1_1
+      , runProcedure "PP-1-2" Lib.arithCoder
       , pp2, mp2
       ]) & map toHexString
 

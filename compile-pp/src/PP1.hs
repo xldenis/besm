@@ -60,8 +60,8 @@ constantMap =
   ]
 
 
-pp2 = Proc ("PP-2", [BB { baseAddress = Operator 1, instrs = [], terminator = Stop}])
-mp2 = Proc ("MP-2", [BB { baseAddress = Operator 1, instrs = [], terminator = Stop}])
+pp2 = Proc "PP-2" [BB { baseAddress = Operator 1, instrs = [], terminator = Stop}]
+mp2 = Proc "MP-2" [BB { baseAddress = Operator 1, instrs = [], terminator = Stop}]
 
 {-
   Known Bugs

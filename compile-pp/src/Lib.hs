@@ -73,7 +73,7 @@ cellJ = Unknown "J"
 -- Counters
 
 counterK :: Address
-counterK = undefined
+counterK = Unknown "K"
 
 {-
   Based off contextual information, the counters B_1, B_2, and B_3 each store
@@ -83,19 +83,19 @@ counterK = undefined
 -}
 
 counterB1 :: Address
-counterB1 = undefined
+counterB1 = Unknown "B1"
 
 counterB2 :: Address
-counterB2 = undefined
+counterB2 = Unknown "B2"
 
 counterB3 :: Address
-counterB3 = undefined
+counterB3 = Unknown "B3"
 
 symbolCounter :: Address
-symbolCounter = undefined
+symbolCounter = Unknown "symbol counter"
 
 partialProgramme :: Address
-partialProgramme = undefined
+partialProgramme = Unknown "partial programme"
 
 
 completedOperator = Unknown "completed operators"
@@ -108,9 +108,14 @@ zero = Unknown "0"
 one :: Address
 one = Absolute 0x1081
 
-four = undefined
+four = Unknown "4"
 
-x1c = undefined
+x1c = Unknown "0x1C"
+
+constantMap =
+  [ ("K", Raw 0)
+  , ("partial programme", Size undefined)
+  ]
 
 arithCoder :: Builder Address
 arithCoder = do
@@ -1376,17 +1381,20 @@ arithCoder = do
     -}
 
     operator 112 $ mdo
-      ai _ negativeOne _
+      let negativeOne = Unknown "-1"
+      ai cmp negativeOne cmp
 
       chain (op 113)
+
     {-
     Op. 113 verifies if all instructions have been taken from the block. After
     termination of selection control is transferred to the instruction JCC located
     before op. 120.
     -}
+
     operator 113 $ do
       let firstK = Unknown "first-k-cell"
-      compMod cmp firstK (op _) (op 114)
+      compMod cmp firstK (op 120) (op 114)
 
     {-
     Op. 114 verifies if the third address of the next instruction from the block of
@@ -1394,10 +1402,12 @@ arithCoder = do
     instruction (YES -- op. 122 functions, NO -- op. 115).
     -}
 
+
     operator 114 $ mdo
       let lastTested = Unknown "3rd-addr-of-tested"
       let scratch = Unknown "scratch-cell"
       let testedCell = Unknown "tested-cell"
+      let thirdAddr = Unknown "third addr mask"
 
       shift (op 115) (right 22) testedCell
 
@@ -1413,6 +1423,8 @@ arithCoder = do
         compWord scratch lastTested (op 115) (op 122)
         return b
 
+      return ()
+
     {-
     Op. 115 compares the tested instruction with the next instruction from the
     block of the completed operator, transferring control to op. 116 in case of
@@ -1420,8 +1432,9 @@ arithCoder = do
     -}
 
     cmp <- operator 115 $ do
-      _ <- empty
-      return _
+      empty
+
+    return ()
 
   {-
   Op. 116 transfers to the third address of cell D the address of the instruction
@@ -1440,9 +1453,10 @@ arithCoder = do
   the sub-routine in DS, transferring conrtol to op. 118.
   -}
 
+  let opCode   = Unknown "trans-opcode"
+
   operator 117 $ do
     let clccCode = Unknown "CLCC"
-    let opCode   = Unknown "trans-opcode"
     compWord opCode clccCode (op 119) (op 118)
 
   {-
@@ -1463,14 +1477,15 @@ arithCoder = do
   operator 119 $ do
     tN' fixedCounter counterK
 
-    chain _exit
+    chain (RTC (op 122))
 
   {-
   Op. 120 determines the case of commutative operations of multiplication and
   addition, in which case control is transferred to op. 121
   -}
 
-  operation 120 $ do
+  operator 120 $ do
+    jcc
     comp two opCode (op 121) (op 122)
 
   {-
@@ -1479,15 +1494,20 @@ arithCoder = do
   since after repeating the test of the instruction JCC gives control to op. 122.
   -}
 
-  operation 121 $ do
-    bitAnd builder firstAddr _
-    shift builder (left 11) _b
+  operator 121 $ do
+    let temp1 = Unknown "scratch-cell-1"
+    let temp2 = Unknown "scratch-cell-2"
+    let firstAddr = Unknown "first addr mask"
 
-    shift _ (right 11) _
 
-    ai _b _ _b
+    bitAnd builder firstAddr temp1
+    shift builder (left 11) temp2
 
-    tSign _b builder builder
+    shift temp1 (right 11) temp1
+
+    ai temp2 temp1 temp2
+
+    tSign temp2 builder builder
 
     clcc (op 111)
   {-
