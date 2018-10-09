@@ -91,10 +91,24 @@ assemble defs a =
   checkForMissingConstantDefs defs mod = let
     missing = unzip $ map (missingConstants defs) (procs mod)
     in case missing of
-      ([], []) -> Right mod
-      (ms, []) -> Left $ "Missing constants: " : map show ms
-      ([], es) -> Left $ "Extra constants: " : map show es
-      (ms, es) -> Left $ "Why??" : ("Missing constants" : map show ms ++ "extra constants" : map show es)
+      (ms, es) | anyMissing ms == [] && allExtra es == [] -> Right mod
+      (ms, es) | allExtra es == [] -> Left $ "Missing constants: " : map show ms
+      (_, es) -> Left $ "Extra constants: " : map show es
+      (ms, es) -> Left $ "Why??" : ("Missing constants" : map show ms ++ "extra constants" : [show (allExtra es)])
+    where
+    anyMissing :: Eq a => [[a]] -> [a]
+    anyMissing ms = foldl1 union ms
+
+    allExtra :: Eq a => [[a]] -> [a]
+    allExtra es = foldl1 intersect es
+
+missingConstants :: ConstantDefs -> Procedure Address -> ([String], [String])
+missingConstants defs proc = let
+  needed = nub $ (blocks proc) >>= toList >>= unknowns
+  have = nub $ map fst defs
+
+  in (needed \\ have, have \\ needed)
+
 render :: ConstantDefs -> Alignment -> ModuleAssembly Int -> Output
 render defs a mod = let
   blks  = procs mod >>= blocks
@@ -132,13 +146,6 @@ absolutize defs align mod = let
     Just off -> offset + off + i
   absolve c offset textLEns (Rel Data i) = offset - c + i
   absolve _ _ _    (Abs i)      = i
-
-missingConstants :: ConstantDefs -> Procedure Address -> ([Address], [Address])
-missingConstants defs proc = let
-  needed = nub $ map toList (blocks proc) >>= filter isUnknown
-  have = nub $ map (Unknown . fst) defs
-
-  in (needed \\ have, have \\ needed)
 
 resolve :: ConstantDefs -> ModuleAssembly Address -> Either [String] (ModuleAssembly RelativeAddr)
 resolve conses mod = let
