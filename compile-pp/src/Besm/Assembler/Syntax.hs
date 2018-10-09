@@ -31,6 +31,13 @@ rtc = RTC
 isUnknown (Unknown _) = True
 isUnknown _           = False
 
+unknowns :: Address -> [String]
+unknowns (Offset o _) = unknowns o
+unknowns (Procedure _ o) = unknowns o
+unknowns (Unknown u) = [u]
+unknowns (RTC o) = unknowns o
+unknowns _ = []
+
 type BasicBlock = BB Address
 
 data ConstantInfo
