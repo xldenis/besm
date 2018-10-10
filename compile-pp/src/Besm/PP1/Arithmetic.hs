@@ -97,72 +97,77 @@ symbolCounter = Unknown "symbol counter"
 partialProgramme :: Address
 partialProgramme = Unknown "buffer"
 completedOperator = Unknown "buffer" `offAddr` 96
+
 -- Apparently the first addresses of the DS store some constants
 zero :: Address
 zero = Unknown "0"
-
--- this is the address of unity which I assume is a denomarlized 1 aka lowest bit set.
-
-one :: Address
-one = Absolute 0x1081
 
 four = Unknown "4"
 
 x1c = Unknown "0x1C"
 
 constantMap =
+  -- Working cells.
   [ ("K", Raw 0)
   , ("B1", Raw 0)
   , ("B2", Raw 0)
   , ("B3", Raw 0)
   , ("symbol counter", Raw 0)
   , ("F", Raw 0)
-  , ("&completed operator", Addr (completedOperator))
+  , ("E", Raw 0)
+  , ("D", Raw 0)
+
+  -- Constant numerical values
   , ("0xb", Raw 0xb)
   , ("0xf0", Raw 0xf0)
   , ("0x1b", Raw 0x1b)
   , ("0x1C", Raw 0x1C)
   , ("0xfd", Raw 0xfd)
   , ("0xff", Raw 0xff)
+  , ("0x7FF", Raw 0)
+  , ("0x800000", Raw 0)
+
   , ("15", Raw 15)
   , ("32", Raw 32)
   , ("6", Raw 6)
-  , ("E", Raw 0)
-  , ("D", Raw 0)
   , ("9", Raw 9)
+  , ("-1", Raw 0)
+
+  -- Template values
   , ("mult template", Raw 0)
+  , ("tn template", Raw 0)
+  , ("AI _ _ 0001", Raw 0)
+  , ("- 1101 _ 0001", Raw 0)
+  , ("T 0002 _ _", Raw 0)
+  , ("transfer template", Raw 0)
+  , ("pn template", Raw 0)
+
+  -- Opcodes
   , ("single-open-paren-code", Raw 0)
   , ("multu-open-paren-code", Raw 0)
   , ("mult-code", Raw 0)
   , ("division-code", Raw 0)
   , ("mult-close-paren-code", Raw 0)
   , ("=>-code", Raw 0)
-  , ("0x7FF", Raw 0)
+
+  -- Miscellaneous / Unclassified
+  , ("&completed operator", Addr completedOperator)
   , ("transfer cell", Raw 0)
-  , ("tn template", Raw 0)
   , ("how the fuck do i get this", Raw 0)
-  , ("pn template", Raw 0)
   , ("inhibition flag", Raw 0)
   , ("op 61-1", Raw 0)
-  , ("0x800000", Raw 0)
   , ("op 65-1", Raw 0)
-  , ("ai constant", Raw 0)
   , ("op 65-2", Raw 0)
+  , ("ai constant", Raw 0)
   , ("comparison value", Raw 0)
   , ("formed instruction", Raw 0)
-  , ("2 << 22", Raw 0)
   , ("2nd-addr", Raw 0)
   , ("templateDispatch", Raw 0)
-  , ("AI _ _ 0001", Raw 0)
-  , ("- 1101 _ 0001", Raw 0)
-  , ("T 0002 _ _", Raw 0)
   , ("1-first-addr", Raw 0)
   , ("fixed K", Raw 0)
   , ("&K + 160", Raw 0)
-  , ("transfer template", Raw 0)
   , ("k comp", Raw 0)
   , ("trans-opcode", Raw 0)
-  , ("-1", Raw 0)
   , ("first-k-cell", Raw 0)
   , ("tested-cell", Raw 0)
   , ("3rd-addr-of-tested", Raw 0)
@@ -207,7 +212,7 @@ arithCoder = do
 
   -}
 
-  let pp_3_1 = (Procedure "PP-3" (op 1))
+  let pp_3_1 = (Procedure "PP-1-3" (op 1))
   operator 2 $ tExp cellA cellF
   operator 3 $ compWord cellF zero pp_3_1 (op 4)
 
@@ -1169,7 +1174,6 @@ arithCoder = do
   (if there is one) in the second address of cell D.
 
   -}
-  let secondAddr = Unknown "2nd-addr"
   operator 91 $ mdo
     shift cellD (left 22) cellD
     bitAnd cellE secondAddr cellF

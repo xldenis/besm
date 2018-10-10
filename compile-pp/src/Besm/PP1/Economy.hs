@@ -25,18 +25,18 @@ at any point within the operator.
 -}
 
 constantMap =
-  [ ("β₁, .., β₁₆", Raw 0)
-  , ("tn", Raw 0)
+  [ ("β₁, .., β₁₆", Size 16)
+  , ("tn", Template (TN (Absolute 0) (Unknown "working") UnNormalized)) -- ,TN _  working
   , ("end-of-arith-op", Raw 0)
-  , (",TN buffer _", Raw 0)
+  , (",TN buffer _", Template (TN (Unknown "buffer") (Absolute 0) UnNormalized))
   , ("econ-current-cell", Raw 0)
   , ("copy of working", Raw 0)
   , ("third-addr-mask", Raw 0)
   , ("working-code", Raw 0)
-  , ("&completedOperator", Raw 0)
-  , ("&completedOperator + 144", Raw 0)
+  , ("&completedOperator", Addr completedOperator)
+  , ("&completedOperator + 144", Addr $ completedOperator `offAddr` 144)
   , ("0005", Raw 0)
-  , ("S", Raw 0)
+  , ("S", Cell)
   , ("k'", Raw 0)
   , ("and-template", Raw 0)
   , ("1 << 22", Raw 0)
@@ -44,21 +44,24 @@ constantMap =
   , (",TN 116F _", Raw 0)
   , ("recall-arg", Raw 0)
   , ("final-store", Raw 0)
-  , (",TN β₀ βᵢ", Raw 0)
+  , (",TN β₀ βᵢ", Template (TN beta0 (Unknown "βᵢ")  UnNormalized))
   , ("βᵢ", Raw 0)
   ]
+  where
+  completedOperator = Unknown "buffer" `offAddr` 96
+  beta0 = Unknown "β₁, .., β₁₆" `offAddr` (negate 1)
 
 pp1_3 = do
-  let one = Unknown "1"
-  let beta = Unknown "β₁, .., β₁₆"
-  let working = Unknown "econ-current-cell"
+  let one           = Unknown "1"
+  let beta          = Unknown "β₁, .., β₁₆"
+  let working       = Unknown "econ-current-cell"
   let endOfOperator = Unknown "end-of-arith-op"
-  let thirdAddr = Unknown "third-addr-mask"
-  let zero = Unknown "0"
-  let minusOne = Unknown "-1"
-  let oneInFirst = Unknown "1 << 22"
-  let lowerBound = Unknown "&completedOperator"
-  let upperBound = Unknown "&completedOperator + 144"
+  let thirdAddr     = Unknown "third-addr-mask"
+  let zero          = Unknown "0"
+  let minusOne      = Unknown "-1"
+  let oneInFirst    = Unknown "1 << 22"
+  let lowerBound    = Unknown "&completedOperator"
+  let upperBound    = Unknown "&completedOperator + 144"
 
   {-
   Op. 1 clears cells β₁, .., β₁₆ and forms the initial form of the instructiosn

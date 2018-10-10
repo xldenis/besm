@@ -13,10 +13,7 @@ cellKf  = Unknown "K_f"
 cellKcr = Unknown "K_cr"
 
 zero :: Address
-zero = Unknown "zero"
-
-one :: Address
-one  = Unknown "one"
+zero = Unknown "0"
 
 selectionCounter   = Unknown "selection counter"
 ninetysix          = Unknown "96"
@@ -25,25 +22,24 @@ arrangementCounter = Unknown "arrangement counter"
 hundredfourtyfour  = Unknown "144"
 maxSelected        = Unknown "max-selected"
 maxWritten         = Unknown "max-written"
-firstAddr          = Unknown "first addr mask"
 
 constantMap =
   [ ("buffer", Size 240)
   , ("programme header table", Size 9)
-  , ("selection counter", Val 0)
+  , ("selection counter",   Val 0)
   , ("arrangement counter", Val 0)
-  , ("96", Raw 96) -- encode properly
-  , ("144", Raw 144) -- encode these properly
-  , ("A", Val 0)
-  , ("A + 1", Val 0)
-  , ("B", Val 0)
+  , ("96",  Raw 96)
+  , ("144", Raw 144)
+  , ("A",     Cell)
+  , ("A + 1", Cell)
+  , ("B",     Cell)
   , ("one",  Raw 1)
-  , ("one-shifted",  Raw $ 1 `B.shift` 22)
-  , ("zero", Raw 0)
+  , ("one-first-addr",  Raw $ 1 `B.shift` 22)
+  , ("0", Raw 0)
   , ("0x18", Raw $ 0x18)
   , ("snd and third addr mask", Raw $ 0b11111111111 `B.shift` 11 B..|. 0b11111111111)
   , ("first addr mask", Raw $ 0b11111111111 `B.shift` 22) --
-  , ("K_f", Raw 0)
+  , ("K_f",  Raw 0)
   , ("K_cr", Raw 0)
   , ("start of 144 block", Val 0)
   , ("96 shifted", Raw $ 96 `B.shift` 11)
@@ -139,7 +135,7 @@ mp1 = do
     exponent is information on an arithmetical operator.
   -}
   operator 5 $ do
-    let pp_2 = Procedure "PP-2" (op 1)
+    let pp_2 = Procedure "PP-1-2" (op 1)
     compWord zero cellA (pp_2) (op 6)
   {-
     Op. 6 transfers control to op. 11 if x != 018. In this case in cell A is
@@ -187,7 +183,7 @@ mp1 = do
 
   -}
   operator 10 $ do
-    compWord zero cellA (Procedure "PP-1" (op 1)) (op 2)
+    compWord zero cellA (Procedure "PP-1-1" (op 1)) (op 2)
   {-
     Op. 11 sends this line to cell A + 1 and from there to the block of
     completed instructions.
@@ -278,7 +274,7 @@ mp1 = do
     Op. 18 tests that the contents of the selection block have been exhausted
   -}
   operator 18 $ do
-    comp maxSelected selectionCounter (op 20) (op 19)
+    comp selectionCounter maxSelected (op 20) (op 19)
 
   mdo
     {-
@@ -304,7 +300,7 @@ mp1 = do
     -}
     iOp <- operator 20 $ mdo
       ta <- tN' (informationBlock `offAddr` 96) cellA -- use AI to modify
-      ai ta (Unknown "one-shifted") ta
+      ai ta oneFirstAddr ta
       ai selectionCounter one selectionCounter
       retRTC
       return ta
@@ -323,13 +319,13 @@ mp1 = do
     operator 22 $ do
       let startMDK = Absolute 0
       let endOfMDK = startMDK `offAddr` 143
-      let _hundredfourtyfourSndAddr = Unknown "144 shifted 2nd addr"
+      let hundredfourtyfourSndAddr = Unknown "144 shifted 2nd addr"
 
       a <- ma (Absolute $ 0x0300 + 1) startMDK completedInstructions
       b <- mb endOfMDK
 
-      ai a _hundredfourtyfourSndAddr a
-      ai b _hundredfourtyfourSndAddr b
+      ai a hundredfourtyfourSndAddr a
+      ai b hundredfourtyfourSndAddr b
 
       ai maxWritten hundredfourtyfour maxWritten -- reset selection counter comp
 

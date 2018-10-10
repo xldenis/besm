@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, DeriveFunctor, DeriveFoldable, GeneralizedNewtypeDeriving, DeriveTraversable, BinaryLiterals #-}
+{-# LANGUAGE DataKinds, DeriveFunctor, DeriveFoldable, GeneralizedNewtypeDeriving, DeriveTraversable, BinaryLiterals, TemplateHaskell #-}
 module Besm.Assembler.Syntax where
 
 import Besm.Put (buildNumber, buildInstruction)
@@ -45,6 +45,18 @@ data ConstantInfo
   | Val  Int -- Value to store in one cell
   | Raw  Int -- Raw value to store
   | Addr Address -- Pointer to an address
+  {-|
+    Indicate this variable is meant to be a working cell. At layout time, all working cells
+    will be grouped together (and may potentially even be optimized to reduce the total amount).
+
+    All working cells will be initialized to 0 in the final program.
+  -}
+  | Cell
+  {-| This is a cell that holds a partial instruction that potentially
+      references other unkowns / variables. At linking time those constants will be resolved,
+      and properly initialized.
+  -}
+  | Template (Instr Address)
   deriving (Show, Eq)
 
 constantSize (Size i) = i
@@ -57,8 +69,8 @@ data BB a = BB
   } deriving (Show, Functor, Foldable, Eq, Traversable)
 
 data Procedure a = Proc
-  { procName :: String
-  , blocks :: [BB a]
+  { _procName :: String
+  , _blocks :: [BB a]
   } deriving (Show, Eq, Functor)
 
 instLen :: BB a -> Int

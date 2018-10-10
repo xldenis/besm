@@ -49,10 +49,6 @@ import Besm.Assembler.Monad
 import Besm.Assembler.Syntax
 import qualified Data.Bits as B (shift)
 
-thirdAddr  = Unknown "third addr mask"
-firstAddr  = Unknown "first addr mask"
-secondAddr = Unknown "second addr mask"
-
 cellC = Unknown "C"
 
 four = Unknown "4"
