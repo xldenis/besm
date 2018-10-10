@@ -132,10 +132,10 @@ constantMap =
   , ("6", Raw 6)
   , ("9", Raw 9)
   , ("-1", Raw 0)
+  , ("2 << 22", Raw 0)
 
   -- Template values
   , ("mult template", Raw 0)
-  , ("tn template", Raw 0)
   , ("AI _ _ 0001", Raw 0)
   , ("- 1101 _ 0001", Raw 0)
   , ("T 0002 _ _", Raw 0)
@@ -161,7 +161,6 @@ constantMap =
   , ("ai constant", Raw 0)
   , ("comparison value", Raw 0)
   , ("formed instruction", Raw 0)
-  , ("2nd-addr", Raw 0)
   , ("templateDispatch", Raw 0)
   , ("1-first-addr", Raw 0)
   , ("fixed K", Raw 0)
@@ -661,9 +660,8 @@ arithCoder = do
   let completedInstr = Unknown "transfer cell" -- cell taht's used to transfer to block 106
 
   operator 47 $ do
-    let tnTemplate = Unknown "tn template"
     shift cellD (right 22) completedInstr
-    ai tnTemplate completedInstr completedInstr
+    ce completedInstr (Absolute 0xC) completedInstr
 
     chain (op 48)
   {-
@@ -1464,7 +1462,6 @@ arithCoder = do
       let lastTested = Unknown "3rd-addr-of-tested"
       let scratch = Unknown "scratch-cell"
       let testedCell = Unknown "tested-cell"
-      let thirdAddr = Unknown "third addr mask"
 
       shift (op 115) (right 22) testedCell
 
@@ -1554,8 +1551,6 @@ arithCoder = do
   operator 121 $ do
     let temp1 = Unknown "scratch-cell-1"
     let temp2 = Unknown "scratch-cell-2"
-    let firstAddr = Unknown "first addr mask"
-
 
     bitAnd builder firstAddr temp1
     shift builder (left 11) temp2

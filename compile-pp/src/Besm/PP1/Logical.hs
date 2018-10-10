@@ -55,12 +55,12 @@ four = Unknown "4"
 zero = Unknown "0"
 
 constantMap =
-  [ ("second addr mask", Raw $ 0b11111111111 `B.shift` 11)
-  , ("third addr mask", Raw 0b11111111111)
+  [ ("second-addr-mask", Raw $ 0b11111111111 `B.shift` 11)
+  , ("third-addr-mask", Raw 0b11111111111)
   , ("template 1", Raw 0)
   , ("template 2", Raw 0)
   , ("0", Raw 0)
-  , ("1", Raw 1)
+  , ("1'", Raw 1)
   , ("2", Raw 2)
   , ("3", Raw 3)
   , ("4", Raw 4)
@@ -99,7 +99,6 @@ pp1_1 = do
 
   let cellY = Unknown "Y"
   let eight = Unknown "8"
-  let one = Unknown "1"
 
   let purge = callRtc (op 35) (op 45)
 
@@ -410,7 +409,6 @@ pp1_1 = do
   -}
 
   operator 26 $ do
-    let one = Unknown "1"
     comp cellY' one (op 32) (op 27)
 
   {-

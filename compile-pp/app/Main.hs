@@ -31,7 +31,7 @@ main = do
   mapM_ putStrLn  . either id id $
     assemble (Logical.constantMap ++ PP1.constantMap ++ Arith.constantMap ++ Economy.constantMap) AlignRight (
       [ runProcedure "MP-1" mp1
-      , runProcedure "PP-1" Logical.pp1_1
+      , runProcedure "PP-1-1" Logical.pp1_1
       , runProcedure "PP-1-2" Arith.arithCoder
       , runProcedure "PP-1-3" Economy.pp1_3
       , pp2, mp2

@@ -39,27 +39,25 @@ constantMap =
   , ("S", Cell)
   , ("k'", Raw 0)
   , ("and-template", Raw 0)
-  , ("1 << 22", Raw 0)
   , ("ai _ cellS _", Raw 0)
   , (",TN 116F _", Raw 0)
   , ("recall-arg", Raw 0)
   , ("final-store", Raw 0)
   , (",TN β₀ βᵢ", Template (TN beta0 (Unknown "βᵢ")  UnNormalized))
   , ("βᵢ", Raw 0)
+  , ("working", Raw 0)
   ]
   where
   completedOperator = Unknown "buffer" `offAddr` 96
   beta0 = Unknown "β₁, .., β₁₆" `offAddr` (negate 1)
 
 pp1_3 = do
-  let one           = Unknown "1"
   let beta          = Unknown "β₁, .., β₁₆"
   let working       = Unknown "econ-current-cell"
   let endOfOperator = Unknown "end-of-arith-op"
   let thirdAddr     = Unknown "third-addr-mask"
   let zero          = Unknown "0"
   let minusOne      = Unknown "-1"
-  let oneInFirst    = Unknown "1 << 22"
   let lowerBound    = Unknown "&completedOperator"
   let upperBound    = Unknown "&completedOperator + 144"
 
@@ -119,11 +117,15 @@ pp1_3 = do
     compMod workingCode lowerBound c (op 6)
     c <- block $ compMod upperBound workingCode (op 9) (op 6)
 
-    chain (op 6)
+    return ()
   {-
   Op. 6 clears the corresponding cell βᵢ
   -}
 
+  operator 6 $ mdo
+    ce workingCode (Absolute 0xC) clear
+    clear <- empty
+    return ()
   {-
   Op. 7 compares r + i with the contents of the standard cell 0005, where the
   code of the last engaged working cell is stored. If r + i exceeds the contents
@@ -195,8 +197,7 @@ pp1_3 = do
     Op. 14 selects the contents of the next cell βᵢ.
     -}
     selector <- operator 14 $ do
-      let oneInFirst = Unknown "1 << 22"
-      ai selector oneInFirst selector -- modifies the instruction at selector: ,TN βᵣ βᵢ => ,TN βᵣ₊₁ βᵢ
+      ai selector oneFirstAddr selector -- modifies the instruction at selector: ,TN βᵣ βᵢ => ,TN βᵣ₊₁ βᵢ
       selector <- empty
 
       chain (op 14)
@@ -277,7 +278,7 @@ pp1_3 = do
   mdo
     let cellA1 = Unknown "A + 1"
     transfer <- operator 19 $ do
-      ai selectNextInstr oneInFirst transfer
+      ai selectNextInstr oneFirstAddr transfer
       transfer <- empty
       chain (op 20)
 
@@ -292,7 +293,7 @@ pp1_3 = do
     Op. 21 modifies the addresses of the transfer instruction in op. 19.
     -}
     operator 21 $ do
-      ai transfer oneInFirst transfer
+      ai transfer oneFirstAddr transfer
     {-
     Op. 22 sends the instruction from cell A + 1 to the block of completed
     instructions and transfers control to op. 19.

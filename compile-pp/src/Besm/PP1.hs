@@ -34,11 +34,11 @@ constantMap =
   , ("A + 1", Cell)
   , ("B",     Cell)
   , ("one",  Raw 1)
-  , ("one-first-addr",  Raw $ 1 `B.shift` 22)
+  , ("1' << 22",  Raw $ 1 `B.shift` 22)
   , ("0", Raw 0)
   , ("0x18", Raw $ 0x18)
   , ("snd and third addr mask", Raw $ 0b11111111111 `B.shift` 11 B..|. 0b11111111111)
-  , ("first addr mask", Raw $ 0b11111111111 `B.shift` 22) --
+  , ("first-addr-mask", Raw $ 0b11111111111 `B.shift` 22) --
   , ("K_f",  Raw 0)
   , ("K_cr", Raw 0)
   , ("start of 144 block", Val 0)
