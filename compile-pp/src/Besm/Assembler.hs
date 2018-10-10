@@ -1,4 +1,7 @@
-{-# LANGUAGE DataKinds, BinaryLiterals, DeriveFunctor, LambdaCase #-}
+{-# LANGUAGE DataKinds, BinaryLiterals, DeriveFunctor,
+  LambdaCase, DataKinds, KindSignatures, TypeFamilies,
+  StandaloneDeriving, RecordWildCards, FlexibleContexts
+#-}
 module Besm.Assembler where
 
 import Besm.Assembler.Syntax
@@ -21,8 +24,7 @@ import Besm.Put
 import Data.Either (partitionEithers)
 import Data.Bifunctor (first)
 
--- Dummy Definitions
-type ConstantDefs = [(String, ConstantInfo)] -- map of constant name to value
+type ConstantDefs = [(String, ConstantInfo Address)] -- map of constant name to value
 type Output = [BitVector 39]
 
 {-
@@ -42,22 +44,35 @@ data Section = Text String | Data
 
 data Alignment = AlignLeft | AlignRight
 
-data ModuleAssembly a = Mod
-  { offsetMap :: Maybe (Map Address Int)
+data Stage = Input | LaidOut | Relativized | Absolutized
+
+type family AddressType (s :: Stage) where
+  AddressType Relativized = RelativeAddr
+  AddressType Absolutized = Int
+  AddressType a = Address
+
+type family ConstantMap (s :: Stage) where
+  ConstantMap Absolutized = [ConstantInfo Int]
+  ConstantMap Relativized = [(String, ConstantInfo RelativeAddr)]
+  ConstantMap a = [(String, ConstantInfo Address)]
+
+data ModuleAssembly (stage :: Stage) = Mod
+  { offsetMap   :: Maybe (Map Address Int)
   , relativeMap :: Maybe (Map Address RelativeAddr)
-  , procs :: [Procedure a]
-  } deriving (Show)
+  , constants   :: ConstantMap stage
+  , procs       :: [Procedure (AddressType stage)]
+  }
 
 debugAssemble defs a =
-  pure . Mod Nothing Nothing
-  >=> pure . segmentize
+  pure . Mod Nothing Nothing defs
+  >=> pure . layout
   >=> pure . internalizeModule
-  >=> resolve    defs
-  >=> pure . absolutize defs a
+  >=> resolve
+  >=> pure . absolutize a
   >=> pure . debugRender
   where
 
-  debugRender :: ModuleAssembly Int -> ([(Int, String)], ModuleAssembly Int)
+  debugRender :: ModuleAssembly Absolutized -> ([(Int, String)], ModuleAssembly Absolutized)
   debugRender mod = let
     (o, dataS) = mapAccumL (\off (s, v) -> (off + constantSize v, (off, s ++ " " ++ show v))) 0 defs
     blks  = procs mod >>= blocks
@@ -73,28 +88,25 @@ debugAssemble defs a =
   termToString (Chain     _) = []
   termToString c = [show c]
 
-prop1 :: Monad m => (a -> m b) -> (b -> m c) -> (a -> m c)
-prop1 a b = a >=> b
-
 assemble :: ConstantDefs -> Alignment -> [Procedure Address] -> Either [String] Output
 assemble defs a =
-  pure . Mod Nothing Nothing
+  pure . Mod Nothing Nothing defs
   >=> checkForMissingConstantDefs defs
-  >=> pure . segmentize
+  >=> pure . layout
   >=> pure . internalizeModule
-  >=> resolve    defs
-  >=> pure . absolutize defs a
-  >=> pure . render     defs a
+  >=> resolve
+  >=> pure . absolutize a
+  >=> pure . render     a
 
   where
 
   checkForMissingConstantDefs defs mod = let
-    missing = unzip $ map (missingConstants defs) (procs mod)
-    in case missing of
-      (ms, es) | anyMissing ms == [] && allExtra es == [] -> Right mod
-      (ms, es) | allExtra es == [] -> Left $ "Missing constants: " : map show ms
-      (_, es) -> Left $ "Extra constants: " : map show es
-      (ms, es) -> Left $ "Why??" : ("Missing constants" : map show ms ++ "extra constants" : [show (allExtra es)])
+    (ms, es) = unzip $ map (missingConstants defs) (procs mod)
+    in case (anyMissing ms, allExtra es) of
+      ([], []) -> Right mod
+      (ms, []) -> Left $ "Missing constants: " : map show ms
+      ([], es) -> Left $ "Extra constants: " : map show es
+      (ms, es) -> Left $ "Why??" : ("Missing constants" : map show ms ++ "extra constants" : map show es)
     where
     anyMissing :: Eq a => [[a]] -> [a]
     anyMissing ms = foldl1 union ms
@@ -104,37 +116,45 @@ assemble defs a =
 
 missingConstants :: ConstantDefs -> Procedure Address -> ([String], [String])
 missingConstants defs proc = let
-  needed = nub $ (blocks proc) >>= toList >>= unknowns
+  templateNeeds = filter (isTemplate . snd) defs >>= toList >>= toList >>= unknowns
+  needed = nub $ (blocks proc >>= toList >>= unknowns) ++ templateNeeds
   have = nub $ map fst defs
 
   in (needed \\ have, have \\ needed)
+  where
+  isTemplate (Template _) = True
+  isTemplate _ = False
 
-render :: ConstantDefs -> Alignment -> ModuleAssembly Int -> Output
-render defs a mod = let
+render :: Alignment -> ModuleAssembly Absolutized -> Output
+render a mod = let
   blks  = procs mod >>= blocks
   textS = blks >>= asmToCell
-  dataS = defs >>= (constantToCell . snd)
+  dataS = constants mod >>= constantToCell
   total = dataS ++ textS
   in case a of
     AlignLeft -> (replicate 15 (bitVector 0)) ++ total
     AlignRight -> replicate (1023 - length total) (bitVector 0) ++ total
 
-constantToCell :: ConstantInfo -> [BitVector 39]
+constantToCell :: ConstantInfo Int -> [BitVector 39]
 constantToCell (Size i) = replicate i (bitVector 0)
 constantToCell (Val  i) = [numberToBesmFloating i]
 constantToCell (Raw  i) = [bitVector $ fromIntegral i]
-constantToCell (Addr _) = [bitVector 0] -- FINISH LATER
+constantToCell (Addr i) = [bitVector $ fromIntegral i]
+constantToCell (Template i) = [instToCell $ fmap fromIntegral i]
+constantToCell (Cell) = [bitVector 0]
 
-absolutize :: ConstantDefs -> Alignment -> ModuleAssembly RelativeAddr -> ModuleAssembly Int
-absolutize defs align mod = let
-  cSize = sum (map (constantSize . snd) defs)
-  (bSize, segmentOffsets) = buildOffsetMap (procName) (sum . (map instLen) . blocks) (procs mod)
+absolutize :: Alignment -> ModuleAssembly Relativized -> ModuleAssembly Absolutized
+absolutize align (Mod {..}) = let
+  constants' = forgetNames cSize offset segmentOffsets constants
+  cSize = sum (map constantSize constants')
+  (bSize, segmentOffsets) = buildOffsetMap procName (sum . map instLen . blocks) procs
   offset = case align of
     AlignLeft  -> 0x10 + cSize
     AlignRight -> 1023 - bSize + 1
-  in mod
-    { procs = map (absolveProc cSize offset segmentOffsets) (procs mod)
-    , offsetMap = (M.map (absolve cSize offset segmentOffsets) <$> (relativeMap mod))
+  in Mod
+    { procs = map (absolveProc cSize offset segmentOffsets) procs
+    , offsetMap = (M.map (absolve cSize offset segmentOffsets) <$> relativeMap )
+    , constants = constants', ..
     }
   where
   absolveProc :: Int -> Int -> [(String, Int)] -> Procedure RelativeAddr -> Procedure Int
@@ -142,26 +162,47 @@ absolutize defs align mod = let
     { blocks = map (fmap (absolve cSize offset textLens)) (blocks proc)
     }
 
+  forgetNames :: Int -> Int -> [(String, Int)] -> ConstantMap Relativized -> ConstantMap Absolutized
+  forgetNames cSize offset segmentOffsets = map (fmap (absolve cSize offset segmentOffsets) . snd)
+
   absolve _ offset textLens (Rel (Text p) i) = case p `lookup` textLens of
     Just off -> offset + off + i
-  absolve c offset textLEns (Rel Data i) = offset - c + i
+  absolve c offset _ (Rel Data i) = offset - c + i
   absolve _ _ _    (Abs i)      = i
 
-resolve :: ConstantDefs -> ModuleAssembly Address -> Either [String] (ModuleAssembly RelativeAddr)
-resolve conses mod = let
-  dict = mkRelativizationDict conses (procs mod)
-  resolved = first concat . unzipEithers $ map (relativizeProc dict) (procs mod)
-  in resolved >>= \procs' -> pure $ mod
-    { procs = procs'
-    , relativeMap = Just dict
-    }
+resolve :: ModuleAssembly LaidOut -> Either [String] (ModuleAssembly Relativized)
+resolve (Mod{..}) = do
+  let dict = mkRelativizationDict constants procs
+  procs <- first concat . unzipEithers $ map (relativizeProc dict) procs
+  constants <- relativizeConstants dict constants
+  pure $ Mod{ relativeMap = Just dict, .. }
+
   where
   relativizeProc :: Map Address RelativeAddr -> Procedure Address -> Either [String] (Procedure RelativeAddr)
-  relativizeProc dict proc = let
-    relativized = unzipEithers $ map (traverse (relativize (procName proc) dict)) (blocks proc)
-    in relativized >>= \rel -> pure $ proc
-      { blocks = rel
-      }
+  relativizeProc dict proc = do
+    relativized <- unzipEithers $ map (traverse (relativize dict)) (blocks proc)
+
+    pure $ proc { blocks = relativized }
+
+  relativizeConstants :: Map Address RelativeAddr -> ConstantMap LaidOut -> Either [String] (ConstantMap Relativized)
+  relativizeConstants dict constants = unzipEithers $ map (
+    \(key, val) -> (,) <$> pure key <*> traverse (relativize dict) val
+    ) constants
+
+relativize ::  Map Address RelativeAddr -> Address -> Either String RelativeAddr
+relativize m p@(Procedure n a) = case p `M.lookup` m of
+  Just relAddr -> Right relAddr
+  Nothing -> Left $ "Missing " ++ show a ++ " for procedure " ++ n
+relativize m a@(Unknown _)  = case a `M.lookup` m of
+  Just constant -> Right constant
+  Nothing -> Left $ "Unknown constant " ++ show a
+relativize m r@(RTC a)        = case r `M.lookup` m of
+  Just relAddr -> Right relAddr
+  Nothing -> Left $ "could not find rtc for " ++ show a
+relativize m (Offset a o)   = relativize m a >>= \case
+  Abs i -> Right $ Abs (i + o)
+  Rel s i -> Right $ Rel s (i + o)
+relativize m (Absolute a)   = Right $ Abs a
 
 unzipEithers :: [Either a b] -> Either [a] [b]
 unzipEithers es = case partitionEithers es of
@@ -169,51 +210,30 @@ unzipEithers es = case partitionEithers es of
   (a, _)  -> Left a
 
 mkRelativizationDict :: ConstantDefs -> [Procedure Address] -> Map Address RelativeAddr
-mkRelativizationDict consts procs = let
-  constantOffsets = map (fmap (Rel Data)) . snd $ buildOffsetMap (Unknown . fst) (constantSize . snd) consts
+mkRelativizationDict constants procs = let
+  constantOffsets = dataOffsets constants
   bbOffsets = procs >>= \proc -> blockOffsets (procName proc) 0 (blocks proc)
   in M.fromList $ bbOffsets ++ constantOffsets
+
+dataOffsets :: [(String, ConstantInfo Address)] -> [(Address, RelativeAddr)]
+dataOffsets = map (fmap (Rel Data)) . snd . buildOffsetMap (Unknown . fst) (constantSize . snd)
 
 blockOffsets :: String -> Int -> [BB Address] -> [(Address, RelativeAddr)]
 blockOffsets nm off (bb : blks) = let
   rest = blockOffsets nm (off + instLen bb) blks
-  entry = case baseAddress bb of
-    (o             ) ->
-      [ (o, Rel (Text nm) off)
-      ]
+  entry = [(baseAddress bb, Rel (Text nm) off)]
   rtcEntry = case terminator bb of
-    RetRTC _ ->
-      [ ((RTC $ baseAddress bb), Rel (Text nm) (off + instLen bb - 1))
-      ]
+    RetRTC _ -> [ ((RTC $ baseAddress bb), Rel (Text nm) (off + instLen bb - 1))]
     _ -> []
   in entry ++ rtcEntry ++ rest
 blockOffsets _ _ [] = []
 
-relativize :: String -> Map Address RelativeAddr -> Address -> Either String RelativeAddr
-relativize nm m p@(Procedure n a) = case p `M.lookup` m of
-  Just relAddr -> Right relAddr
-  Nothing -> case a of
-    _ -> Right $ Abs 0x9999
-    (Procedure _ _) -> Left $ "Wtf " ++ show a ++ show p
-    (Operator o) -> Left $ "Missing operator offset for " ++ show p
-    (RTC r) -> Left $ "Missing RTC return for " ++ show r ++ show p
-relativize nm m a@(Unknown _)  = case a `M.lookup` m of
-  Just constant -> Right constant
-  Nothing -> Left $ "Unknown constant " ++ show a
-relativize nm m a@(Operator _) = relativize nm m (Procedure nm a)
-relativize nm m r@(RTC a)        = case r `M.lookup` m of
-  Just relAddr -> Right relAddr
-  Nothing -> Left $ "could not find rtc for " ++ show a
-relativize nm m (Offset a o)   = relativize nm m a >>= \case
-  Abs i -> Right $ Abs (i + o)
-  Rel s i -> Right $ Rel s (i + o)
-relativize nm m (Absolute a)   = Right $ Abs a
-
 toUnsegmentedMap :: [BB Address] -> Map Address (Segment)
 toUnsegmentedMap bbs = M.fromList $ L.map (\bb -> (baseAddress bb, Unsegmented bb)) bbs
 
-internalizeModule mod = mod {
-  procs = map internalizeAddresses (procs mod)
+internalizeModule :: ModuleAssembly LaidOut -> ModuleAssembly LaidOut
+internalizeModule mod = mod
+  { procs = map internalizeAddresses (procs mod)
   }
 
 internalizeAddresses :: Procedure Address -> Procedure Address
@@ -224,13 +244,18 @@ internalizeAddresses proc =
   internalizeAddress (RTC a) = RTC $ internalizeAddress a
   internalizeAddress (Offset a o) = Offset (internalizeAddress a) o
   internalizeAddress i = i
+
+-- * Layout
+
 {-
   Break up the CFG into a series of linear chunks, add explicit jumps between segments
   and merge it back together in a linearized CF
 -}
-segmentize :: ModuleAssembly Address -> ModuleAssembly Address
-segmentize mod = mod
-  { procs = map segmentProcedure (procs mod)
+layout :: ModuleAssembly Input -> ModuleAssembly LaidOut
+layout (Mod {..}) = Mod
+  { procs = map segmentProcedure procs
+  , constants = layoutConstants constants
+  , ..
   }
 
   where
@@ -245,6 +270,23 @@ segmentize mod = mod
   go' map (k : eys) = go' (segment map k) eys
   go' map [] = map
 
+layoutConstants :: ConstantMap Input -> ConstantMap Input
+layoutConstants constants = let
+  (cells, rem)   = partition (isCell . snd) constants
+  (blocks, rem') = partition (isSize . snd) rem
+  (templates, rem'') = partition (isTemplate . snd) rem'
+  in cells ++ blocks ++ templates ++ rem''
+
+  where
+
+  isCell Cell = True
+  isCell _ = False
+
+  isSize (Size _) = True
+  isSize _ = False
+
+  isTemplate (Template _) = True
+  isTemplate _ = False
 {-
   Extract a linear segment from the block map.
 -}

@@ -40,11 +40,11 @@ unknowns _ = []
 
 type BasicBlock = BB Address
 
-data ConstantInfo
+data ConstantInfo a
   = Size Int -- number of cells to reserve
   | Val  Int -- Value to store in one cell
   | Raw  Int -- Raw value to store
-  | Addr Address -- Pointer to an address
+  | Addr a -- Pointer to an address
   {-|
     Indicate this variable is meant to be a working cell. At layout time, all working cells
     will be grouped together (and may potentially even be optimized to reduce the total amount).
@@ -56,8 +56,8 @@ data ConstantInfo
       references other unkowns / variables. At linking time those constants will be resolved,
       and properly initialized.
   -}
-  | Template (Instr Address)
-  deriving (Show, Eq)
+  | Template (Instr a)
+  deriving (Show, Eq, Functor, Traversable, Foldable)
 
 constantSize (Size i) = i
 constantSize _ = 1
@@ -69,8 +69,8 @@ data BB a = BB
   } deriving (Show, Functor, Foldable, Eq, Traversable)
 
 data Procedure a = Proc
-  { _procName :: String
-  , _blocks :: [BB a]
+  { procName :: String
+  , blocks :: [BB a]
   } deriving (Show, Eq, Functor)
 
 instLen :: BB a -> Int
