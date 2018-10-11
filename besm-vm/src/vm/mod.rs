@@ -268,11 +268,13 @@ impl<'a> VM<'a> {
 
   pub fn get_address(&self, ix: u16) -> Result<u64, VMError> {
     if ix == 0 {
-      Err(VMError::OutOfBounds {})
+      Ok(0)
     } else if ix <= 1023 {
       Ok(self.is[(ix - 1) as usize])
+    } else if 1024 < ix && ix <= 1408 { // The DS annoyingly starts on address 1025 not 1024 :rage:
+      Ok(self.ds[(ix - 1023 - 1 - 1) as usize]) // We want address 1025 to map to index 0
     } else {
-      Ok(self.ds[(ix - 1023 - 1) as usize])
+      Err(VMError::OutOfBounds{})
     }
   }
 

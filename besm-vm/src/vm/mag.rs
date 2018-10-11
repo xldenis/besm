@@ -51,16 +51,23 @@ impl <'a> MagSystem<'a> {
         let span = (n2 + 1).checked_sub(*n1).ok_or(DriveError::InvalidDriveSpan)?;
         let drive = &mut self.mag_drives[id.to_num() as usize];
 
-        for (place, data) in drive.drive.iter_mut().skip(*n1 as usize).zip(is.iter().skip((c - 1) as usize).take(span as usize)) {
+        let dest = drive.drive.iter_mut().skip(*n1 as usize);
+        let source = is.iter().skip((c - 1) as usize);
+
+        for (place, data) in dest.zip(source).take(span as usize) {
           *place = *data;
         }
         info!("Wrote cells {}-{} (len {}) to MD-{:?} from IS {}", n1, n2, span, id, c);
       }
       ReadMD(id, n1, c, n2) => {
-
         let span = n2 + 1 - n1;
-        let drive = &mut self.mag_drives[id.to_num() as usize];
-        for (place, data) in is.iter_mut().skip((*c-1) as usize).zip(drive.drive.iter().skip(*n1 as usize).take(span as usize)) {
+
+        let drive = self.mag_drives[id.to_num() as usize];
+
+        let source = drive.drive.iter().skip(*n1 as usize);
+        let dest = is.iter_mut().skip((*c-1) as usize);
+
+        for (place, data) in dest.zip(source).take(span as usize) {
           *place = *data;
         }
         info!("Read cells {}-{} (len {}) from MD-{:?} to IS {}", n1, n2, span, id, c);
