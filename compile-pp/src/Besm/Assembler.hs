@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds, BinaryLiterals, DeriveFunctor,
   LambdaCase, DataKinds, KindSignatures, TypeFamilies,
-  StandaloneDeriving, RecordWildCards, FlexibleContexts
+  StandaloneDeriving, RecordWildCards, FlexibleContexts, FlexibleInstances
 #-}
 module Besm.Assembler where
 
@@ -52,7 +52,7 @@ type family AddressType (s :: Stage) where
   AddressType a = Address
 
 type family ConstantMap (s :: Stage) where
-  ConstantMap Absolutized = [ConstantInfo Int]
+  ConstantMap Absolutized = [(String, ConstantInfo Int)]
   ConstantMap Relativized = [(String, ConstantInfo RelativeAddr)]
   ConstantMap a = [(String, ConstantInfo Address)]
 
@@ -62,6 +62,8 @@ data ModuleAssembly (stage :: Stage) = Mod
   , constants   :: ConstantMap stage
   , procs       :: [Procedure (AddressType stage)]
   }
+
+deriving instance Show (ModuleAssembly 'Absolutized)
 
 debugAssemble defs a =
   pure . Mod Nothing Nothing defs
@@ -74,7 +76,7 @@ debugAssemble defs a =
 
   debugRender :: ModuleAssembly Absolutized -> ([(Int, String)], ModuleAssembly Absolutized)
   debugRender mod = let
-    (o, dataS) = mapAccumL (\off (s, v) -> (off + constantSize v, (off, s ++ " " ++ show v))) 0 defs
+    (o, dataS) = mapAccumL (\off (s, v) -> (off + constantSize v, (off, s ++ " " ++ show v))) 0 (constants mod)
     blks  = procs mod >>= blocks
     text = blks >>= (\bb -> map show (instrs bb) ++ termToString (terminator bb))
     textS = zip [o..] text
@@ -129,7 +131,7 @@ render :: Alignment -> ModuleAssembly Absolutized -> Output
 render a mod = let
   blks  = procs mod >>= blocks
   textS = blks >>= asmToCell
-  dataS = constants mod >>= constantToCell
+  dataS = constants mod >>= constantToCell . snd
   total = dataS ++ textS
   in case a of
     AlignLeft -> (replicate 15 (bitVector 0)) ++ total
@@ -146,7 +148,7 @@ constantToCell (Cell) = [bitVector 0]
 absolutize :: Alignment -> ModuleAssembly Relativized -> ModuleAssembly Absolutized
 absolutize align (Mod {..}) = let
   constants' = forgetNames cSize offset segmentOffsets constants
-  cSize = sum (map constantSize constants')
+  cSize = sum (map (constantSize . snd) constants')
   (bSize, segmentOffsets) = buildOffsetMap procName (sum . map instLen . blocks) procs
   offset = case align of
     AlignLeft  -> 0x10 + cSize
@@ -163,7 +165,7 @@ absolutize align (Mod {..}) = let
     }
 
   forgetNames :: Int -> Int -> [(String, Int)] -> ConstantMap Relativized -> ConstantMap Absolutized
-  forgetNames cSize offset segmentOffsets = map (fmap (absolve cSize offset segmentOffsets) . snd)
+  forgetNames cSize offset segmentOffsets = map (fmap (fmap (absolve cSize offset segmentOffsets)))
 
   absolve _ offset textLens (Rel (Text p) i) = case p `lookup` textLens of
     Just off -> offset + off + i
@@ -272,10 +274,10 @@ layout (Mod {..}) = Mod
 
 layoutConstants :: ConstantMap Input -> ConstantMap Input
 layoutConstants constants = let
-  (cells, rem)   = partition (isCell . snd) constants
-  (blocks, rem') = partition (isSize . snd) rem
+  (cells, rem)       = partition (isCell . snd) constants
+  (blocks, rem')     = partition (isSize . snd) rem
   (templates, rem'') = partition (isTemplate . snd) rem'
-  in cells ++ blocks ++ templates ++ rem''
+  in blocks ++ templates ++ cells ++ rem''
 
   where
 

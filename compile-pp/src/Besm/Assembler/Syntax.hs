@@ -1,7 +1,10 @@
 {-# LANGUAGE DataKinds, DeriveFunctor, DeriveFoldable, GeneralizedNewtypeDeriving, DeriveTraversable, BinaryLiterals, TemplateHaskell #-}
-module Besm.Assembler.Syntax where
+module Besm.Assembler.Syntax
+( module Besm.Assembler.Syntax
+, unsafeFromBesmAddress
+) where
 
-import Besm.Put (buildNumber, buildInstruction)
+import Besm.Put (buildNumber, buildInstruction, unsafeFromBesmAddress)
 import Data.BitVector.Sized
 import Data.Bits
 
@@ -41,10 +44,10 @@ unknowns _ = []
 type BasicBlock = BB Address
 
 data ConstantInfo a
-  = Size Int -- number of cells to reserve
-  | Val  Int -- Value to store in one cell
-  | Raw  Int -- Raw value to store
-  | Addr a -- Pointer to an address
+  = Size Int -- | number of cells to reserve
+  | Val  Int -- | Value to store in one cell
+  | Raw  Int -- | Raw value to store
+  | Addr a -- | Pointer to an address
   {-|
     Indicate this variable is meant to be a working cell. At layout time, all working cells
     will be grouped together (and may potentially even be optimized to reduce the total amount).

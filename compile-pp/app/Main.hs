@@ -17,6 +17,16 @@ import           Besm.Assembler
 import           Control.Monad
 import Besm.Put
 
+pp1ConstantMap = Logical.constantMap ++ PP1.constantMap ++ Arith.constantMap ++ Economy.constantMap
+
+pp1Procedures =
+  [ runProcedure "MP-1" mp1
+  , runProcedure "PP-1-1" Logical.pp1_1
+  , runProcedure "PP-1-2" Arith.arithCoder
+  , runProcedure "PP-1-3" Economy.pp1_3
+  , mp2
+  ]
+
 main :: IO ()
 main = do
   let cfg = programmeToGraph (blocks $ runProcedure "PP-1-2" $ Arith.arithCoder)
@@ -29,13 +39,8 @@ main = do
   runGraphviz (graphToDot params $ (nmap formatAddr lcfg)) Png "cfg-logi.png"
 
   mapM_ putStrLn  . either id id $
-    assemble (Logical.constantMap ++ PP1.constantMap ++ Arith.constantMap ++ Economy.constantMap) AlignRight (
-      [ runProcedure "MP-1" mp1
-      , runProcedure "PP-1-1" Logical.pp1_1
-      , runProcedure "PP-1-2" Arith.arithCoder
-      , runProcedure "PP-1-3" Economy.pp1_3
-      , pp2, mp2
-      ]) & liftM (map toHexString)
+    assemble (pp1ConstantMap) AlignRight (
+      pp1Procedures) & liftM (map toHexString)
 
   return ()
 
