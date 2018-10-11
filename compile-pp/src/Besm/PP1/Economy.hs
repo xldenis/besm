@@ -31,7 +31,6 @@ constantMap =
   , (",TN buffer _", Template (TN (Unknown "buffer") (Absolute 0) UnNormalized))
   , ("econ-current-cell", Raw 0)
   , ("copy of working", Raw 0)
-  , ("third-addr-mask", Raw 0)
   , ("working-code", Raw 0)
   , ("&completedOperator", Addr completedOperator)
   , ("&completedOperator + 144", Addr $ completedOperator `offAddr` 144)
@@ -39,8 +38,8 @@ constantMap =
   , ("S", Cell)
   , ("k'", Raw 0)
   , ("and-template", Raw 0)
-  , ("ai _ cellS _", Raw 0)
-  , (",TN 116F _", Raw 0)
+  , ("ai _ cellS _", Template (AI (Absolute 0) (Unknown "S") (Absolute 0)))
+  , (",TN 116F _", Template (TN (Absolute $ unsafeFromBesmAddress "116F") (Absolute 0) UnNormalized))
   , ("recall-arg", Raw 0)
   , ("final-store", Raw 0)
   , (",TN β₀ βᵢ", Template (TN beta0 (Unknown "βᵢ")  UnNormalized))
@@ -48,14 +47,13 @@ constantMap =
   , ("working", Raw 0)
   ]
   where
-  completedOperator = Unknown "buffer" `offAddr` 96
+  completedOperator = Unknown "arith-buffer" `offAddr` 96
   beta0 = Unknown "β₁, .., β₁₆" `offAddr` (negate 1)
 
 pp1_3 = do
   let beta          = Unknown "β₁, .., β₁₆"
   let working       = Unknown "econ-current-cell"
   let endOfOperator = Unknown "end-of-arith-op"
-  let thirdAddr     = Unknown "third-addr-mask"
   let zero          = Unknown "0"
   let minusOne      = Unknown "-1"
   let lowerBound    = Unknown "&completedOperator"
@@ -69,7 +67,7 @@ pp1_3 = do
     operator 1 $ do
       let tnTemplate = Unknown "tn" -- ,TN _  working
       let counterK = Unknown "K"
-      readMD 7 (Absolute 1) (Absolute 15) beta
+      readMD 4 (Absolute 1) (Absolute 15) beta
 
       ai tnTemplate counterK endOfOperator
       ai endOfOperator one select

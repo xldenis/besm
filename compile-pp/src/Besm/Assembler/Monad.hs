@@ -384,15 +384,15 @@ mb n2 = emitInstr $ Mb n2
 
 -- | A bitmask to select the first address of a cell
 firstAddr :: Address
-firstAddr = Unknown "first-addr-mask"
+firstAddr = Absolute $ unsafeFromBesmAddress "1167"
 
 -- | A bitmask to select the second address of a cell
 secondAddr :: Address
-secondAddr = Unknown "second-addr-mask"
+secondAddr =  Absolute $ unsafeFromBesmAddress "116E"
 
 -- | A bitmask to select the third address of a cell
 thirdAddr :: Address
-thirdAddr = Unknown "third-addr-mask"
+thirdAddr = Absolute $ unsafeFromBesmAddress "116F"
 
 -- | A normalized one which corresponds to 0.5 * 2^1 since in BESM all numbers are floats.
 unity :: Address
@@ -400,7 +400,7 @@ unity = Absolute 0x1081
 
 -- | A denormalized 1, this cell only has the lowest bit set.
 one :: Address
-one = Unknown "1'"
+one = Absolute $ unsafeFromBesmAddress "10B9"
 
 {- |
   A denormalized 1 shifted to the left 22 places, putting it in the second address of the cell.
@@ -409,7 +409,7 @@ one = Unknown "1'"
 -}
 
 oneFirstAddr :: Address
-oneFirstAddr = Unknown "1' << 22"
+oneFirstAddr = Absolute $ unsafeFromBesmAddress "10B7"
 
 {-| Standard Cells
   These are standard cells that are used as pseudo-registers in BESM code.

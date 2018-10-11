@@ -55,24 +55,19 @@ four = Unknown "4"
 zero = Unknown "0"
 
 constantMap =
-  [ ("second-addr-mask", Raw $ 0b11111111111 `B.shift` 11)
-  , ("third-addr-mask", Raw 0b11111111111)
-  , ("template 1", Raw 0)
+  [ ("template 1", Raw 0)
   , ("template 2", Raw 0)
   , ("0", Raw 0)
-  , ("1'", Raw 1)
   , ("2", Raw 2)
   , ("3", Raw 3)
   , ("4", Raw 4)
   , ("8", Raw 8)
-  , ("18", Raw 0)
+  , ("18", Raw 18)
   , ("concluding transfers", Raw 0)
   , ("CCCC", Raw 0)
   , ("α", Size 4)
-  , ("notThirdAddr", Raw 0)
-  , ("Y", Raw 0)
-  , ("Y'", Raw 0)
-  , ("C", Raw 0)
+  , ("Y", Cell)
+  , ("Y'", Cell)
   , ("<", Raw 0)
   , ("lowest2", Raw 0)
   , ("comp template", Raw 0)
@@ -80,7 +75,6 @@ constantMap =
   , ("scratch-cell-1", Raw 0)
   , ("scratch-cell-2", Raw 0)
   , ("scratch-cell-3", Raw 0)
-  , ("0x13FF", Raw 0)
   ]
 
 pp1_1 = do
@@ -595,9 +589,7 @@ pp1_1 = do
 
   -}
   operator 42 $ do
-    let constant = Unknown "0x13FF"
-
-    comp alpha4 constant (op 45) (op 43)
+    comp alpha4 thirdAddr (op 45) (op 43)
 
   {-
   Op. 43 and op. 44 transfer K3 to the block of completed instructions.
@@ -683,8 +675,8 @@ pp1_1 = do
   -}
 
   operator 8 $ do
-    let notThirdAddr = Unknown "notThirdAddr"
-    bitAnd alpha3 notThirdAddr alpha3
+    let firstAndSndAddr = Unknown "firstAndSndAddr"
+    bitAnd alpha3 firstAndSndAddr alpha3
 
     ai alpha3 constantN alpha3
 

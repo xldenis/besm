@@ -33,12 +33,9 @@ constantMap =
   , ("A",     Cell)
   , ("A + 1", Cell)
   , ("B",     Cell)
-  , ("one",  Raw 1)
-  , ("1' << 22",  Raw $ 1 `B.shift` 22)
   , ("0", Raw 0)
   , ("0x18", Raw $ 0x18)
   , ("snd and third addr mask", Raw $ 0b11111111111 `B.shift` 11 B..|. 0b11111111111)
-  , ("first-addr-mask", Raw $ 0b11111111111 `B.shift` 22) --
   , ("K_f",  Raw 0)
   , ("K_cr", Raw 0)
   , ("start of 144 block", Val 0)
@@ -51,7 +48,6 @@ constantMap =
   ]
 
 
-pp2 = Proc "PP-2" [BB { baseAddress = Operator 1, instrs = [], terminator = Stop}]
 mp2 = Proc "MP-2" [BB { baseAddress = Operator 1, instrs = [], terminator = Stop}]
 
 {-
@@ -310,7 +306,7 @@ mp1 = do
     Op. 21 tests whether the arrangement block has been exhausted
   -}
   operator 21 $ do
-    comp arrangementCounter maxSelected (op 23) (op 22)
+    comp arrangementCounter maxWritten (op 23) (op 22)
 
   mdo
     {-
@@ -338,7 +334,7 @@ mp1 = do
     ta <- operator 23 $ do
       ot <- tN cellA1 completedInstructions -- use AI to modify
       ai arrangementCounter one arrangementCounter
-      ai ot (Unknown "one") ot
+      ai ot one ot
       retRTC
       return ot
     return ()

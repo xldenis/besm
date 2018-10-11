@@ -7,6 +7,7 @@ import           Data.BitVector.Sized.BitLayout
 import           Data.List                      (mapAccumL)
 import           Data.Serialize.Put
 import           Data.Word
+import           Data.Char                      (digitToInt)
 
 import           Data.Function
 import qualified Data.List.NonEmpty             as NonEmpty
@@ -569,3 +570,20 @@ numberToBesmFloating num = let
     toBitVector' i (1:xs) bv = toBitVector' (i - 1) xs (bv `setBit` (bvWidth bv - (len - i)))
     toBitVector' i (_:xs) bv = toBitVector' (i - 1) xs bv
     toBitVector' i []     bv = bv
+
+{-
+  Converts from a BESM address format which is a mixture of binary, quaternary and hex.
+-}
+
+fromBesmAddress :: String -> Maybe Int
+fromBesmAddress inp = let
+  str = replicate (4 - length inp) '0' ++ inp
+  (b : q : h1 : h2 : []) = str
+  bin = digitToInt b
+  quat = digitToInt q
+  in case bin < 2 && quat < 4 of
+    True -> Just $ digitToInt h2 + digitToInt h1 * 2 ^ 4 + quat  * 2 ^ 8 + bin * 2 ^ 10
+    False -> Nothing
+
+unsafeFromBesmAddress :: String -> Int
+unsafeFromBesmAddress = fromJust . fromBesmAddress

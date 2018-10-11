@@ -4,7 +4,6 @@ module Besm.PP1.Arithmetic where
 import Besm.Assembler.Monad
 import Besm.Assembler.Syntax
 
-import Debug.Trace
 {-
   PP-1
 
@@ -95,15 +94,16 @@ symbolCounter :: Address
 symbolCounter = Unknown "symbol counter"
 
 partialProgramme :: Address
-partialProgramme = Unknown "buffer"
-completedOperator = Unknown "buffer" `offAddr` 96
+partialProgramme = Unknown "arith-buffer"
+
+completedOperator = Unknown "arith-buffer" `offAddr` 96
 
 -- Apparently the first addresses of the DS store some constants
 zero :: Address
 zero = Unknown "0"
 
-four = Unknown "4"
-
+four' = Unknown "4"
+four = Absolute (unsafeFromBesmAddress "1084")
 x1c = Unknown "0x1C"
 
 constantMap =
@@ -113,9 +113,10 @@ constantMap =
   , ("B2", Raw 0)
   , ("B3", Raw 0)
   , ("symbol counter", Raw 0)
-  , ("F", Raw 0)
-  , ("E", Raw 0)
-  , ("D", Raw 0)
+  , ("F", Cell)
+  , ("E", Cell)
+  , ("D", Cell)
+  , ("C", Cell)
 
   -- Constant numerical values
   , ("0xb", Raw 0xb)
@@ -124,7 +125,6 @@ constantMap =
   , ("0x1C", Raw 0x1C)
   , ("0xfd", Raw 0xfd)
   , ("0xff", Raw 0xff)
-  , ("0x7FF", Raw 0)
   , ("0x800000", Raw 0)
 
   , ("15", Raw 15)
@@ -136,9 +136,9 @@ constantMap =
 
   -- Template values
   , ("mult template", Raw 0)
-  , ("AI _ _ 0001", Raw 0)
-  , ("- 1101 _ 0001", Raw 0)
-  , ("T 0002 _ _", Raw 0)
+  , ("AI _ _ 0001",   Template (AI (Absolute 0) (Absolute 0) (Absolute 1)))
+  , ("TN 0002 _ _",   Template (TN (Absolute 2) (Absolute 0) Normalized))
+  , ("- 1101 _ 0001", Template (Sub (Absolute $ unsafeFromBesmAddress "1101") (Absolute 0) (Absolute 1) Normalized))
   , ("transfer template", Raw 0)
   , ("pn template", Raw 0)
 
@@ -151,18 +151,14 @@ constantMap =
   , ("=>-code", Raw 0)
 
   -- Miscellaneous / Unclassified
-  , ("&completed operator", Addr completedOperator)
+  , ("arith-buffer", Size 240)
+  , ("&completedOperator", Addr completedOperator)
   , ("transfer cell", Raw 0)
   , ("how the fuck do i get this", Raw 0)
   , ("inhibition flag", Raw 0)
-  , ("op 61-1", Raw 0)
-  , ("op 65-1", Raw 0)
-  , ("op 65-2", Raw 0)
-  , ("ai constant", Raw 0)
   , ("comparison value", Raw 0)
   , ("formed instruction", Raw 0)
   , ("templateDispatch", Raw 0)
-  , ("1-first-addr", Raw 0)
   , ("fixed K", Raw 0)
   , ("&K + 160", Raw 0)
   , ("k comp", Raw 0)
@@ -170,7 +166,6 @@ constantMap =
   , ("first-k-cell", Raw 0)
   , ("tested-cell", Raw 0)
   , ("3rd-addr-of-tested", Raw 0)
-  , ("scratch-cell", Raw 0)
   , ("CLCC", Raw 0)
   ]
 
@@ -195,7 +190,7 @@ arithCoder = do
   operator 1 $ do
     tN zero counterK
     tN partialProgramme counterB1
-    tN one symbolCounter
+    tN zero symbolCounter
     tN zero cellC
     tN zero (partialProgramme `offAddr` (negate 1))
 
@@ -212,7 +207,7 @@ arithCoder = do
   -}
 
   let pp_3_1 = (Procedure "PP-1-3" (op 1))
-  operator 2 $ tExp cellA cellF
+  operator 2 $ tExp' cellA cellF
   operator 3 $ compWord cellF zero pp_3_1 (op 4)
 
   {-
@@ -223,7 +218,7 @@ arithCoder = do
     shift cellF (right 22) cellA
     shift cellF (left 8) cellF
 
-    add one symbolCounter symbolCounter
+    add unity symbolCounter symbolCounter
 
     chain (op 5)
   {-
@@ -241,7 +236,7 @@ arithCoder = do
   mdo
     let mp_1_17 = Procedure "MP-1" (op 17)
 
-    operator 5 $ comp symbolCounter four (op 6) joinP
+    operator 5 $ comp symbolCounter four' (op 6) joinP
     operator 6 $ do
       callRtc mp_1_17 (Procedure "MP-1" (op 20))
 
@@ -284,7 +279,7 @@ arithCoder = do
 
   operator 11 $ do
     tN cellB cellC
-    cccc (op 2)
+    chain (op 2)
 
   {-
     Op. 12 transfers control to op. 13, if in the cell there is
@@ -331,7 +326,7 @@ arithCoder = do
 
   operator 18 $ do
     tN cellD cellC
-    cccc (op 2)
+    chain (op 2)
 
   {-
     Op. 19 transfers control to the sub-routine for testing the presence of a
@@ -367,7 +362,7 @@ arithCoder = do
       shift cellB (left 11) cellB
       clcc (op 2) -- woo subroutines!
 
-      cccc (op 24)
+      chain (op 24)
 
     return ()
   {-
@@ -378,7 +373,7 @@ arithCoder = do
 
   operator 24 $ do
     tN cellB cellD
-    cccc (op 69)
+    chain (op 69)
 
   {-
 
@@ -405,7 +400,7 @@ arithCoder = do
 
   operator 27 $ do
     shift cellB (left 22) cellB
-    cccc (op 22)
+    chain (op 22)
 
   {-
 
@@ -453,7 +448,7 @@ arithCoder = do
   operator 33 $ do
     shift cellB (left 11) cellB
 
-    cccc (op 34)
+    chain (op 34)
 
   {-
 
@@ -464,8 +459,8 @@ arithCoder = do
   -}
 
   operator 29 $ do
-    sub cellB four cellB
-    cccc (op 30)
+    sub cellB four' cellB
+    chain (op 30)
 
   {-
 
@@ -476,7 +471,7 @@ arithCoder = do
 
   operator 30 $ do
     tN cellB cellD
-    cccc (op 69)
+    chain (op 69)
 
   {-
 
@@ -508,7 +503,7 @@ arithCoder = do
   -}
 
   operator 36 $ do
-    comp four cellE (op 38) (op 37)
+    comp four' cellE (op 38) (op 37)
 
 
   {-
@@ -614,7 +609,7 @@ arithCoder = do
   -}
 
   operator 44 $ do
-    let pointerToCompletedOps = Unknown ("&completed operator")
+    let pointerToCompletedOps = Unknown ("&completedOperator")
     compWord counterK pointerToCompletedOps (op 45) (op 47)
 
   {-
@@ -625,11 +620,9 @@ arithCoder = do
   -}
 
   operator 45 $ mdo
-    let addr3bitmask = Unknown "0x7FF" -- 0x7FF
-
     shift counterK (left 22) cellF
     ai cellF addr addr
-    addr <- bitAnd completedOperator addr3bitmask cellF
+    addr <- bitAnd completedOperator thirdAddr cellF
 
     chain (op 46)
   {-
@@ -827,7 +820,7 @@ arithCoder = do
   -}
 
   operator 61 $ do
-    let aiConstant = Unknown "op 61-1" -- address of cell holding 0x1FFFFF800
+    let aiConstant = Unknown "-1" -- address of cell holding 0x1FFFFF800
 
     ai cellE aiConstant cellE
     chain (op 62)
@@ -874,8 +867,8 @@ arithCoder = do
   -}
 
   operator 65 $ do
-    let aiConstant = Unknown "ai constant"-- address of cell holding 0x1FFFFF800
-    ai (Unknown "op 65-1") aiConstant (Unknown "op 65-2")
+    let aiConstant = Unknown "-1"-- address of cell holding 0x1FFFFF800
+    ai cellE aiConstant cellE
     chain (op 66)
 
   {-
@@ -932,6 +925,7 @@ arithCoder = do
     addr <- tN cellD (Absolute 0)
 
     chain (op 70)
+
   {-
   Op 70. forestalls "overflow" of the partial programme. If there are more than 32
   symbols in the partial programme a check stop takes place.
@@ -945,7 +939,7 @@ arithCoder = do
 
     stop <- block (checkStop)
 
-    jcc' <- block (jcc >> cccc (op 2))
+    jcc' <- block (jcc >> chain (op 2))
 
     return ()
   {-
@@ -1081,7 +1075,7 @@ arithCoder = do
   {-
   Op. 84 forms the code of the operation of the instruction being constructed,
   according to the sign of the operation. Since the codes of multiplication and
-  division signs were previously reduced by four, the codes of symbols of
+  division signs were previously reduced by four', the codes of symbols of
   two-place operations differ from the codes of operations of the corresponding
   instruction by the same quantity, equal to 2.
 
@@ -1177,8 +1171,8 @@ arithCoder = do
     bitAnd cellE secondAddr cellF
     ai cellD cellF cellD
 
-    let lowerFour = Unknown "15"
-    bitAnd cellE lowerFour cellE
+    let lowerFour' = Unknown "15"
+    bitAnd cellE lowerFour' cellE
 
     chain (op 92)
 
@@ -1203,7 +1197,7 @@ arithCoder = do
   D.
   -}
   let outCell = completedInstr
-  let builder = Unknown "scratch-cell"
+  let builder = Unknown "scratch-cell-1"
   let templateDispatch = Unknown "templateDispatch" -- holds AI template-table cellD builder
 
   operator 94 $ mdo
@@ -1292,7 +1286,7 @@ arithCoder = do
   -}
 
   operator 102 $ do
-    let temp = Unknown "T 0002 _ _"
+    let temp = Unknown "TN 0002 _ _"
 
     tN' temp outCell
 
@@ -1314,7 +1308,7 @@ arithCoder = do
   -}
 
   operator 104 $ do
-    ai outCell (Unknown "1-first-addr") outCell
+    ai outCell oneFirstAddr outCell
 
     chain (op 105)
   {-
@@ -1460,7 +1454,7 @@ arithCoder = do
 
     operator 114 $ mdo
       let lastTested = Unknown "3rd-addr-of-tested"
-      let scratch = Unknown "scratch-cell"
+      let scratch = Unknown "scratch-cell-1"
       let testedCell = Unknown "tested-cell"
 
       shift (op 115) (right 22) testedCell
