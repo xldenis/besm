@@ -32,8 +32,8 @@ library:
   source-dirs: src
 
 executables:
-  compile-pp-exe:
-    main:                Main.hs
+  compiler:
+    main:                Compiler
     source-dirs:         app
     ghc-options:
     - -threaded
@@ -41,7 +41,15 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - compile-pp
-
+  trace:
+    main:                TraceVisualizer
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - compile-pp
 tests:
   compile-pp-test:
     main:                Spec.hs

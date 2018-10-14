@@ -284,7 +284,7 @@ impl<'a> VM<'a> {
 
   fn set_address(& mut self, ix: u16, val: u64) -> &mut Self {
     if ix <= 1023 {
-      self.is[(ix - 1) as usize] = val
+      self.is[(ix - 1) as usize].set_bits(0..39, val);
     } else {
       panic!("can't assign to DS")
     }

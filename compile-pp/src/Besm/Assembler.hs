@@ -25,7 +25,7 @@ import Data.Either (partitionEithers)
 import Data.Bifunctor (first)
 
 type ConstantDefs = [(String, ConstantInfo Address)] -- map of constant name to value
-type Output = [BitVector 39]
+type Output = [BitVector 64]
 
 {-
 
@@ -124,14 +124,19 @@ compile defs align =
 -- | Print the hex for a module
 render :: Alignment -> ModuleAssembly Absolutized -> Output
 render a mod = let
-  blks  = procs mod >>= blocks
-  textS = blks >>= asmToCell
-  dataS = constants mod >>= constantToCell . snd
+  textS = zip [1..] (procs mod) >>= uncurry renderProc
+  dataS = constants mod >>= \cons -> map (b0 <:>) $ constantToCell (snd cons)
   total = dataS ++ textS
   in case a of
     AlignLeft -> (replicate 15 (bitVector 0)) ++ total
     AlignRight -> replicate (1023 - length total) (bitVector 0) ++ total
 
+  where
+
+  renderProc ix proc = let
+    procIx = bitVector ix :: BV 4
+    in zip [1..] (blocks proc) >>= \(i, b) ->
+      map (procIx <:> bitVector i <:> (b0 :: BitVector 9) <:>) (asmToCell b)
 -- * Absolutization
 
 -- | Given an alignment for a module, assign concrete addresses to everything.

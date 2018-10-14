@@ -1,5 +1,4 @@
-module Main where
-
+module Compiler where
 
 import Data.GraphViz
 import Data.Graph.Inductive.Graph (nmap, emap)

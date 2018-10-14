@@ -151,7 +151,7 @@ calculateQuantityAddresses (PP {..}) = let
   Turn a BitVector into a human readable hex representation
 -}
 
-toHexString :: BitVector 39 -> String
+toHexString :: BitVector n -> String
 toHexString = printf "%016x" . bvIntegerU
 
 {-
