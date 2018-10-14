@@ -51,35 +51,35 @@ import qualified Data.Bits as B (shift)
 
 cellC = Unknown "C"
 
-four = Unknown "4"
+four = Absolute (unsafeFromBesmAddress "1084")
 zero = Unknown "0"
+two  = Absolute (unsafeFromBesmAddress "1082")
 
 constantMap =
-  [ ("template 1", Raw 0)
-  , ("template 2", Raw 0)
-  , ("0", Raw 0)
+  [ ("constant-x", Raw 0)
+  , ("constant-n", Raw 0)
   , ("2", Raw 2)
   , ("3", Raw 3)
-  , ("4", Raw 4)
   , ("8", Raw 8)
   , ("18", Raw 18)
+  , ("4", Raw 4)
   , ("concluding transfers", Raw 0)
-  , ("CCCC", Raw 0)
   , ("α", Size 4)
   , ("Y", Cell)
   , ("Y'", Cell)
   , ("<", Raw 0)
-  , ("lowest2", Raw 0)
-  , ("comp template", Raw 0)
+  , ("0202", Raw 0x202)
   , ("firstAndSndAddr", Raw 0)
-  , ("scratch-cell-1", Raw 0)
-  , ("scratch-cell-2", Raw 0)
-  , ("scratch-cell-3", Raw 0)
+  , ("scratch-cell-1", Cell)
+  , ("scratch-cell-2", Cell)
+  , ("scratch-cell-3", Cell)
+  , ("x", Cell)
+  , ("b", Cell)
   ]
 
 pp1_1 = do
-  let constantX = Unknown "template 1"
-  let constantN = Unknown "template 2"
+  let constantX = Unknown "constant-x"
+  let constantN = Unknown "constant-n"
 
   let alpha1 = Unknown "α" `offAddr` 0
   let alpha2 = Unknown "α" `offAddr` 1
@@ -95,8 +95,6 @@ pp1_1 = do
   let eight = Unknown "8"
 
   let purge = callRtc (op 35) (op 45)
-
-  let ccccOpCode = Unknown "CCCC"
 
   {-
 
@@ -187,11 +185,11 @@ pp1_1 = do
 
       Holds the value:
       ┌───┬────┬────┬──────┐
-      │ < │    │    │ 0202 │
+      │   │    │    │ 0202 │
       └───┴────┴────┴──────┘
     -}
 
-    let template = Unknown "comp template"
+    let template = Unknown "0202"
     tExp' cellA cellY
 
     comp cellY eight direct inverse
@@ -313,10 +311,7 @@ pp1_1 = do
 
   -}
   operator 18 $ do
-    let compTemplate = Unknown "<" -- cell with just < code
-
-    ai alpha1 constantN alpha1
-    ai alpha1 compTemplate alpha1
+    ce constantN (Absolute 0x14) alpha1
 
     chain (op 19)
 
@@ -360,8 +355,7 @@ pp1_1 = do
   -}
 
   operator 22 $ do
-    tN' constantN alpha1
-    ai ccccOpCode alpha1 alpha1
+    ce constantN (Absolute 0x1B) alpha1
 
     chain (op 23)
   {-
@@ -383,7 +377,8 @@ pp1_1 = do
 
   let cellY' = Unknown "Y'"
   operator 24 $ do
-    bitAnd cellY (Unknown "lowest2") cellY'
+    bitAnd cellY four cellY' -- four == 2^3 * 0.5 this means that the two lowest bits of the exp are 1
+    tExp cellY' cellY' -- objective is that cellY' holds a normalized version of those bits.
 
     chain (op 25)
 
@@ -394,7 +389,7 @@ pp1_1 = do
 
   -}
   operator 25 $ do
-    compWord cellY' zero (op 26) (op 34)
+    compWord cellY' unity (op 26) (op 34)
   {-
 
   Op. 26 determines the case y' = 1, for which only the last CCCC remains to
@@ -403,7 +398,7 @@ pp1_1 = do
   -}
 
   operator 26 $ do
-    comp cellY' one (op 32) (op 27)
+    comp cellY' two (op 32) (op 27)
 
   {-
   Op. 27 forms the preparations
@@ -415,18 +410,16 @@ pp1_1 = do
   for the output direct comparison.
   -}
 
+  let xVal = Unknown "x"
+  let bVal = Unknown "b"
+
   operator 27 $ do
-    let ccccOpCode = Unknown "CCCC"
-    tN' cellB alpha1
-    ai ccccOpCode alpha1 alpha1
+    ce cellB (Absolute 0x1b) alpha1
 
-    shift constantX (left 11) cellC
-    ai alpha1 cellC alpha1
+    shift constantX (left 11) xVal
+    bitAnd cellA secondAddr   bVal
 
-    bitAnd cellA secondAddr cellC
-    shift cellC (right 11) cellC
-    ai alpha1 cellC alpha1
-
+    chain (op 28)
   {-
   Op. 28, for y' = 3 (y = 3, y = 19), transfers control to op. 30, forming for
   this case the output direct comparison.
@@ -434,8 +427,7 @@ pp1_1 = do
   -}
 
   operator 28 $ do
-    let three = Unknown "3"
-    compWord three cellY' (op 29) (op 30)
+    compWord two cellY' (op 29) (op 30)
 
   {-
   For y' != 3, ie for y'=2, (y = 2, y =18)
@@ -449,14 +441,12 @@ pp1_1 = do
   for the internal inverse comparison.
   -}
   operator 29 $ do
-    let template = Unknown "comp template"
+    let template = Unknown "0202"
 
-    bitAnd cellA secondAddr cellC
-    shift cellC (left 11) cellC
+    ce template (Absolute 0x14) alpha1
 
-    ai template alpha1 alpha1
-    ai alpha1 constantX alpha1
-    ai alpha1 cellC alpha1
+    shift xVal (right 11) xVal
+    shift bVal (left  11) bVal
 
     chain (op 30)
 
@@ -466,6 +456,8 @@ pp1_1 = do
   "purging".
   -}
   operator 30 $ do
+    ai alpha1 bVal alpha1
+    ai alpha1 xVal alpha1
     purge
     chain (op 31)
 
@@ -476,16 +468,14 @@ pp1_1 = do
   -}
 
   operator 31 $ do
-    let two = Unknown "2"
     compWord cellY' two (op 34) (op 32)
 
   {-
   Op. 32 constructs the last CCCC.
   -}
   operator 32 $ do
-    let ccccOpCode = Unknown "CCCC"
+    ce cellB (Absolute 0x1b) alpha1
 
-    ai ccccOpCode constantN alpha1
     chain (op 33)
 
   {-
@@ -520,13 +510,16 @@ pp1_1 = do
 
   {-
   Op. 36 verifies if K_1 is a comparison. If K_1 is CCCC, control is
-  transferred to op. 42. .
+  transferred to op. 42.
+
+  NOTES
+  =====
+
+  Check if the first two arguments of k1 are empty (which implies a CCCC)
   -}
 
   operator 36 $ do
-    let ccccOpCode = Unknown "CCCC"
-    tExp' cellK1 cellC
-    compWord cellC ccccOpCode (op 42) (op 37)
+    compWord cellK1 unity (op 42) (op 37)
 
   {-
   If K_1 is comparison then op. 37 and op. 38 verify if the first two
@@ -654,7 +647,7 @@ pp1_1 = do
   -}
 
   operator 6 $ do
-    comp ccccOpCode alpha2 (op 7) (op 8)
+    comp (Absolute 0x110F) alpha2 (op 7) (op 8)
 
   {-
   Op. 7 places the instruction
@@ -666,8 +659,7 @@ pp1_1 = do
   in cell α+1
   -}
   operator 7 $ do
-    ai ccccOpCode alpha1 alpha1
-    ai alpha1 constantN alpha1
+    ce constantN (Absolute 0x1b) alpha1
 
     chain (op 9)
   {-
@@ -694,7 +686,7 @@ pp1_1 = do
   Op. 10 adds 1 to the counter of concluding transfers.
   -}
   operator 10 $ do
-    add' one counterTransfer counterTransfer
+    add' unity counterTransfer counterTransfer
 
   {-
   Op. 11, using the counter of concluding transfers, ensures repitition of

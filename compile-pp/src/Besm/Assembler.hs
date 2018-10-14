@@ -277,7 +277,7 @@ layoutConstants constants = let
   (cells, rem)       = partition (isCell . snd) constants
   (blocks, rem')     = partition (isSize . snd) rem
   (templates, rem'') = partition (isTemplate . snd) rem'
-  in blocks ++ templates ++ cells ++ rem''
+  in blocks ++ templates ++ cells ++ (sortOn fst rem'')
 
   where
 

@@ -216,6 +216,7 @@ pp1_3 = do
     operator 16 $ mdo
       let storeTemplate = Unknown "ai _ cellS _" -- this is used to store βᵢ in the third (blank addr) of k'
       let markTemplate  = Unknown ",TN 116F _" -- used to mark βᵢ (116F is a builtin cell full of 1).
+
       shift selector (right 22) cellS
       ai storeTemplate k' storeK'
       storeK' <- empty

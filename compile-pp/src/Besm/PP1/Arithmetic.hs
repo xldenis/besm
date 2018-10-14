@@ -108,18 +108,19 @@ x1c = Unknown "0x1C"
 
 constantMap =
   -- Working cells.
-  [ ("K", Raw 0)
-  , ("B1", Raw 0)
-  , ("B2", Raw 0)
-  , ("B3", Raw 0)
-  , ("symbol counter", Raw 0)
+  [ ("K",  Cell)
+  , ("B1", Cell)
+  , ("B2", Cell)
+  , ("B3", Cell)
   , ("F", Cell)
   , ("E", Cell)
   , ("D", Cell)
   , ("C", Cell)
 
+  , ("symbol counter", Raw 0)
+
   -- Constant numerical values
-  , ("0xb", Raw 0xb)
+  , ("0xc", Raw 0xc)
   , ("0xf0", Raw 0xf0)
   , ("0x1b", Raw 0x1b)
   , ("0x1C", Raw 0x1C)
@@ -141,20 +142,12 @@ constantMap =
   , ("- 1101 _ 0001", Template (Sub (Absolute $ unsafeFromBesmAddress "1101") (Absolute 0) (Absolute 1) Normalized))
   , ("transfer template", Raw 0)
   , ("pn template", Raw 0)
-
-  -- Opcodes
-  , ("single-open-paren-code", Raw 0)
-  , ("multu-open-paren-code", Raw 0)
-  , ("mult-code", Raw 0)
-  , ("division-code", Raw 0)
-  , ("mult-close-paren-code", Raw 0)
-  , ("=>-code", Raw 0)
+  , ("pp-template", Template (TN cellD (Absolute 0) UnNormalized))
 
   -- Miscellaneous / Unclassified
   , ("arith-buffer", Size 240)
-  , ("&completedOperator", Addr completedOperator)
-  , ("transfer cell", Raw 0)
-  , ("how the fuck do i get this", Raw 0)
+  , ("transfer cell", Cell)
+  , ("result-code", Cell)
   , ("inhibition flag", Raw 0)
   , ("comparison value", Raw 0)
   , ("formed instruction", Raw 0)
@@ -175,6 +168,7 @@ arithCoder :: Builder Address
 arithCoder = do
   let two = Unknown "2"
   let six = Unknown "6"
+  let eight = Unknown "8"
 
   {-
     """
@@ -215,8 +209,8 @@ arithCoder = do
     the symbol counter.
   -}
   operator 4 $ do
-    shift cellF (right 22) cellA
-    shift cellF (left 8) cellF
+    shift cellA (right 22) cellF
+    shift cellA (left 8) cellA
 
     add unity symbolCounter symbolCounter
 
@@ -259,22 +253,23 @@ arithCoder = do
   -}
 
   operator 8 $ tN' cellF cellB >> chain (op 9)
-  operator 9 $ compWord zero cellB (op 2) (op 10)
+  operator 9 $ comp cellB one (op 2) (op 10)
 
   {-
     Op 10 transfers control to Op. 11, if in the cell is the code of a
     quantity.
+
   -}
 
   operator 10 $ mdo
     let xf0 = Unknown "0xf0"
-        xb  = Unknown "0xb"
+        xc  = Unknown "0xc" -- should be 0xc?
 
-    _   <- comp cellB xb  (op 12) alt
+    _   <- comp cellB xc  (op 12) alt
     alt <- comp cellB xf0 (op 11) (op 12)
     return ()
   {-
-    Op. 11 transfers the code of the quantity to cellC C
+    Op. 11 transfers the code of the quantity to cell C
   -}
 
   operator 11 $ do
@@ -289,10 +284,8 @@ arithCoder = do
   operator 12 $ mdo
     let x1b = Unknown "0x1b"
 
-    comp cellB x1b (op 13) alt
-    alt <- comp cellB x1c (op 13) (op 19)
-
-    return alt
+    comp cellB x1b (op 13) (op 19)
+    return ()
 
   {-
     Op. 13 forms the instruction for raising to a square of a quantity, the
@@ -344,7 +337,7 @@ arithCoder = do
   Op. 21 determines the case of a single-place operation with parameter (CE_n
   and <-_n), transferring control to op. 22
 
-  Op. 22 selects rom cell A the parameter n and shifts it to the cell B.
+  Op. 22 selects from cell A the parameter n and shifts it to the cell B.
 
   Op. 23 combines the symbol code and the parameter n in a single cell B.
 
@@ -386,11 +379,11 @@ arithCoder = do
   -}
 
   mdo
-    let singOParenCode = Unknown "single-open-paren-code"
-        multOParenCode = Unknown "multu-open-paren-code"
+    let singOParenCode = Unknown "2"
+        multOParenCode = Unknown "3"
 
-    _    <- operator 25 $ compWord cellB singOParenCode (op 30) op26
-    op26 <- operator 26 $ compWord cellB multOParenCode (op 27) (op 28)
+    _    <- operator 25 $ comp cellB singOParenCode (op 30) op26
+    op26 <- operator 26 $ comp cellB multOParenCode (op 27) (op 28)
 
     return ()
 
@@ -407,48 +400,17 @@ arithCoder = do
   Op. 28 transfers control to op. 29, if in cell B is the code of a symbol for
   the operations multiplication or division.
 
+  NOTES
+  =====
+
+  The codes for multiplication and division are 9 and A respectively, at this point
+  squaring (B) and cubing (C) have also been eliminated from consideration. This means
+  we can simply ask if the current symbol is greater than 8.
   -}
   operator 28 $ mdo
-    let divCode = Unknown "division-code"
-        multCode = Unknown "mult-code"
-
-    compWord cellB multCode (op 29) alt
-    alt <- compWord cellB divCode (op 29) (op 31)
+    comp eight cellB (op 29) (op 31)
 
     return ()
-  {-
-
-  Op. 31 determines the case of multiple close-parentheses or the sign of
-  correspondence, for which
-
-  -}
-  operator 31 $ mdo
-    let correspond = Unknown "=>-code"
-        multCParen = Unknown "mult-close-paren-code"
-
-    comp cellB multCParen (op 32) alt
-    alt <- comp cellB correspond (op 32) (op 34)
-
-    return ()
-  {-
-
-  Op. 32 determines from cell A the code of the following symbol (the number of
-  the close-parentheses or the symbol of the result).
-
-  Op. 33 shifts this code to the second address.
-
-  -}
-
-  operator 32 $ do
-    tN cellB cellF
-
-    clcc (op 2)
-    chain (op 33)
-
-  operator 33 $ do
-    shift cellB (left 11) cellB
-
-    chain (op 34)
 
   {-
 
@@ -465,13 +427,48 @@ arithCoder = do
   {-
 
   Op. 30 shifts the code of the symbol in the first address of cell D for the
-  subsequent trsansfer to the partial programme.
+  subsequent transfer to the partial programme.
 
   -}
 
   operator 30 $ do
     tN cellB cellD
     chain (op 69)
+
+  {-
+
+  Op. 31 determines the case of multiple close-parentheses or the sign of
+  correspondence, for which
+
+  NOTES
+  =====
+
+  At this point all codes above the sign of correspondence have been eliminated
+  this means that we only need to check if the code is smaller than a multiple
+  close parenthesis (6).
+  -}
+  operator 31 $ mdo
+    comp cellB six (op 34) (op 32)
+
+    return ()
+  {-
+
+  Op. 32 determines from cell A the code of the following symbol (the number of
+  the close-parentheses or the symbol of the result).
+
+  Op. 33 shifts this code to the second address.
+
+  -}
+
+  operator 32 $ do
+    clcc (op 2)
+
+    chain (op 33)
+
+  operator 33 $ do
+    shift cellF (left 11) cellF
+
+    chain (op 34)
 
   {-
 
@@ -492,12 +489,12 @@ arithCoder = do
 
   operator 35 $ do
     clcc (op 71)
-
+    chain (op 36)
 
   {-
 
   Op. 36 verifies if the contents of cell E constitute the code of a sign
-  open-parentheses, addition or subtraction (YEs -- op. 38 functions, NO --
+  open-parentheses, addition or subtraction (Yes -- op. 38 functions, NO --
   op.37)
 
   -}
@@ -669,7 +666,7 @@ arithCoder = do
 
   -}
 
-  let resultCode = Unknown "how the fuck do i get this"
+  let resultCode = Unknown "result-code"
   operator 48 $ do
     shift cellB (left 11) resultCode
 
@@ -920,9 +917,11 @@ arithCoder = do
   -}
 
   operator 69 $ mdo
-    add' one counterB1 counterB1
-    ai counterB1 addr addr
-    addr <- tN cellD (Absolute 0)
+    let ppTemplate = Unknown "pp-template"
+    shift counterB1 (right 22) addr
+    ai oneFirstAddr counterB1 counterB1
+    ai ppTemplate addr addr
+    addr <- empty
 
     chain (op 70)
 
@@ -1454,7 +1453,7 @@ arithCoder = do
 
     operator 114 $ mdo
       let lastTested = Unknown "3rd-addr-of-tested"
-      let scratch = Unknown "scratch-cell-1"
+      let scratch    = Unknown "scratch-cell-1"
       let testedCell = Unknown "tested-cell"
 
       shift (op 115) (right 22) testedCell
@@ -1497,7 +1496,7 @@ arithCoder = do
     chain (op 117)
 
   {-
-  Op. 117 determines the case when the coindiding instructions constitute CLCC to
+  Op. 117 determines the case when the coinciding instructions constitute CLCC to
   the sub-routine in DS, transferring conrtol to op. 118.
   -}
 
