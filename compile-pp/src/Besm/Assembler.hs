@@ -65,43 +65,43 @@ data ModuleAssembly (stage :: Stage) = Mod
 
 deriving instance Show (ModuleAssembly 'Absolutized)
 
-debugAssemble defs a =
-  pure . Mod Nothing Nothing defs
-  >=> pure . layout
-  >=> pure . internalizeModule
-  >=> resolve
-  >=> pure . absolutize a
-  >=> pure . debugRender
+debugRender :: Alignment -> ModuleAssembly Absolutized -> IO ()
+debugRender align mod = let
+  (o, dataS) = mapAccumL (\off (s, v) -> (off + constantSize v, (off, s ++ " " ++ show v))) 0 (constants mod)
+  text  = procs mod >>= blocks >>= renderBlock
+  textS = zip [o..] text
+  len = o + length textS
+  offset = case align of
+            AlignLeft -> 16
+            AlignRight -> 1024 - len
+  in forM_ (dataS ++ textS) $ \(addr, inst) -> putStrLn $ show addr ++ ": " ++ inst
+
   where
 
-  debugRender :: ModuleAssembly Absolutized -> ([(Int, String)], ModuleAssembly Absolutized)
-  debugRender mod = let
-    (o, dataS) = mapAccumL (\off (s, v) -> (off + constantSize v, (off, s ++ " " ++ show v))) 0 (constants mod)
-    blks  = procs mod >>= blocks
-    text = blks >>= (\bb -> map show (instrs bb) ++ termToString (terminator bb))
-    textS = zip [o..] text
-    len = o + length textS
-    in case a of
-      AlignLeft ->  (map (\(i, s) -> (16 + i, s)) $ dataS ++ textS, mod)
-      AlignRight -> (map (\(i, s) -> (1024 - len + i , s)) $ dataS ++ textS, mod)
+  renderBlock :: BB Int -> [String]
+  renderBlock bb = map show (instrs bb) ++ termToString (terminator bb)
 
   termToString :: Term Int -> [String]
   termToString (RetRTC a) = [show $ AI 0b10100001111 (a+1) (a+1), "zero"]
   termToString (Chain     _) = []
   termToString c = [show c]
 
+
 assemble :: ConstantDefs -> Alignment -> [Procedure Address] -> Either [String] Output
-assemble defs a =
+assemble defs a = compile defs a >=> pure . render     a
+
+compile :: ConstantDefs -> Alignment -> [Procedure Address] -> Either [String] (ModuleAssembly 'Absolutized)
+compile defs align =
   pure . Mod Nothing Nothing defs
   >=> checkForMissingConstantDefs defs
   >=> pure . layout
   >=> pure . internalizeModule
   >=> resolve
-  >=> pure . absolutize a
-  >=> pure . render     a
+  >=> pure . absolutize align
 
   where
 
+  checkForMissingConstantDefs :: ConstantDefs -> ModuleAssembly 'Input -> Either [String] (ModuleAssembly 'Input)
   checkForMissingConstantDefs defs mod = let
     (ms, es) = unzip $ map (missingConstants defs) (procs mod)
     in case (anyMissing ms, allExtra es) of
@@ -116,16 +116,18 @@ assemble defs a =
     allExtra :: Eq a => [[a]] -> [a]
     allExtra es = foldl1 intersect es
 
-missingConstants :: ConstantDefs -> Procedure Address -> ([String], [String])
-missingConstants defs proc = let
-  templateNeeds = filter (isTemplate . snd) defs >>= toList >>= toList >>= unknowns
-  needed = nub $ (blocks proc >>= toList >>= unknowns) ++ templateNeeds
-  have = nub $ map fst defs
+  missingConstants :: ConstantDefs -> Procedure Address -> ([String], [String])
+  missingConstants defs proc = let
+    templateNeeds = filter (isTemplate . snd) defs >>= toList >>= toList >>= unknowns
+    needed = nub $ (blocks proc >>= toList >>= unknowns) ++ templateNeeds
+    have = nub $ map fst defs
 
-  in (needed \\ have, have \\ needed)
-  where
-  isTemplate (Template _) = True
-  isTemplate _ = False
+    in (needed \\ have, have \\ needed)
+    where
+    isTemplate (Template _) = True
+    isTemplate _ = False
+
+-- * Renering output
 
 render :: Alignment -> ModuleAssembly Absolutized -> Output
 render a mod = let
@@ -144,6 +146,8 @@ constantToCell (Raw  i) = [bitVector $ fromIntegral i]
 constantToCell (Addr i) = [bitVector $ fromIntegral i]
 constantToCell (Template i) = [instToCell $ fmap fromIntegral i]
 constantToCell (Cell) = [bitVector 0]
+
+-- * Absolutization
 
 absolutize :: Alignment -> ModuleAssembly Relativized -> ModuleAssembly Absolutized
 absolutize align (Mod {..}) = let
@@ -171,6 +175,8 @@ absolutize align (Mod {..}) = let
     Just off -> offset + off + i
   absolve c offset _ (Rel Data i) = offset - c + i
   absolve _ _ _    (Abs i)      = i
+
+-- * Relativization
 
 resolve :: ModuleAssembly LaidOut -> Either [String] (ModuleAssembly Relativized)
 resolve (Mod{..}) = do
@@ -232,6 +238,8 @@ blockOffsets _ _ [] = []
 
 toUnsegmentedMap :: [BB Address] -> Map Address (Segment)
 toUnsegmentedMap bbs = M.fromList $ L.map (\bb -> (baseAddress bb, Unsegmented bb)) bbs
+
+-- * Internalization
 
 internalizeModule :: ModuleAssembly LaidOut -> ModuleAssembly LaidOut
 internalizeModule mod = mod
