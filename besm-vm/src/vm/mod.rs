@@ -125,11 +125,15 @@ impl<'a> VM<'a> {
       }
       Shift { a, b, c } => {
         let val = self.get_address(a)?;
-        if b < 64 {
-          self.set_address(c, val << b);
+        let mut shifted = if b < 64 {
+          val << b
         } else {
-          self.set_address(c, val >> (b - 64));
-        }
+          val >> (b - 64)
+        };
+
+        let res = shifted.set_bits(33..39, val.get_bits(33..39));
+
+        self.set_address(c, *res);
         self.increment_ic();
       }
       TN { a: source, c: target, normalize: needs_norm } => {
