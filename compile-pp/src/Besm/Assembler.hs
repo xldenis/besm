@@ -34,14 +34,6 @@ type Output = [BitVector 39]
   3. Give absolute addresses
 -}
 
-data RelativeAddr
-  = Rel Section Int -- Constant and operator references
-  | Abs Int -- For statically known addresses 'aka standard cells'
-  deriving (Show, Eq)
-
-data Section = Text String | Data
-  deriving (Show, Eq)
-
 data Alignment = AlignLeft | AlignRight
 
 data Stage = Input | LaidOut | Relativized | Absolutized
@@ -96,7 +88,7 @@ compile defs align =
   >=> checkForMissingConstantDefs defs
   >=> pure . layout
   >=> pure . internalizeModule
-  >=> resolve
+  >=> relativize
   >=> pure . absolutize align
 
   where
@@ -127,8 +119,9 @@ compile defs align =
     isTemplate (Template _) = True
     isTemplate _ = False
 
--- * Renering output
+-- * Rendering output
 
+-- | Print the hex for a module
 render :: Alignment -> ModuleAssembly Absolutized -> Output
 render a mod = let
   blks  = procs mod >>= blocks
@@ -139,21 +132,14 @@ render a mod = let
     AlignLeft -> (replicate 15 (bitVector 0)) ++ total
     AlignRight -> replicate (1023 - length total) (bitVector 0) ++ total
 
-constantToCell :: ConstantInfo Int -> [BitVector 39]
-constantToCell (Size i) = replicate i (bitVector 0)
-constantToCell (Val  i) = [numberToBesmFloating i]
-constantToCell (Raw  i) = [bitVector $ fromIntegral i]
-constantToCell (Addr i) = [bitVector $ fromIntegral i]
-constantToCell (Template i) = [instToCell $ fmap fromIntegral i]
-constantToCell (Cell) = [bitVector 0]
-
 -- * Absolutization
 
+-- | Given an alignment for a module, assign concrete addresses to everything.
 absolutize :: Alignment -> ModuleAssembly Relativized -> ModuleAssembly Absolutized
 absolutize align (Mod {..}) = let
   constants' = forgetNames cSize offset segmentOffsets constants
   cSize = sum (map (constantSize . snd) constants')
-  (bSize, segmentOffsets) = buildOffsetMap procName (sum . map instLen . blocks) procs
+  (bSize, segmentOffsets) = buildOffsetMap procName (sum . map blockLen . blocks) procs
   offset = case align of
     AlignLeft  -> 0x10 + cSize
     AlignRight -> 1023 - bSize + 1
@@ -178,8 +164,22 @@ absolutize align (Mod {..}) = let
 
 -- * Relativization
 
-resolve :: ModuleAssembly LaidOut -> Either [String] (ModuleAssembly Relativized)
-resolve (Mod{..}) = do
+-- | A simplified address representation.
+data RelativeAddr
+  = Rel Section Int -- Constant and operator references
+  | Abs Int -- For statically known addresses 'aka standard cells'
+  deriving (Show, Eq)
+
+-- | Relative addresses are either within a specific procedure or they refer to the data segment
+data Section = Text String | Data
+  deriving (Show, Eq)
+
+{- |
+  Drastically simplify the address represenation, converting everything
+  to simple offsets from section heads.
+-}
+relativize :: ModuleAssembly LaidOut -> Either [String] (ModuleAssembly Relativized)
+relativize (Mod{..}) = do
   let dict = mkRelativizationDict constants procs
   procs <- first concat . unzipEithers $ map (relativizeProc dict) procs
   constants <- relativizeConstants dict constants
@@ -188,35 +188,31 @@ resolve (Mod{..}) = do
   where
   relativizeProc :: Map Address RelativeAddr -> Procedure Address -> Either [String] (Procedure RelativeAddr)
   relativizeProc dict proc = do
-    relativized <- unzipEithers $ map (traverse (relativize dict)) (blocks proc)
+    relativized <- unzipEithers $ map (traverse (relativizeAddr dict)) (blocks proc)
 
     pure $ proc { blocks = relativized }
 
   relativizeConstants :: Map Address RelativeAddr -> ConstantMap LaidOut -> Either [String] (ConstantMap Relativized)
   relativizeConstants dict constants = unzipEithers $ map (
-    \(key, val) -> (,) <$> pure key <*> traverse (relativize dict) val
+    \(key, val) -> (,) <$> pure key <*> traverse (relativizeAddr dict) val
     ) constants
 
-relativize ::  Map Address RelativeAddr -> Address -> Either String RelativeAddr
-relativize m p@(Procedure n a) = case p `M.lookup` m of
-  Just relAddr -> Right relAddr
-  Nothing -> Left $ "Missing " ++ show a ++ " for procedure " ++ n
-relativize m a@(Unknown _)  = case a `M.lookup` m of
-  Just constant -> Right constant
-  Nothing -> Left $ "Unknown constant " ++ show a
-relativize m r@(RTC a)        = case r `M.lookup` m of
-  Just relAddr -> Right relAddr
-  Nothing -> Left $ "could not find rtc for " ++ show a
-relativize m (Offset a o)   = relativize m a >>= \case
-  Abs i -> Right $ Abs (i + o)
-  Rel s i -> Right $ Rel s (i + o)
-relativize m (Absolute a)   = Right $ Abs a
+  relativizeAddr ::  Map Address RelativeAddr -> Address -> Either String RelativeAddr
+  relativizeAddr m p@(Procedure n a) = case p `M.lookup` m of
+    Just relAddr -> Right relAddr
+    Nothing -> Left $ "Missing " ++ show a ++ " for procedure " ++ n
+  relativizeAddr m a@(Unknown _)  = case a `M.lookup` m of
+    Just constant -> Right constant
+    Nothing -> Left $ "Unknown constant " ++ show a
+  relativizeAddr m r@(RTC a)        = case r `M.lookup` m of
+    Just relAddr -> Right relAddr
+    Nothing -> Left $ "could not find rtc for " ++ show a
+  relativizeAddr m (Offset a o)   = relativizeAddr m a >>= \case
+    Abs i -> Right $ Abs (i + o)
+    Rel s i -> Right $ Rel s (i + o)
+  relativizeAddr m (Absolute a)   = Right $ Abs a
 
-unzipEithers :: [Either a b] -> Either [a] [b]
-unzipEithers es = case partitionEithers es of
-  ([], e) -> Right e
-  (a, _)  -> Left a
-
+-- | Build up a map giving the relative offset of every constant and block
 mkRelativizationDict :: ConstantDefs -> [Procedure Address] -> Map Address RelativeAddr
 mkRelativizationDict constants procs = let
   constantOffsets = dataOffsets constants
@@ -226,21 +222,23 @@ mkRelativizationDict constants procs = let
 dataOffsets :: [(String, ConstantInfo Address)] -> [(Address, RelativeAddr)]
 dataOffsets = map (fmap (Rel Data)) . snd . buildOffsetMap (Unknown . fst) (constantSize . snd)
 
+-- | For a procedure, and a starting offset, give the relative address of every operator
 blockOffsets :: String -> Int -> [BB Address] -> [(Address, RelativeAddr)]
 blockOffsets nm off (bb : blks) = let
-  rest = blockOffsets nm (off + instLen bb) blks
+  rest = blockOffsets nm (off + blockLen bb) blks
   entry = [(baseAddress bb, Rel (Text nm) off)]
   rtcEntry = case terminator bb of
-    RetRTC _ -> [ ((RTC $ baseAddress bb), Rel (Text nm) (off + instLen bb - 1))]
+    RetRTC _ -> [ ((RTC $ baseAddress bb), Rel (Text nm) (off + blockLen bb - 1))]
     _ -> []
   in entry ++ rtcEntry ++ rest
 blockOffsets _ _ [] = []
 
-toUnsegmentedMap :: [BB Address] -> Map Address (Segment)
-toUnsegmentedMap bbs = M.fromList $ L.map (\bb -> (baseAddress bb, Unsegmented bb)) bbs
-
 -- * Internalization
 
+{- $internalize
+  Wrap every address with the corresponding procedure, making them unambiguous when mixed
+  with other procedures.
+-}
 internalizeModule :: ModuleAssembly LaidOut -> ModuleAssembly LaidOut
 internalizeModule mod = mod
   { procs = map internalizeAddresses (procs mod)
@@ -255,11 +253,34 @@ internalizeAddresses proc =
   internalizeAddress (Offset a o) = Offset (internalizeAddress a) o
   internalizeAddress i = i
 
--- * Layout
+-- * Utilities
 
-{-
+unzipEithers :: [Either a b] -> Either [a] [b]
+unzipEithers es = case partitionEithers es of
+  ([], e) -> Right e
+  (a, _)  -> Left a
+
+buildOffsetMap :: (a -> nm) -> (a -> Int) -> [a] -> (Int, [(nm, Int)])
+buildOffsetMap key size elems = mapAccumL (\off elem ->
+  (off + size elem, (key elem, off))
+  ) 0 elems
+
+-- * Layout
+{- $layout
+  The layout step performs one of the most important optimizations in the assembler.
+
+  It decides how to breakup the CFG into linear sequences of instructions in such a way
+  that minimizes explicit jumps between instructions.
+
+  The overall idea is to build up a 'segment map' which shows the blocks reachable
+  from each segment head. The @segment@ function extract a single segment by performing
+  a DFS of the CFG continuing until it hits an already segmented block.
+
+  Once all blocks have been segmented, @addJump@ reifies any 'implicit' jumps.
+-}
+{- |
   Break up the CFG into a series of linear chunks, add explicit jumps between segments
-  and merge it back together in a linearized CF
+  and merge it back together in a linearized CFG.
 -}
 layout :: ModuleAssembly Input -> ModuleAssembly LaidOut
 layout (Mod {..}) = Mod
@@ -273,6 +294,7 @@ layout (Mod {..}) = Mod
   segmentProcedure proc = proc
     { blocks = join $ map (addJump . fromSegment) . M.elems $ go (toUnsegmentedMap (blocks proc))
     }
+
   fromSegment (Segmented x) = x
 
   go map = go' map (M.keys map)
@@ -297,24 +319,34 @@ layoutConstants constants = let
 
   isTemplate (Template _) = True
   isTemplate _ = False
+
+{- | Segments are non-empty, ordered sets of basic blocks where control flow goes
+     linear from start to end. The @Chain@ terminators in those blocks will be eliminated
+     as well as the second target of comparison instructions.
+-}
+data Segment = Segmented [BB Address] | Unsegmented (BB Address)
+
+toUnsegmentedMap :: [BB Address] -> Map Address (Segment)
+toUnsegmentedMap bbs = M.fromList $ L.map (\bb -> (baseAddress bb, Unsegmented bb)) bbs
+
 {-
   Extract a linear segment from the block map.
 -}
-
-data Segment = Segmented [BB Address] | Unsegmented (BB Address)
-
-segment :: Map Address (Segment) -> Address -> Map Address (Segment)
+segment :: Map Address Segment -> Address -> Map Address Segment
 segment map addr = case addr `M.lookup` map of
-  Just (Unsegmented bb) -> case (implicitJumps (terminator bb)) of
-    Just tar -> let
-      map' = segment (M.delete addr map) tar
-      in case tar `M.lookup` map' of
-        Just (Segmented seg) -> M.insert addr (Segmented $ bb : seg) (M.delete tar map')
-        Nothing -> M.insert addr (Segmented [bb]) map
-        _ -> map
-    Nothing  -> (M.insert addr (Segmented [bb]) map)
+  Just (Unsegmented bb) -> fromMaybe (M.insert addr (Segmented [bb]) map) $ do
+    tar <- implicitJumps (terminator bb)
+    let map' = segment (M.delete addr map) tar
+
+    tar `M.lookup` map' >>= \case
+      Segmented seg -> pure $ M.insert addr (Segmented $ bb : seg) (M.delete tar map')
+      _ -> pure $ map
   _ -> map
 
+{- |
+  Reify any implicit jumps at the end of a segment. This will convert a @Chain@ into
+  a @CCCC@ and will add a @CCCC@ after any comparison.
+-}
 addJump :: [BB Address] -> [BB Address]
 addJump [bb] = case implicitJumps (terminator bb) of
   Just iJ -> let
@@ -327,15 +359,11 @@ addJump [bb] = case implicitJumps (terminator bb) of
     in [bb', jB]
   Nothing -> [bb]
   where
-  jumpBlk fromB to = BB [] (CCCC to) (baseAddress fromB `offAddr` (instLen fromB + 1))
+  jumpBlk fromB to = BB [] (CCCC to) (baseAddress fromB `offAddr` (blockLen fromB + 1))
 addJump (bb : bbs) = bb : addJump bbs
 addJump [] = []
 
-buildOffsetMap :: (a -> nm) -> (a -> Int) -> [a] -> (Int, [(nm, Int)])
-buildOffsetMap key size elems = mapAccumL (\off elem ->
-  (off + size elem, (key elem, off))
-  ) 0 elems
-
+-- | Direct jumps are jumps that an instruction must always perform. These jumps can't be optimized away
 directJumps :: Term a -> Maybe a
 directJumps (Comp      _ _ a _) = Just a
 directJumps (CompWord  _ _ a _) = Just a
@@ -347,7 +375,7 @@ directJumps (SwitchStop)        = Nothing
 directJumps (Chain     _)       = Nothing
 directJumps (RetRTC _)          = Nothing
 
--- These are the jumps that could potentially be optimized away.
+-- | These are the jumps that could potentially be optimized away.
 implicitJumps :: Term a -> Maybe a
 implicitJumps (Comp      _ _ _ a) = Just a
 implicitJumps (CompWord  _ _ _ a) = Just a

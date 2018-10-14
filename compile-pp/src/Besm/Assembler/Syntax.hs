@@ -4,7 +4,7 @@ module Besm.Assembler.Syntax
 , unsafeFromBesmAddress
 ) where
 
-import Besm.Put (buildNumber, buildInstruction, unsafeFromBesmAddress)
+import Besm.Put (buildNumber, buildInstruction, unsafeFromBesmAddress, numberToBesmFloating)
 import Data.BitVector.Sized
 import Data.Bits
 
@@ -12,11 +12,13 @@ data Address
   = Operator Int
   | Offset Address Int
   | Absolute Int
-  | Procedure String Address
-  | Unknown String
-  | RTC Address
+  | Procedure String Address -- ^ Address inside of another procedure
+  | Unknown String -- ^ Address of a variable or constant value. Each Unknown needs to have an associated ConstantDef
+  | RTC Address -- ^ Address of the RTC instructions at the end of the block the argument belongs to.
   deriving (Show, Eq, Ord)
 
+-- | Basic pretty-printing of addresses.
+formatAddr :: Address -> String
 formatAddr (Operator i) = "op. " ++ show i
 formatAddr (Offset a i) = formatAddr a ++ " + " ++ show i
 formatAddr (Absolute i) = "abs. " ++ show i
@@ -24,11 +26,14 @@ formatAddr (Procedure s op) = show s ++ formatAddr op
 formatAddr (Unknown str) = "uk. " ++ str
 formatAddr (RTC a) = "rtc. " ++ formatAddr a
 
+-- | Smart constructor to offset from an address.
 offAddr (Offset a o) i = Offset a (o + i)
 offAddr a i = Offset a i
 
+op :: Int -> Address
 op = Operator
 
+rtc :: Address -> Address
 rtc = RTC
 
 isUnknown (Unknown _) = True
@@ -44,10 +49,10 @@ unknowns _ = []
 type BasicBlock = BB Address
 
 data ConstantInfo a
-  = Size Int -- | number of cells to reserve
-  | Val  Int -- | Value to store in one cell
-  | Raw  Int -- | Raw value to store
-  | Addr a -- | Pointer to an address
+  = Size Int -- ^ number of cells to reserve
+  | Val  Int -- ^ Value to store in one cell
+  | Raw  Int -- ^ Raw value to store
+  | Addr a -- ^ Pointer to an address
   {-|
     Indicate this variable is meant to be a working cell. At layout time, all working cells
     will be grouped together (and may potentially even be optimized to reduce the total amount).
@@ -55,16 +60,33 @@ data ConstantInfo a
     All working cells will be initialized to 0 in the final program.
   -}
   | Cell
-  {-| This is a cell that holds a partial instruction that potentially
+  {- | This is a cell that holds a partial instruction that potentially
       references other unkowns / variables. At linking time those constants will be resolved,
       and properly initialized.
   -}
   | Template (Instr a)
   deriving (Show, Eq, Functor, Traversable, Foldable)
 
+-- | Get the size in cells of a constant
+constantSize :: ConstantInfo a -> Int
 constantSize (Size i) = i
 constantSize _ = 1
 
+constantToCell :: ConstantInfo Int -> [BitVector 39]
+constantToCell (Size i) = replicate i (bitVector 0)
+constantToCell (Val  i) = [numberToBesmFloating i]
+constantToCell (Raw  i) = [bitVector $ fromIntegral i]
+constantToCell (Addr i) = [bitVector $ fromIntegral i]
+constantToCell (Template i) = [instToCell $ fmap fromIntegral i]
+constantToCell (Cell) = [bitVector 0]
+
+{- |
+  To help preserve sanity while writing the compiler, the assembly is structured using
+  basic blocks. It turns out that the 'operators' in the compiler almost map 1-1 with
+  basic blocks except in a few cases where an operator may attempt to perform multiple
+  comparisons. Every basic block is given a 'base address' which is usually the operator
+  address the block defines. This is also used as the block's name in debugging output.
+-}
 data BB a = BB
   { instrs      :: [Instr a]
   , terminator  ::  Term  a
@@ -76,13 +98,19 @@ data Procedure a = Proc
   , blocks :: [BB a]
   } deriving (Show, Eq, Functor)
 
-instLen :: BB a -> Int
-instLen bb = length (instrs bb) + termLen (terminator bb)
+-- | The size of a block in memory including the terminator instruction
+blockLen :: BB a -> Int
+blockLen bb = length (instrs bb) + termLen (terminator bb)
   where
   termLen (RetRTC _) = 2
   termLen (Chain _) = 0
   termLen _        = 1
 
+{-|
+  Since BESM only uses floating point numbers, they must be normalized after operations
+  however, it can be desirable to suppress normalization which is why those operations
+  have a bitflag that can be set to indicate that normalization should be prevented.
+-}
 data NormalizeResult
   = Normalized
   | UnNormalized
@@ -91,6 +119,10 @@ data NormalizeResult
 type Instruction = Instr Address
 type RawInstr = Instr Int
 
+{-|
+  The type of non-terminator instructions. This includes all arithmetical operations,
+  logical operations like shifting and bit-wise, bit-wise addition, IO, and sub-routine calls.
+-}
 data Instr a
   = Add       a a a NormalizeResult
   | Sub       a a a NormalizeResult
@@ -103,38 +135,43 @@ data Instr a
   | Xb            a NormalizeResult
   | DivA      a a a NormalizeResult
   | DivB          a NormalizeResult
-  | TN        a   a NormalizeResult
-  | PN        a
-  | TMin      a   a NormalizeResult
-  | TMod      a   a NormalizeResult -- I think the 'modulus' actually means magnitude of mantissa? might actually mean the sexadecimal width of the number??? wtf...
-  | TSign     a a a NormalizeResult
-  | TExp      a   a NormalizeResult
-  | Shift     a a a
-  | ShiftAll  a a a
-  | AI        a a a
-  | AICarry   a a a
-  | I         a a a
-  | Ma        a a a
-  | Mb          a
-  | LogMult   a a a
-  | CallRTC     a a
-  | CLCC          a
-  | JCC
-  | Empty
+  | TN        a   a NormalizeResult -- ^ Transfer Number
+  | PN        a                     -- ^ Print number in decimal format
+  | TMin      a   a NormalizeResult -- ^ Transfer number with negation
+  | TMod      a   a NormalizeResult -- ^ Transfer the modulus (absolute value) of a number
+  | TSign     a a a NormalizeResult -- ^ Transfer a number with the sign of the result determined by the sign of the second argument
+  | TExp      a   a NormalizeResult -- ^ Transfer the exponent of a number
+  | Shift     a a a                 -- ^ Shift the lower 32 bits of a word
+  | ShiftAll  a a a                 -- ^ Shift __all__ the bits of a word
+  | AI        a a a                 -- ^ Perform bitwise addition of the lower 32 bits and use the opcode of the first argument
+  | AICarry   a a a                 -- ^ Perform bitwise addition of all the bits in a word
+  | I         a a a                 -- ^ "Extract mantissa", splits the exponent and mantissa of the first cell into the other two (idk how yet).
+  | Ma        a a a                 -- ^ IO An Ma is always followed by an Mb
+  | Mb          a                   -- ^ IO An Mb always follows an Ma
+  | LogMult   a a a                 -- ^ Bit-wise AND
+  | CallRTC     a a                 -- ^ Call a subroutine using the RTC pattern. First argument is subroutine entry and second is exit.
+  | CLCC          a                 -- ^ Call a subroutine using a jump to local control
+  | JCC                             -- ^ Return to global control
+  | Empty                           -- ^ Empty cell
   deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type Terminator = Term Address
 
 data Term a
+  {- |
+    @Comp a b c d@ If @a < b@, then go to c otherwise go to d.
+    The fourth argument is an artificial addition that is used during assembly.
+    It may get converted to a @CCCC@ if d can't be placed immediately after the comparison.
+  -}
   = Comp      a a a a
   | CompWord  a a a a
   | CompMod   a a a a
-  | CCCC          a
-  | CCCCSnd     a a
+  | CCCC          a -- ^ Unconditional jump
+  | CCCCSnd     a a -- ^ @CCCCSnd a b@ jumps to b, but writes the current instruction into a. Used for RTC.
   | Stop
   | SwitchStop
-  | Chain     a -- meta-linguistic, chains two basic blocks together
-  | RetRTC a
+  | Chain     a -- ^  meta-linguistic, will be eliminated entirely before codegen.
+  | RetRTC a    -- ^ Insert the return-to-control instructions
   deriving (Show, Eq, Functor, Foldable, Traversable)
 
 type RawBlock = BB Int
