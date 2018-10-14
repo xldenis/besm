@@ -51,10 +51,6 @@ import qualified Data.Bits as B (shift)
 
 cellC = Unknown "C"
 
-four = Absolute (unsafeFromBesmAddress "1084")
-zero = Absolute 0
-two  = Absolute (unsafeFromBesmAddress "1082")
-
 constantMap =
   [ ("constant-x", Raw 0)
   , ("constant-n", Raw 0)

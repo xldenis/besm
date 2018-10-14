@@ -12,9 +12,6 @@ completedInstructions = Unknown "buffer" `offAddr` 96
 cellKf  = Unknown "K_f"
 cellKcr = Unknown "K_cr"
 
-zero :: Address
-zero = Absolute 0
-
 selectionCounter   = Unknown "selection counter"
 ninetysix          = Unknown "96"
 cellKlast          = Unknown "programme header table" `offAddr` 5

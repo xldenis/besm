@@ -394,13 +394,25 @@ secondAddr =  Absolute $ unsafeFromBesmAddress "116E"
 thirdAddr :: Address
 thirdAddr = Absolute $ unsafeFromBesmAddress "116F"
 
--- | A normalized one which corresponds to 0.5 * 2^1 since in BESM all numbers are floats.
-unity :: Address
-unity = Absolute $ unsafeFromBesmAddress "1081"
 
 -- | A denormalized 1, this cell only has the lowest bit set.
 one :: Address
 one = Absolute $ unsafeFromBesmAddress "10B9"
+
+-- | A normalized one which corresponds to 0.5 * 2^1 since in BESM all numbers are floats.
+unity :: Address
+unity = Absolute $ unsafeFromBesmAddress "1081"
+
+-- | Normalized 2
+two :: Address
+two  = Absolute (unsafeFromBesmAddress "1082")
+
+-- | Normalized 4
+four :: Address
+four = Absolute (unsafeFromBesmAddress "1084")
+
+zero :: Address
+zero = Absolute 0
 
 {- |
   A denormalized 1 shifted to the left 22 places, putting it in the second address of the cell.

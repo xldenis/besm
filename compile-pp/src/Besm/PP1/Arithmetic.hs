@@ -57,18 +57,6 @@ cellE = Unknown "E"
 cellF :: Address
 cellF = Unknown "F"
 
-cellG :: Address
-cellG = Unknown "G"
-
-cellH :: Address
-cellH = Unknown "H"
-
-cellI :: Address
-cellI = Unknown "I"
-
-cellJ :: Address
-cellJ = Unknown "J"
-
 -- Counters
 
 counterK :: Address
@@ -99,12 +87,9 @@ partialProgramme = Unknown "arith-buffer"
 completedOperator = Unknown "arith-buffer" `offAddr` 96
 
 -- Apparently the first addresses of the DS store some constants
-zero :: Address
-zero = Absolute 0
 
 four' = Unknown "4"
 
-four = Absolute (unsafeFromBesmAddress "1084")
 x1c = Unknown "0x1C"
 
 constantMap =
