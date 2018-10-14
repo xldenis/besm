@@ -52,7 +52,7 @@ import qualified Data.Bits as B (shift)
 cellC = Unknown "C"
 
 four = Absolute (unsafeFromBesmAddress "1084")
-zero = Unknown "0"
+zero = Absolute 0
 two  = Absolute (unsafeFromBesmAddress "1082")
 
 constantMap =
@@ -154,7 +154,6 @@ pp1_1 = do
   -}
 
   operator 4 $ do
-    let zero = Unknown "0"
     compWord zero cellB (op 12) (op 5)
 
   {-

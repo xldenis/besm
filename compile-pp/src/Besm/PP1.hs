@@ -13,7 +13,7 @@ cellKf  = Unknown "K_f"
 cellKcr = Unknown "K_cr"
 
 zero :: Address
-zero = Unknown "0"
+zero = Absolute 0
 
 selectionCounter   = Unknown "selection counter"
 ninetysix          = Unknown "96"
@@ -33,7 +33,6 @@ constantMap =
   , ("A",     Cell)
   , ("A + 1", Cell)
   , ("B",     Cell)
-  , ("0", Raw 0)
   , ("0x18", Raw $ 0x18)
   , ("snd and third addr mask", Raw $ 0b11111111111 `B.shift` 11 B..|. 0b11111111111)
   , ("K_f",  Raw 0)

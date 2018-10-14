@@ -396,7 +396,7 @@ thirdAddr = Absolute $ unsafeFromBesmAddress "116F"
 
 -- | A normalized one which corresponds to 0.5 * 2^1 since in BESM all numbers are floats.
 unity :: Address
-unity = Absolute 0x1081
+unity = Absolute $ unsafeFromBesmAddress "1081"
 
 -- | A denormalized 1, this cell only has the lowest bit set.
 one :: Address

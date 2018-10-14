@@ -100,9 +100,10 @@ completedOperator = Unknown "arith-buffer" `offAddr` 96
 
 -- Apparently the first addresses of the DS store some constants
 zero :: Address
-zero = Unknown "0"
+zero = Absolute 0
 
 four' = Unknown "4"
+
 four = Absolute (unsafeFromBesmAddress "1084")
 x1c = Unknown "0x1C"
 
@@ -141,7 +142,7 @@ constantMap =
   , ("TN 0002 _ _",   Template (TN (Absolute 2) (Absolute 0) Normalized))
   , ("- 1101 _ 0001", Template (Sub (Absolute $ unsafeFromBesmAddress "1101") (Absolute 0) (Absolute 1) Normalized))
   , ("transfer template", Raw 0)
-  , ("pn template", Raw 0)
+  , ("0200 0000", Raw 0)
   , ("pp-template", Template (TN cellD (Absolute 0) UnNormalized))
 
   -- Miscellaneous / Unclassified
@@ -230,7 +231,7 @@ arithCoder = do
   mdo
     let mp_1_17 = Procedure "MP-1" (op 17)
 
-    operator 5 $ comp symbolCounter four' (op 6) joinP
+    operator 5 $ comp symbolCounter four (op 6) joinP
     operator 6 $ do
       callRtc mp_1_17 (Procedure "MP-1" (op 20))
 
@@ -675,14 +676,14 @@ arithCoder = do
   op. 51).
   -}
   operator 49 $ do
-    compWord resultCode zero (op 51) (op 50)
+    comp one resultCode (op 51) (op 50)
 
   {-
   Op. 50, in accordance with the coding rules (sec 8), forms the instruction for
   printing the result of the formula.
   -}
   operator 50 $ do
-    let pnTemplate = Unknown "pn template"
+    let pnTemplate = Unknown "0200 0000"
     ai completedInstr pnTemplate completedInstr
     chain (op 51)
   {-
