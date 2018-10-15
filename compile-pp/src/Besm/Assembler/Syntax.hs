@@ -48,11 +48,15 @@ unknowns _ = []
 
 type BasicBlock = BB Address
 
+-- | In which address of the constant cell does @Addr@ store the value
+data AddrPos = First | Second | Third
+  deriving (Show, Eq)
+
 data ConstantInfo a
   = Size Int -- ^ number of cells to reserve
   | Val  Int -- ^ Value to store in one cell
   | Raw  Int -- ^ Raw value to store
-  | Addr a -- ^ Pointer to an address
+  | Addr AddrPos a   -- ^ Pointer to an address
   {-|
     Indicate this variable is meant to be a working cell. At layout time, all working cells
     will be grouped together (and may potentially even be optimized to reduce the total amount).
@@ -76,7 +80,10 @@ constantToCell :: ConstantInfo Int -> [BitVector 39]
 constantToCell (Size i) = replicate i (bitVector 0)
 constantToCell (Val  i) = [numberToBesmFloating i]
 constantToCell (Raw  i) = [bitVector $ fromIntegral i]
-constantToCell (Addr i) = [bitVector $ fromIntegral i]
+constantToCell (Addr pos i) = [bitVector . fromIntegral $ i `shift` (offset pos)]
+  where offset First = 22
+        offset Second = 11
+        offset Third  = 0
 constantToCell (Template i) = [instToCell $ fmap fromIntegral i]
 constantToCell (Cell) = [bitVector 0]
 

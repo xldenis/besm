@@ -95,7 +95,7 @@ x1c = Unknown "0x1C"
 constantMap =
   -- Working cells.
   [ ("K",  Cell)
-  , ("B1", Cell)
+  , ("B1", Addr First partialProgramme)
   , ("B2", Cell)
   , ("B3", Cell)
   , ("F", Cell)
@@ -106,9 +106,9 @@ constantMap =
   , ("symbol counter", Raw 0)
 
   -- Constant numerical values
-  , ("0xc", Raw 0xc)
+  , ("0xd", Raw 0xd)
   , ("0xf0", Raw 0xf0)
-  , ("0x1b", Raw 0x1b)
+  , ("0xb", Raw 0xb)
   , ("0x1C", Raw 0x1C)
   , ("0xfd", Raw 0xfd)
   , ("0xff", Raw 0xff)
@@ -123,13 +123,13 @@ constantMap =
 
   -- Template values
   , ("mult template", Raw 0)
-  , ("AI _ _ 0001",   Template (AI (Absolute 0) (Absolute 0) (Absolute 1)))
-  , ("TN 0002 _ _",   Template (TN (Absolute 2) (Absolute 0) Normalized))
-  , ("- 1101 _ 0001", Template (Sub (Absolute $ unsafeFromBesmAddress "1101") (Absolute 0) (Absolute 1) Normalized))
-  , ("transfer template", Raw 0)
+  , ("AI _ _ 0001",   Template (AI zero zero (Absolute 1)))
+  , ("TN 0002 _ _",   Template (TN (Absolute 2) zero Normalized))
+  , ("- 1101 _ 0001", Template (Sub (Absolute $ unsafeFromBesmAddress "1101") zero (Absolute 1) Normalized))
+  , ("transfer template", Template (TN (Unknown "transfer cell") zero UnNormalized))
   , ("0200 0000", Raw 0)
-  , ("pp-template", Template (TN cellD (Absolute 0) UnNormalized))
-
+  , ("pp-template", Template (TN cellD zero UnNormalized))
+  , (",TN _ cellE", Template (TN zero cellE UnNormalized))
   -- Miscellaneous / Unclassified
   , ("arith-buffer", Size 240)
   , ("transfer cell", Cell)
@@ -169,7 +169,6 @@ arithCoder = do
 
   operator 1 $ do
     tN zero counterK
-    tN partialProgramme counterB1
     tN zero symbolCounter
     tN zero cellC
     tN zero (partialProgramme `offAddr` (negate 1))
@@ -195,7 +194,7 @@ arithCoder = do
     the symbol counter.
   -}
   operator 4 $ do
-    shift cellA (right 22) cellF
+    shift cellA (right 24) cellF
     shift cellA (left 8) cellA
 
     add unity symbolCounter symbolCounter
@@ -245,14 +244,18 @@ arithCoder = do
     Op 10 transfers control to Op. 11, if in the cell is the code of a
     quantity.
 
+    NOTES
+    =====
+
+    This goes directly to operator 19 if the value is too large rather than _re testing_ it all over again...
   -}
 
   operator 10 $ mdo
     let xf0 = Unknown "0xf0"
-        xc  = Unknown "0xc" -- should be 0xc?
+        xd  = Unknown "0xd" -- should be 0xd?
 
-    _   <- comp cellB xc  (op 12) alt
-    alt <- comp cellB xf0 (op 11) (op 12)
+    _   <- comp cellB xd  (op 12) alt
+    alt <- comp cellB xf0 (op 11) (op 19)
     return ()
   {-
     Op. 11 transfers the code of the quantity to cell C
@@ -268,9 +271,9 @@ arithCoder = do
   -}
 
   operator 12 $ mdo
-    let x1b = Unknown "0x1b"
+    let xb = Unknown "0xb"
 
-    comp cellB x1b (op 13) (op 19)
+    comp cellB xb (op 19) (op 13)
     return ()
 
   {-
@@ -315,7 +318,7 @@ arithCoder = do
   -}
   let xf0 = Unknown "0xf0"
 
-  operator 19 $ callRtc (op 73) (op 79)
+  operator 19 $ callRtc (op 73) (op 79) >> chain (op 20)
   operator 20 $ comp xf0 cellB (op 21) (op 25)
 
   {-
@@ -561,6 +564,7 @@ arithCoder = do
 
   operator 42 $ do
     tN partialProgramme counterB2
+    chain (op 43)
   {-
 
   Op. 43 with the use of the subroutine for programming two-place operations
@@ -750,7 +754,7 @@ arithCoder = do
 
   {-
 
-  Op. 58 programmes the operatio of addition and subtraction standing in
+  Op. 58 programmes the operation of addition and subtraction standing in
   parentheses with the aid of the sub-routine for programming single-place
   operations.
 
@@ -930,13 +934,13 @@ arithCoder = do
   {-
   Op 71. is the first-sub-routine of selection from the partial programme,
   transferring to cell E the contents of the next cell of the partial programme
-  and subtracticing 1 from counter B_2.
+  and subtracting 1 from counter B_2.
 
   -}
   operator 71 $ mdo
-    shift counterB2 (left 22) cellE
-    ai trans cellE trans
-    trans <- tN (Absolute 0) cellE
+    let template = Unknown ",TN _ cellE"
+    ai template counterB2 trans
+    trans <- empty
     sub' counterB2 one counterB2
     jcc
 
@@ -970,6 +974,7 @@ arithCoder = do
   operator 74 $ do
     tN' cellC cellD
     tN' counterB1 counterB2
+    chain (op 75)
   {-
   Op. 75 transfers the contents of the next cell of the partial programme to cell
   E.
@@ -1010,7 +1015,7 @@ arithCoder = do
   -}
 
   operator 79 $ do
-    clcc (op 79)
+    clcc (op 69)
     tN' zero cellC
 
     retRTC
