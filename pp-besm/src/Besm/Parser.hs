@@ -7,6 +7,7 @@ module Besm.Parser
 , parse
 , parseTest'
 , parseErrorPretty'
+, parseErrorPretty
 ) where
 
 import           Control.Monad
@@ -23,6 +24,10 @@ import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import           Text.Megaparsec.Expr
 
+import Data.CharSet (CharSet)
+import qualified Data.CharSet as CharSet
+import Data.CharSet.Unicode.Block (basicLatin, greekAndCoptic, cyrillic)
+import Data.Char (isLetter)
 {-
 
   Lexer
@@ -66,6 +71,10 @@ suffix op f = Postfix $
 
 semicolon = lexeme (char ';') >> scn
 
+isBesmLetter c = CharSet.member c (CharSet.filter isLetter allLetters)
+  where
+  allLetters = basicLatin `CharSet.union` greekAndCoptic `CharSet.union` cyrillic
+
 -- | Top Level Parser for a PP program
 pp :: Parser ParsedProgramme
 pp = do
@@ -103,28 +112,28 @@ variableAddressBlock = do
 
   (Block numCells . NL.fromList) <$> some variableAddress
 
-variableAddress :: Parser (Text, SimpleExpr)
+variableAddress :: Parser (Text, SimpleExpr Char)
 variableAddress = do
-  Var nm <- lexeme . angles $ complexVar
-  let (_, subscripts) = T.break (== '_') nm
-  symbol "="
-  exp <- simpleExpr (oneOf $ T.unpack subscripts)
-  scn
-  return (nm, exp)
+  var <- lexeme . angles $ complexVar
 
-simpleExpr :: Parser Char -> Parser SimpleExpr
+  symbol "="
+  exp <- simpleExpr (oneOf $ (subscripts var))
+  scn
+  return (unVar var, exp)
+
+simpleExpr :: Parser Char -> Parser (SimpleExpr Char)
 simpleExpr vars = makeExprParser (constant <|> expVar vars) opTable
 
-constant :: Parser SimpleExpr
+constant :: Parser (SimpleExpr Char)
 constant = lexeme $
   SConstant . negate <$> (char '-' *> integer) <|>
   SConstant <$> integer
 
 
-expVar :: Parser Char -> Parser SimpleExpr
+expVar :: Parser Char -> Parser (SimpleExpr Char)
 expVar vars = lexeme $ SExpVar <$> vars
 
-opTable :: [[Operator Parser SimpleExpr]]
+opTable :: [[Operator Parser (SimpleExpr Char)]]
 opTable =
   [ [ binary (symbol "*") STimes]
   , [ binary (symbol "+") SAdd
@@ -139,7 +148,7 @@ parameterDecl = inFin <|> characteristic
 
 -- | A parameter consisting only of upper and lower bounds.
 inFin :: Parser Parameter
-inFin = do
+inFin = try $ do
   var <- simpleVar
   symbol ":"
 
@@ -161,15 +170,19 @@ characteristic = do
   symbol ","
 
   a <- variable
-  op <- symbol "<" >> return Comparison
-    <|> (symbol "|<|" >> return WordComparison )
-    <|> (symbol ",<"  >> return ModuliComparison)
+  op <- choice
+    [ symbol "<"   >> return Comparison
+    , symbol "|<|" >> return ModuliComparison
+    , symbol ",<"  >> return WordComparison
+    ]
   b <- variable
 
-  return $ Charateristic var op init a b
+  scn
+
+  return $ Characteristic var op init a b
 
 -- The constant section contains a list of _every_ constant and undetermined variable not described in Block V
-constantSection :: Parser [SimpleExpr]
+constantSection :: Parser [SimpleExpr Char]
 constantSection = do
   section "List of Constants and Variable Quantities" (list (constant <|> expVar letterChar)) <* scn
 
@@ -218,14 +231,14 @@ variable :: Parser Variable
 variable = complexVar <|> simpleVar
 
 simpleVar :: Parser Variable
-simpleVar = lexeme $ Var <$> (T.singleton <$> letterChar)
+simpleVar = lexeme $ Var <$> (letterChar) <*> pure []
 
 complexVar :: Parser Variable
-complexVar = liftM Var $ lexeme $ do
+complexVar = lexeme $ do
   a <- try $ letterChar <* char '_'
-  sub <- some (letterChar) <|> some digitChar
+  sub <- some letterChar <|> some digitChar
 
-  return . T.pack $ a : '_' : sub
+  return $ Var a sub
 
 printExpr :: Parser LogicalSchema
 printExpr = do
@@ -252,22 +265,22 @@ logicalOperator = lexeme $ (*>) (char 'P') $ parens $ do
 
   range = do
     open <- symbol "(" <|> symbol "["
-    a <- quantity <|> (V . Var <$> symbol "-∞")
+    a <- Right <$> quantity <|> (Left <$> symbol "-∞")
     symbol ","
-    b <- quantity <|> (V . Var <$> symbol "∞")
+    b <- Right <$> quantity <|> (Left <$> symbol "∞")
     close <- symbol ")" <|> symbol "]"
 
     case (open, a, b, close) of
-      ("[", V (Var "-∞"),  _ ,  _ ) -> fail "Can't have an left-inclusive interval with -∞"
-      ("(", V (Var "-∞"),  a , ")") -> return $ LeftImproperInterval a
-      ("(", V (Var "-∞"),  a , "]") -> return $ LeftImproperSemiInterval a
-      ( _ ,   _ , V (Var "∞"), "]") -> fail "Can't have an left-inclusive interval with -∞"
-      ("[",   a , V (Var "∞"), ")") -> return $ RightImproperInterval a
-      ("(",   a , V (Var "∞"), ")") -> return $ RightImproperSemiInterval a
-      ("[",   a ,  b , "]") -> return $ Segment a b
-      ("[",   a ,  b , ")") -> return $ SemiInterval a b
-      ("(",   a ,  b , "]") -> return $ SemiSegment a b
-      ("(",   a ,  b , ")") -> return $ Interval a b
+      ("[", Left "-∞",       _ ,  _ ) -> fail "Can't have an left-inclusive interval with -∞"
+      ("(", Left "-∞", Right a , ")") -> return $ LeftImproperInterval a
+      ("(", Left "-∞", Right a , "]") -> return $ LeftImproperSemiInterval a
+      ( _ ,       _  , Left "∞", "]") -> fail "Can't have an left-inclusive interval with -∞"
+      ("[", Right a  , Left "∞", ")") -> return $ RightImproperInterval a
+      ("(", Right a  , Left "∞", ")") -> return $ RightImproperSemiInterval a
+      ("[", Right a  , Right b , "]") -> return $ Segment a b
+      ("[", Right a  , Right b , ")") -> return $ SemiInterval a b
+      ("(", Right a  , Right b , "]") -> return $ SemiSegment a b
+      ("(", Right a  , Right b , ")") -> return $ Interval a b
 
 operatorNumber :: Parser OperatorSign
 operatorNumber = lexeme $ OpSign <$> L.hexadecimal

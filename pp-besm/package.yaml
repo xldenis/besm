@@ -32,6 +32,7 @@ library:
   - text
   - prettyprinter
   - digits
+  - charset
   ghc-options:
   - -fwarn-incomplete-uni-patterns
   - -fwarn-incomplete-patterns
@@ -52,7 +53,7 @@ executables:
 
 tests:
   pp-besm-test:
-    main:                Spec.hs
+    main:                Spec
     source-dirs:         test
     ghc-options:
     - -threaded
@@ -60,3 +61,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - pp-besm
+    - hedgehog
+    - prettyprinter

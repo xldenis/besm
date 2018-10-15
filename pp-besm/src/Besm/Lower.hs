@@ -237,7 +237,7 @@ lowerVariableAddresses (S.VA blocks) = V
       . NL.sortBy (compare `on` irSlopes)
       $ NL.map unpackVariableAddress vars
 
-    splitConstant :: [S.SimpleExpr] -> ([S.SimpleExpr], Int)
+    splitConstant :: [S.SimpleExpr Char] -> ([S.SimpleExpr Char], Int)
     splitConstant eq = (vars, toInt c)
       where (c, vars) = partition isConstant eq
             toInt [S.SConstant i] =  i
@@ -246,14 +246,14 @@ lowerVariableAddresses (S.VA blocks) = V
             isConstant (S.SConstant _) = True
             isConstant _               = False
 
-    unpackVariableAddress :: (Text, S.SimpleExpr) -> VAIR
+    unpackVariableAddress :: (Text, S.SimpleExpr Char) -> VAIR
     unpackVariableAddress (name, eq) = VAIR name off slopes vars
       where
       ((slopes, vars), off) = unzipLeft $ splitConstant $ unwrapVA eq
       unzipLeft (vars, c) = (unzip $ map vaConstant vars, c)
       vaConstant (S.STimes (S.SConstant c) (S.SExpVar v)) = (c, v)
 
-    unwrapVA :: S.SimpleExpr -> [S.SimpleExpr]
+    unwrapVA :: S.SimpleExpr Char -> [S.SimpleExpr Char]
     unwrapVA (S.SAdd l r) = unwrapVA l ++ unwrapVA r
     unwrapVA l            = [l]
 
@@ -261,7 +261,7 @@ lowerVariableAddresses (S.VA blocks) = V
 lowerParameters ps = map lowerParameter ps
   where
   lowerParameter (S.InFin var init fin) = InFin (S.unVar var) (QA . T.pack $ show init) (QA . T.pack $ show fin)
-  lowerParameter (S.Charateristic var op init a b) = undefined
+  lowerParameter (S.Characteristic var op init a b) = undefined
 
 lowerSchema :: S.LogicalSchema -> [Operator]
 lowerSchema (S.Loop var ls) = LoopOpen (QA $ T.singleton var) : lowerSchema ls ++ [LoopClose]

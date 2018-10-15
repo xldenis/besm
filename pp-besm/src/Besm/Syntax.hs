@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, DeriveFoldable #-}
 module Besm.Syntax where
 
 import           Data.List                 (intersperse)
@@ -6,6 +6,7 @@ import           Data.List.NonEmpty        (NonEmpty)
 import qualified Data.List.NonEmpty        as NL
 import           Data.String               (IsString)
 import           Data.Text                 (Text)
+import qualified Data.Text                 as T
 import           Data.Text.Prettyprint.Doc
 import           Text.Printf
 import qualified Besm.Syntax.NonStandard as NS
@@ -17,33 +18,37 @@ data ParsedProgramme
   = P
   { vaSection :: VASection
   , pSection  :: [Parameter]
-  , cSection  :: [SimpleExpr]
+  , cSection  :: [SimpleExpr Char]
   , kSection  :: LogicalSchema
-  } deriving Show
+  } deriving (Show, Eq)
 
 newtype VASection = VA [Block]
-  deriving Show
+  deriving (Show, Eq)
 
-data Block = Block Int (NonEmpty (Text, SimpleExpr))
-  deriving Show
+data Block = Block Int (NonEmpty (Text, SimpleExpr Char))
+  deriving (Show, Eq)
 
-data SimpleExpr
-  = STimes SimpleExpr SimpleExpr
-  | SAdd   SimpleExpr SimpleExpr
+data SimpleExpr a
+  = STimes (SimpleExpr a) (SimpleExpr a)
+  | SAdd   (SimpleExpr a) (SimpleExpr a)
   | SConstant Int
-  | SExpVar Char
-  deriving Show
+  | SExpVar a
+  deriving (Show, Eq, Functor, Foldable)
 
 data Parameter
   = InFin Variable Int Int
-  | Charateristic Variable ComparisonOp Int Variable Variable
-  deriving Show
+  | Characteristic Variable ComparisonOp Int Variable Variable
+  deriving (Show, Eq)
+
+paramVar :: Parameter -> Variable
+paramVar (InFin p _ _) = p
+paramVar (Characteristic p _ _ _ _) = p
 
 data ComparisonOp
   = Comparison
   | WordComparison
   | ModuliComparison
-  deriving Show
+  deriving (Show, Eq)
 
 data Range
   = LeftImproperInterval      Quantity
@@ -54,7 +59,7 @@ data Range
   | SemiInterval  Quantity Quantity
   | SemiSegment   Quantity Quantity
   | Segment       Quantity Quantity
-  deriving Show
+  deriving (Show, Eq)
 
 -- TODO: Add parentheses
 data LogicalSchema
@@ -71,10 +76,10 @@ data LogicalSchema
   | RTC OperatorSign
   | CLCC OperatorSign
   | JCC
-  deriving Show
+  deriving (Show, Eq)
 
 newtype OperatorSign = OpSign { fromOperatorSign :: Int }
-  deriving (Show)
+  deriving (Show, Eq)
 
 {-
   The type of addresses for non standard operators. They are either absolute addresses
@@ -95,13 +100,17 @@ data SchemaExpr
   | Mod SchemaExpr
   | Sqrt SchemaExpr
   | Cube SchemaExpr
-  deriving Show
+  deriving (Show, Eq)
 
 data Quantity = V Variable | C Int
   deriving (Show, Eq)
 
-newtype Variable = Var { unVar :: Text }
-  deriving (Show, Eq, IsString)
+data Variable = Var { var :: Char, subscripts :: [Char] }
+  deriving (Show, Eq)
+
+unVar :: Variable -> Text
+unVar (Var char [])   = T.singleton char
+unVar (Var char subs) = T.pack $ char : '_' : subs
 
 prettyProgramme :: ParsedProgramme -> Doc a
 prettyProgramme (P va p c k) = vcat
@@ -129,24 +138,29 @@ prettyParameters params = vcat $ pretty "2." <+> pretty "Parameters" : mempty
 
 prettyParameter :: Parameter -> Doc a
 prettyParameter (InFin var init fin) = pretty (unVar var) <+> pretty ":" <+> bound (unVar var) "in" init  <> pretty "," <+> bound (unVar var) "fin" fin
+prettyParameter (Characteristic var op init a b) = pretty (unVar var) <+> pretty ":" <+> bound (unVar var) "in" init <> pretty "," <+> pretty (unVar a) <+> prettyComp op <+> pretty (unVar b)
   where
-  bound v sub val = pretty v <> pretty "_" <> pretty sub <+> pretty "=" <+> pretty val
+  prettyComp Comparison = pretty "<"
+  prettyComp WordComparison = pretty ",<"
+  prettyComp ModuliComparison = pretty "|<|"
 
-prettyConstants :: [SimpleExpr] -> Doc a
-prettyConstants cs = vcat $ pretty "3." <+> pretty "Constants" : mempty
+bound v sub val = pretty v <> pretty "_" <> pretty sub <+> pretty "=" <+> pretty val
+
+prettyConstants :: Pretty b => [SimpleExpr b] -> Doc a
+prettyConstants cs = vcat $ pretty "3." <+> pretty "List of Constants and Variable Quantities" : mempty
  : [concatWith (\a b -> a <> pretty "," <+> b) (map prettyConstant cs)]
 
-prettyConstant :: SimpleExpr -> Doc a
+prettyConstant :: Pretty b => SimpleExpr b -> Doc a
 prettyConstant = prettySimpleExpr
 
-prettySimpleExpr :: SimpleExpr -> Doc a
+prettySimpleExpr :: Pretty b => SimpleExpr b -> Doc a
 prettySimpleExpr (STimes l r)  = prettySimpleExpr l <+> pretty "*" <+> prettySimpleExpr r
 prettySimpleExpr (SAdd l r)    = prettySimpleExpr l <+> pretty "+" <+> prettySimpleExpr r
 prettySimpleExpr (SConstant c) = pretty c
 prettySimpleExpr (SExpVar var) = pretty var
 
 prettySchemaSection :: LogicalSchema -> Doc a
-prettySchemaSection ls = vcat $ pretty "4." <+> pretty "Logical Schema" : mempty
+prettySchemaSection ls = vcat $ pretty "4." <+> pretty "Logical Scheme" : mempty
   : [prettySchema ls]
 
 prettySchema :: LogicalSchema -> Doc a
@@ -177,7 +191,7 @@ prettySchema (LogicalOperator var op ranges) = pretty "P" <> (parens $ hsep
 prettySchema (OpLabel op) = pretty "L" <> prettyOpSign op
 prettySchema (Print exp)  = prettyExp exp <+> pretty ", => 0"
 prettySchema Semicolon = pretty ";"
-
+prettySchema JCC = pretty "\\-"
 prettyQuantity (V v) = pretty (unVar v)
 prettyQuantity (C c) = pretty c
 
