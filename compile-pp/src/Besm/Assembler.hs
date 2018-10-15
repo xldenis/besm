@@ -57,30 +57,8 @@ data ModuleAssembly (stage :: Stage) = Mod
 
 deriving instance Show (ModuleAssembly 'Absolutized)
 
-debugRender :: Alignment -> ModuleAssembly Absolutized -> IO ()
-debugRender align mod = let
-  (o, dataS) = mapAccumL (\off (s, v) -> (off + constantSize v, (off, s ++ " " ++ show v))) 0 (constants mod)
-  text  = procs mod >>= blocks >>= renderBlock
-  textS = zip [o..] text
-  len = o + length textS
-  offset = case align of
-            AlignLeft -> 16
-            AlignRight -> 1024 - len
-  in forM_ (dataS ++ textS) $ \(addr, inst) -> putStrLn $ show addr ++ ": " ++ inst
-
-  where
-
-  renderBlock :: BB Int -> [String]
-  renderBlock bb = map show (instrs bb) ++ termToString (terminator bb)
-
-  termToString :: Term Int -> [String]
-  termToString (RetRTC a) = [show $ AI 0b10100001111 (a+1) (a+1), "zero"]
-  termToString (Chain     _) = []
-  termToString c = [show c]
-
-
 assemble :: ConstantDefs -> Alignment -> [Procedure Address] -> Either [String] Output
-assemble defs a = compile defs a >=> pure . render     a
+assemble defs a = compile defs a >=> pure . render a
 
 compile :: ConstantDefs -> Alignment -> [Procedure Address] -> Either [String] (ModuleAssembly 'Absolutized)
 compile defs align =
@@ -121,6 +99,27 @@ compile defs align =
 
 -- * Rendering output
 
+debugRender :: Alignment -> ModuleAssembly Absolutized -> IO ()
+debugRender align mod = let
+  (o, dataS) = mapAccumL (\off (s, v) -> (off + constantSize v, (off, s ++ " " ++ show v))) 0 (constants mod)
+  text  = procs mod >>= blocks >>= renderBlock
+  textS = zip [o..] text
+  len = o + length textS
+  offset = case align of
+            AlignLeft -> 16
+            AlignRight -> 1024 - len
+  in forM_ (dataS ++ textS) $ \(addr, inst) -> putStrLn $ show (addr + offset) ++ ": " ++ inst
+
+  -- where
+
+renderBlock :: BB Int -> [String]
+renderBlock bb = map show (instrs bb) ++ termToString (terminator bb)
+
+termToString :: Term Int -> [String]
+termToString (RetRTC a) = [show $ AI 0b10100001111 (a+1) (a+1), "zero"]
+termToString (Chain     _) = []
+termToString c = [show c]
+
 -- | Print the hex for a module
 render :: Alignment -> ModuleAssembly Absolutized -> Output
 render a mod = let
@@ -131,12 +130,13 @@ render a mod = let
     AlignLeft -> (replicate 15 (bitVector 0)) ++ total
     AlignRight -> replicate (1023 - length total) (bitVector 0) ++ total
 
-  where
+  -- where
 
-  renderProc ix proc = let
-    procIx = bitVector ix :: BV 4
-    in zip [1..] (blocks proc) >>= \(i, b) ->
-      map (procIx <:> bitVector i <:> (b0 :: BitVector 9) <:>) (asmToCell b)
+renderProc :: Integer -> Procedure Int -> Output
+renderProc ix proc = let
+  procIx = bitVector ix :: BV 4
+  in zip [1..] (blocks proc) >>= \(i, b) ->
+    map (procIx <:> bitVector i <:> (b0 :: BitVector 9) <:>) (asmToCell b)
 -- * Absolutization
 
 -- | Given an alignment for a module, assign concrete addresses to everything.
