@@ -27,6 +27,7 @@ dependencies:
 - pp-besm
 - bv-sized
 - containers
+- text
 
 library:
   source-dirs: src
