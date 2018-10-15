@@ -90,8 +90,7 @@ fn trace_execution(mut vm: VM) {
     loop {
 
         use bit_field::BitField;
-        let cur_instr =  vm.get_address(vm.next_instr()).unwrap();
-        let current_operator = vm.get_address(vm.next_instr()).unwrap().get_bits(48..64);
+        let current_operator = vm.memory.get(vm.next_instr()).unwrap().get_bits(48..64);
 
         if previous_operator != current_operator {
             previous_operator = current_operator;
@@ -158,7 +157,8 @@ fn main() {
         MagTape::new(),
     ];
 
-    let vm = VM::new(&mut is_buf, &mut x, &mut y, opt.start_address as u16);
+    let mut mem = Memory::new(is_buf);
+    let vm = VM::new(&mut mem, &mut x, &mut y, opt.start_address as u16);
 
     runner_from_command(opt.command)(vm);
 }

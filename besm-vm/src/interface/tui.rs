@@ -101,12 +101,12 @@ fn render_main_panel<T: Backend>(t: &mut Terminal<T>, app: &Interface, vm: &VM, 
 fn render_memory_panel<T: Backend>(t: &mut Terminal<T>, tabs: &TabInfo, vm: &VM, rect: Rect) {
     use tui::widgets::Row;
 
-    let (mem_vec, addr_offset) = match tabs.selection {
+    let (mem_vec, addr_offset) : (Box<Iterator<Item = u64>>, usize) = match tabs.selection {
         1 => {
-          (vm.is.to_vec(), 1)
+          (Box::new(vm.memory.into_iter()) as Box<Iterator<Item = u64>>, 1)
         }
         i => {
-           (vm.mag_system.mag_drives[i - 2].drive.to_vec(), 0)
+           (Box::new(vm.mag_system.mag_drives[i - 2].into_iter()) as Box<Iterator< Item = u64>>, 0)
         }
     };
     let tab_offset = tabs.offsets[tabs.selection].saturating_sub(addr_offset);
@@ -114,13 +114,13 @@ fn render_memory_panel<T: Backend>(t: &mut Terminal<T>, tabs: &TabInfo, vm: &VM,
     let selected_style = Box::new(Style::default().fg(Color::Yellow)); //.modifier(Modifier::Bold)
     let basic_style = Box::new(Style::default());
 
-    let rows = mem_vec.iter().enumerate().skip(tab_offset).map(|(addr, instr)| {
-        let instr_string = Instruction::from_bytes(*instr)
+    let rows = mem_vec.enumerate().skip(tab_offset).map(|(addr, instr)| {
+        let instr_string = Instruction::from_bytes(instr)
             .map(|s| format!("{} ", s))
             .unwrap_or_else(|_| "ERROR".to_string());
 
         use float::Float;
-        let float = Float::from_bytes(*instr);
+        let float = Float::from_bytes(instr);
         let style = if vm.next_instr() - 1 == addr as u16 && tabs.selection == 1 {
             &selected_style
         } else {
@@ -217,7 +217,7 @@ fn render_current_instruction_box<T: Backend>(t: &mut Terminal<T>, vm: &VM, rect
         .direction(Horizontal)
         .sizes(&[Fixed(5), Fixed(2), Fixed(42), Fixed(2), Fixed(10), Fixed(2), Percent(100)])
         .render(t, &rect, |t, chunks| {
-            let ins = vm.get_address(vm.next_instr()).unwrap();
+            let ins = vm.memory.get(vm.next_instr()).unwrap();
 
             Paragraph::default()
                 .text(&format!("{:04}", vm.next_instr()))

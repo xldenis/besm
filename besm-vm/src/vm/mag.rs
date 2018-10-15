@@ -31,6 +31,35 @@ impl MagDrive {
   }
 }
 
+pub struct Iter {
+  drive: MagDrive,
+  index: usize,
+}
+
+impl IntoIterator for MagDrive {
+  type Item = u64;
+  type IntoIter = Iter;
+
+  fn into_iter(self) -> Self::IntoIter {
+    Iter { drive: self, index: 0 }
+  }
+}
+
+impl Iterator for Iter {
+  type Item = u64;
+
+  fn next(&mut self) -> Option<u64> {
+    let result = match self.drive.drive.get(self.index) {
+      Some(o) => Some(*o),
+      None => None,
+    };
+
+    self.index += 1;
+
+    result
+  }
+}
+
 impl <'a> MagTape {
   pub fn new() -> MagTape {
     MagTape { tape: HashMap::new() }
@@ -42,8 +71,10 @@ pub struct MagSystem<'a> {
   pub mag_tapes: &'a mut [MagTape; 4],
 }
 
+use vm::Memory;
+
 impl <'a> MagSystem<'a> {
-  pub fn perform_operation(&mut self, op: &DriveOperation, is: &mut [u64; 1023]) -> Result<(), DriveError> {
+  pub fn perform_operation(&mut self, op: &DriveOperation, memory: &mut Memory) -> Result<(), DriveError> {
     use vm::DriveOperation::*;
 
     match op {
@@ -52,10 +83,10 @@ impl <'a> MagSystem<'a> {
         let drive = &mut self.mag_drives[id.to_num() as usize];
 
         let dest = drive.drive.iter_mut().skip(*n1 as usize);
-        let source = is.iter().skip((c - 1) as usize);
+        let source = memory.into_iter().skip((c - 1) as usize);
 
         for (place, data) in dest.zip(source).take(span as usize) {
-          *place = *data;
+          *place = data;
         }
         info!("Wrote cells {}-{} (len {}) to MD-{:?} from IS {}", n1, n2, span, id, c);
       }
@@ -64,11 +95,11 @@ impl <'a> MagSystem<'a> {
 
         let drive = self.mag_drives[id.to_num() as usize];
 
-        let source = drive.drive.iter().skip(*n1 as usize);
-        let dest = is.iter_mut().skip((*c-1) as usize);
+        let source = drive.into_iter().skip(*n1 as usize);
+        let dest = memory.iter_mut().skip((*c-1) as usize);
 
         for (place, data) in dest.zip(source).take(span as usize) {
-          *place = *data;
+          *place = data;
         }
         info!("Read cells {}-{} (len {}) from MD-{:?} to IS {}", n1, n2, span, id, c);
       }
@@ -80,7 +111,7 @@ impl <'a> MagSystem<'a> {
           return Err(DriveError::TapeGroupTooLarge);
         }
 
-        let range = is[(*c as usize) .. ((c + n2) as usize)].to_vec();
+        let range = memory.into_iter().skip(*c as usize).take(*n2 as usize).collect(); //[(*c as usize) .. ((c + n2) as usize)].to_vec();
         tape.tape.insert(*r as u8, range);
       }
       _ => { return Err(DriveError::OperationNotSupported) }

@@ -7,13 +7,88 @@ pub mod instruction;
 use vm::mag::*;
 
 pub struct VM<'a> {
-  pub is: &'a mut [u64; 1023],
-  ds: &'a [u64; 384],
+  pub memory: &'a mut Memory,
   local_ic: u16,
   global_ic: u16,
   active_ic: ActiveIC,
   pub stopped: bool,
   pub mag_system: MagSystem<'a>
+}
+
+pub struct Memory {
+  is: [u64; 1023],
+}
+
+impl Memory {
+  pub fn new(is: [u64; 1023]) -> Memory {
+    Memory { is: is}
+  }
+  pub fn get(&self, ix: u16) -> Result<u64, VMError> {
+    if ix == 0 {
+      Ok(0)
+    } else if ix <= 1023 {
+      Ok(self.is[(ix - 1) as usize])
+    } else if 1024 < ix && ix <= 1408 { // The DS annoyingly starts on address 1025 not 1024 :rage:
+      Ok(ds::DS[(ix - 1023 - 1 - 1) as usize]) // We want address 1025 to map to index 0
+    } else {
+      Err(VMError::OutOfBounds{})
+    }
+  }
+
+  pub fn get_mut(&mut self, ix: u16) -> Result<&mut u64, VMError> {
+    if ix <= 1023 {
+      Ok(&mut self.is[(ix - 1) as usize])
+    } else {
+      Err(VMError::OutOfBounds{})
+    }
+  }
+
+  fn set(&mut self, ix: u16, val: u64) -> Result<&mut Self, VMError> {
+    if ix == 0 {
+      return Err(VMError::OutOfBounds{})
+    } else if ix <= 1023 {
+      self.is[(ix - 1) as usize].set_bits(0..39, val.get_bits(0..39));
+
+    } else {
+      panic!("can't assign to DS")
+    }
+    Ok(self)
+  }
+
+  fn iter_mut(&mut self) -> slice::IterMut<u64> {
+    self.is.iter_mut()
+  }
+}
+
+pub struct Iter<'a> {
+  mem: &'a Memory,
+  index: usize,
+}
+
+use std::slice;
+
+impl <'a>IntoIterator for &'a Memory {
+  type Item = u64;
+  type IntoIter = Iter<'a>;
+
+  fn into_iter(self) -> Self::IntoIter {
+    Iter { mem: self, index: 1 }
+  }
+}
+
+impl < 'a>Iterator for Iter< 'a> {
+  type Item = u64;
+
+  fn next(&mut self) -> Option<u64> {
+    match self.mem.get(self.index as u16) {
+      Err(_)   => return None,
+      Ok(item) => {
+        self.index += 1;
+
+        Some(item)
+      }
+    }
+  }
 }
 
 enum ActiveIC { Global, Local}
@@ -31,10 +106,9 @@ use vm::instruction::*;
 use vm::instruction::Instruction::*;
 
 impl<'a> VM<'a> {
-  pub fn new(is: &'a mut [u64; 1023], drives: &'a mut [MagDrive; 5], tapes: &'a mut [MagTape; 4], start: u16) -> VM<'a> {
+  pub fn new(is: &'a mut Memory, drives: &'a mut [MagDrive; 5], tapes: &'a mut [MagTape; 4], start: u16) -> VM<'a> {
     VM {
-      is: is,
-      ds: &ds::DS,
+      memory: is,
       global_ic: start,
       local_ic: 1,
       active_ic: ActiveIC::Global,
@@ -47,18 +121,18 @@ impl<'a> VM<'a> {
   }
 
   pub fn step(&mut self) -> Result<Instruction, VMError> {
-    let opcode = self.is[self.next_instr() as usize - 1];
+    let opcode = self.memory.get(self.next_instr())?;
     let instr = Instruction::from_bytes(opcode)?;
 
     match instr {
       Ma { a, b, c } => {
-        let mb = Instruction::from_bytes(self.get_address(self.next_instr() + 1)?)?;
+        let mb = Instruction::from_bytes(self.memory.get(self.next_instr() + 1)?)?;
 
         match mb {
           Mb { b: b2 } => {
             self.mag_system.perform_operation(
               &DriveOperation::from_ma(a,b,c,b2).map_err(VMError::DriveErr)?,
-              self.is
+              &mut self.memory
             ).map_err(VMError::DriveErr)?;
             self.increment_ic();
           }
@@ -67,41 +141,41 @@ impl<'a> VM<'a> {
       }
       Mb { b: _ } => { self.increment_ic(); }
       Add  { a: l, b: r, c: res, normalize: needs_norm } => {
-        let lfloat  = Float::from_bytes(self.get_address(l)?);
-        let rfloat  = Float::from_bytes(self.get_address(r)?);
+        let lfloat  = Float::from_bytes(self.memory.get(l)?);
+        let rfloat  = Float::from_bytes(self.memory.get(r)?);
         let mut val = lfloat.add_unnormalized(&rfloat);
 
         if needs_norm { val.normalize() };
 
-        self.set_address(res, val.to_bytes());
+        self.memory.set(res, val.to_bytes())?;
         self.increment_ic();
 
       }
       Sub  { a: l, b: r, c: res, normalize: needs_norm } => {
-        let lfloat  = Float::from_bytes(self.get_address(l)?);
-        let rfloat  = Float::from_bytes(self.get_address(r)?);
+        let lfloat  = Float::from_bytes(self.memory.get(l)?);
+        let rfloat  = Float::from_bytes(self.memory.get(r)?);
         let mut val = lfloat.sub_unnormalized(&rfloat);
 
         if needs_norm { val.normalize() };
 
-        self.set_address(res, val.to_bytes());
+        self.memory.set(res, val.to_bytes())?;
         self.increment_ic();
 
       },
       Mult { a: l, b: r, c: res, normalize: needs_norm } => {
-        let lfloat  = Float::from_bytes(self.get_address(l)?);
-        let rfloat  = Float::from_bytes(self.get_address(r)?);
+        let lfloat  = Float::from_bytes(self.memory.get(l)?);
+        let rfloat  = Float::from_bytes(self.memory.get(r)?);
         let mut val = lfloat.mul_unnormalized(&rfloat);
 
         if needs_norm { val.normalize() };
 
-        self.set_address(res, val.to_bytes());
+        self.memory.set(res, val.to_bytes())?;
         self.increment_ic();
 
       }
       AddE { a: x, b: y, c: z, normalize: needs_norm } => {
-        let lfloat = Float::from_bytes(self.get_address(x)?);
-        let rfloat = Float::from_bytes(self.get_address(y)?);
+        let lfloat = Float::from_bytes(self.memory.get(x)?);
+        let rfloat = Float::from_bytes(self.memory.get(y)?);
 
         let mut result = Float::new(lfloat.mant, lfloat.exp + rfloat.exp);
 
@@ -109,11 +183,11 @@ impl<'a> VM<'a> {
 
         // alarm if power is > 31
 
-        self.set_address(z, result.to_bytes());
+        self.memory.set(z, result.to_bytes())?;
       }
       SubE { a: x, b: y, c: z, normalize: needs_norm } => {
-        let lfloat = Float::from_bytes(self.get_address(x)?);
-        let rfloat = Float::from_bytes(self.get_address(y)?);
+        let lfloat = Float::from_bytes(self.memory.get(x)?);
+        let rfloat = Float::from_bytes(self.memory.get(y)?);
 
         let mut result = Float::new(lfloat.mant, lfloat.exp + rfloat.exp);
 
@@ -121,10 +195,10 @@ impl<'a> VM<'a> {
 
         // alarm if power is > 31
 
-        self.set_address(z, result.to_bytes());
+        self.memory.set(z, result.to_bytes())?;
       }
       Shift { a, b, c } => {
-        let val = self.get_address(a)?;
+        let val = self.memory.get(a)?;
         let mut shifted = if b < 64 {
           val << b
         } else {
@@ -133,31 +207,31 @@ impl<'a> VM<'a> {
 
         let res = shifted.set_bits(33..39, val.get_bits(33..39));
 
-        self.set_address(c, *res);
+        self.memory.set(c, *res)?;
         self.increment_ic();
       }
       TN { a: source, c: target, normalize: needs_norm } => {
-        let mut val = Float::from_bytes(self.get_address(source)?);
+        let mut val = Float::from_bytes(self.memory.get(source)?);
 
         if needs_norm { val.normalize() };
 
-        self.set_address(target, val.to_bytes());
+        self.memory.set(target, val.to_bytes())?;
         self.increment_ic();
       }
       TExp { a: source, c: target, normalize: needs_norm } => {
-        let val = Float::from_bytes(self.get_address(source)?);
+        let val = Float::from_bytes(self.memory.get(source)?);
         warn!("Transferring exponent from {:?}", val);
 
         let mut res = Float::from_bytes(val.exp as u64);
 
         if needs_norm { res.normalize() };
 
-        self.set_address(target, res.to_bytes());
+        self.memory.set(target, res.to_bytes())?;
         self.increment_ic();
 
       }
       CCCC { b: cell, c: addr } => {
-        if cell != 0 { self.set_address(cell, self.next_instr() as u64); }
+        if cell != 0 { self.memory.set(cell, self.next_instr() as u64)?; }
         self.global_ic = addr as u16;
         self.active_ic = ActiveIC::Global;
       }
@@ -171,8 +245,8 @@ impl<'a> VM<'a> {
 
       }
       AICarry { a: p, b: q, c: r } => {
-        let left = self.get_address(p)?;
-        let right = self.get_address(q)?;
+        let left = self.memory.get(p)?;
+        let right = self.memory.get(q)?;
 
         let (mut result, _) = left.overflowing_add(right);
         let wrapping_carry = result.get_bits(39..40);
@@ -180,37 +254,37 @@ impl<'a> VM<'a> {
         result.set_bits(39..63, 0);
         result |= wrapping_carry;
 
-        self.set_address(r, result);
+        self.memory.set(r, result)?;
         self.increment_ic();
       }
       AI { a: p, b: q, c: r} => {
-        let left = self.get_address(p)?;
-        let right = self.get_address(q)?;
+        let left = self.memory.get(p)?;
+        let right = self.memory.get(q)?;
 
         let mut result = left.get_bits(0..33) + right.get_bits(0..33);
-        result.set_bits(33..39, self.get_address(p)?.get_bits(33..39));
+        result.set_bits(33..39, self.memory.get(p)?.get_bits(33..39));
         // info!("A1 : {} {} {}", p, q, r);
 
         // info!("AI {:039b}", left);
         // info!("AI {:039b}", right);
         // info!("AI {:039b}", result);
 
-        self.set_address(r, result);
+        self.memory.set(r, result)?;
         self.increment_ic();
       }
       LogMult { a, b, c } => {
-        let left = self.get_address(a)?;
-        let right = self.get_address(b)?;
+        let left = self.memory.get(a)?;
+        let right = self.memory.get(b)?;
         let result = left & right;
 
-        self.set_address(c, result);
+        self.memory.set(c, result)?;
         self.increment_ic();
       }
       Comp { a, b, c } => {
         use std::cmp::*;
 
-        let left  = Float::from_bytes(self.get_address(a)?);
-        let right = Float::from_bytes(self.get_address(b)?);
+        let left  = Float::from_bytes(self.memory.get(a)?);
+        let right = Float::from_bytes(self.memory.get(b)?);
 
         info!("CMP {} {}", left, right);
         let branch = match left.exp.cmp(&right.exp) {
@@ -227,8 +301,8 @@ impl<'a> VM<'a> {
         }
       }
       CompWord { a, b, c } => {
-        let left = self.get_address(a)?;
-        let right = self.get_address(b)?;
+        let left = self.memory.get(a)?;
+        let right = self.memory.get(b)?;
 
         info!("CMPWD {} {}", left, right);
         if left != right {
@@ -268,26 +342,5 @@ impl<'a> VM<'a> {
       ActiveIC::Global => self.global_ic = ix as u16,
       ActiveIC::Local  => self.local_ic = ix as u16,
     }
-  }
-
-  pub fn get_address(&self, ix: u16) -> Result<u64, VMError> {
-    if ix == 0 {
-      Ok(0)
-    } else if ix <= 1023 {
-      Ok(self.is[(ix - 1) as usize])
-    } else if 1024 < ix && ix <= 1408 { // The DS annoyingly starts on address 1025 not 1024 :rage:
-      Ok(self.ds[(ix - 1023 - 1 - 1) as usize]) // We want address 1025 to map to index 0
-    } else {
-      Err(VMError::OutOfBounds{})
-    }
-  }
-
-  fn set_address(& mut self, ix: u16, val: u64) -> &mut Self {
-    if ix <= 1023 {
-      self.is[(ix - 1) as usize].set_bits(0..39, val);
-    } else {
-      panic!("can't assign to DS")
-    }
-    self
   }
 }
