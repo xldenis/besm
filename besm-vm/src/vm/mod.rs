@@ -28,6 +28,8 @@ impl Memory {
       Ok(0)
     } else if ix <= 1023 {
       Ok(self.is[(ix - 1) as usize])
+    } else if ix == 1024 {
+      Ok(1024)
     } else if 1024 < ix && ix <= 1408 { // The DS annoyingly starts on address 1025 not 1024 :rage:
       Ok(ds::DS[(ix - 1023 - 1 - 1) as usize]) // We want address 1025 to map to index 0
     } else {
@@ -197,6 +199,17 @@ impl<'a> VM<'a> {
 
         self.memory.set(z, result.to_bytes())?;
       }
+      ShiftAll { a, b, c } => {
+        let val = self.memory.get(a)?;
+        let shifted = if b < 64 {
+          val << b
+        } else {
+          val >> (b - 64)
+        };
+
+        self.memory.set(c, shifted)?;
+        self.increment_ic();
+      }
       Shift { a, b, c } => {
         let val = self.memory.get(a)?;
         let mut shifted = if b < 64 {
@@ -205,7 +218,7 @@ impl<'a> VM<'a> {
           val >> (b - 64)
         };
 
-        let res = shifted.set_bits(33..39, val.get_bits(33..39));
+        let res = shifted.set_bits(32..39, val.get_bits(32..39));
 
         self.memory.set(c, *res)?;
         self.increment_ic();
@@ -229,6 +242,17 @@ impl<'a> VM<'a> {
         self.memory.set(target, res.to_bytes())?;
         self.increment_ic();
 
+      }
+      TSign { a: source, b: sign, c: target, normalize: needs_norm } => {
+        let mut val = Float::from_bytes(self.memory.get(source)?);
+        let sign = Float::from_bytes(self.memory.get(sign)?);
+
+        val.sign ^= sign.sign;
+
+        if needs_norm { val.normalize() };
+
+        self.memory.set(target, val.to_bytes())?;
+        self.increment_ic();
       }
       CCCC { b: cell, c: addr } => {
         if cell != 0 { self.memory.set(cell, self.next_instr() as u64)?; }

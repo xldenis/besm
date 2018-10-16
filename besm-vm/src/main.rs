@@ -96,7 +96,7 @@ fn trace_execution(mut vm: VM) {
             previous_operator = current_operator;
             let procedure = current_operator.get_bits(12..16);
             let operator = current_operator.get_bits(0..12);
-            println!("{} {:3}", procedure, operator);
+            println!("{} {:3} {}", procedure, operator, vm.next_instr());
         }
 
         vm.step().unwrap();
