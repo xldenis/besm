@@ -110,6 +110,11 @@ debugRender align mod = let
             AlignRight -> 1024 - len
   in forM_ (dataS ++ textS) $ \(addr, inst) -> putStrLn $ show (addr + offset) ++ ": " ++ inst
 
+
+debugOffsets :: ModuleAssembly Absolutized -> IO ()
+debugOffsets mod = void $ traverse printMap (offsetMap mod)
+  where
+  printMap = mapM_ (\(k, v) -> putStrLn $ show v ++ " " ++ formatAddr k ) . M.toList
   -- where
 
 renderBlock :: BB Int -> [String]
@@ -137,6 +142,7 @@ renderProc ix proc = let
   procIx = bitVector ix :: BV 4
   in zip [1..] (blocks proc) >>= \(i, b) ->
     map (procIx <:> bitVector i <:> (b0 :: BitVector 9) <:>) (asmToCell b)
+
 -- * Absolutization
 
 -- | Given an alignment for a module, assign concrete addresses to everything.

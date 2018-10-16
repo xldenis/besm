@@ -94,8 +94,8 @@ x1c = Unknown "0x1C"
 
 constantMap =
   -- Working cells.
-  [ ("K",  Cell)
-  , ("B1", Addr First partialProgramme)
+  [ ("K",  Addr Third completedOperator)
+  , ("B1", Addr First (partialProgramme `offAddr` (-1)))
   , ("B2", Cell)
   , ("B3", Cell)
   , ("F", Cell)
@@ -128,10 +128,13 @@ constantMap =
   , ("- 1101 _ 0001", Template (Sub (Absolute $ unsafeFromBesmAddress "1101") zero (Absolute 1) Normalized))
   , ("transfer template", Template (TN (Unknown "transfer cell") zero UnNormalized))
   , ("0200 0000", Raw 0)
-  , ("pp-template", Template (TN cellD zero UnNormalized))
+  , ("pp-template", Template (TN cellD (Absolute 1) UnNormalized))
   , (",TN _ cellE", Template (TN zero cellE UnNormalized))
+  , (",TN _ cellD", Template (TN zero cellD UnNormalized))
   -- Miscellaneous / Unclassified
+  -- , ("blank", Size 1)
   , ("arith-buffer", Size 240)
+  , ("&partial-programme", Addr First partialProgramme)
   , ("transfer cell", Cell)
   , ("result-code", Cell)
   , ("inhibition flag", Raw 0)
@@ -168,10 +171,10 @@ arithCoder = do
   -}
 
   operator 1 $ do
-    tN zero counterK
+    tN' (Unknown "&completedOperator") counterK
     tN zero symbolCounter
     tN zero cellC
-    tN zero (partialProgramme `offAddr` (negate 1))
+    tN' zero (partialProgramme `offAddr` (negate 1))
 
     chain (op 2)
   {-
@@ -215,9 +218,11 @@ arithCoder = do
   mdo
     let mp_1_17 = Procedure "MP-1" (op 17)
 
-    operator 5 $ comp symbolCounter four (op 6) joinP
+    operator 5 $ comp symbolCounter four joinP (op 6)
     operator 6 $ do
       callRtc mp_1_17 (Procedure "MP-1" (op 20))
+
+      chain (op 7)
 
     operator 7 $ do
        tN zero symbolCounter
@@ -262,7 +267,7 @@ arithCoder = do
   -}
 
   operator 11 $ do
-    tN cellB cellC
+    tN' cellB cellC
     chain (op 2)
 
   {-
@@ -307,7 +312,7 @@ arithCoder = do
   -}
 
   operator 18 $ do
-    tN cellD cellC
+    tN' cellD cellC
     chain (op 2)
 
   {-
@@ -354,7 +359,7 @@ arithCoder = do
   -}
 
   operator 24 $ do
-    tN cellB cellD
+    tN' cellB cellD
     chain (op 69)
 
   {-
@@ -421,7 +426,7 @@ arithCoder = do
   -}
 
   operator 30 $ do
-    tN cellB cellD
+    tN' cellB cellD
     chain (op 69)
 
   {-
@@ -467,7 +472,7 @@ arithCoder = do
   -}
 
   operator 34 $ do
-    tN counterB1 counterB2
+    tN' counterB1 counterB2
     chain (op 35)
 
   {-
@@ -486,10 +491,13 @@ arithCoder = do
   open-parentheses, addition or subtraction (Yes -- op. 38 functions, NO --
   op.37)
 
+  4 < E  == NO
+  E <= 4 == YES
+
   -}
 
   operator 36 $ do
-    comp four' cellE (op 38) (op 37)
+    comp four' cellE (op 37) (op 38)
 
 
   {-
@@ -502,7 +510,7 @@ arithCoder = do
   -}
 
   operator 37 $ do
-    compWord partialProgramme counterB2 (op 38) (op 35)
+    comp (Unknown "&partial-programme") counterB2 (op 35) (op 38)
 
   {-
 
@@ -563,7 +571,7 @@ arithCoder = do
   -}
 
   operator 42 $ do
-    tN partialProgramme counterB2
+    tN' partialProgramme counterB2
     chain (op 43)
   {-
 
@@ -724,7 +732,7 @@ arithCoder = do
   -}
 
   operator 55 $ do
-    tN counterB2 counterB1
+    tN' counterB2 counterB1
 
     chain (op 56)
 
@@ -747,7 +755,7 @@ arithCoder = do
   operator 57 $ do
     let two = Unknown "2"
 
-    tN cellE cellF
+    tN' cellE cellF
     shift cellF (right 22) cellF
 
     comp two cellF (op 56) (op 58)
@@ -834,7 +842,7 @@ arithCoder = do
 
   -}
   operator 63 $ do
-    tN cellE cellD
+    tN' cellE cellD
     clcc (op 69)
     chain (op 64)
 
@@ -909,7 +917,7 @@ arithCoder = do
   operator 69 $ mdo
     let ppTemplate = Unknown "pp-template"
     shift counterB1 (right 22) addr
-    ai oneFirstAddr counterB1 counterB1
+    ai oneFirstAddr counterB1 counterB1 -- heres the bug
     ai ppTemplate addr addr
     addr <- empty
 
@@ -939,9 +947,10 @@ arithCoder = do
   -}
   operator 71 $ mdo
     let template = Unknown ",TN _ cellE"
+    let minusOne = firstAddr
     ai template counterB2 trans
     trans <- empty
-    sub' counterB2 one counterB2
+    ai counterB2 minusOne counterB2
     jcc
 
   {-
@@ -950,10 +959,10 @@ arithCoder = do
   and adding 1 to the counter B_3.
   -}
   operator 72 $ mdo
-    shift counterB3 (left 22) cellD
-    ai trans cellD trans
-    trans <- tN (Absolute 0) cellD
-    add' counterB3 one counterB3
+    let template = Unknown ",TN _ cellD"
+    ai template counterB3 trans
+    trans <- empty
+    ai counterB3 oneFirstAddr counterB3
     jcc
 
   {-
@@ -986,7 +995,7 @@ arithCoder = do
 
   {-
   Op. 76 transfers control to op. 77 if in cell E is the code of the symbol of a
-  single-place operation and to op. 77 in the contrary case.
+  single-place operation and to op. 79 in the contrary case.
   -}
 
   operator 76 $ do
@@ -1021,7 +1030,7 @@ arithCoder = do
     retRTC
 
   {-
-  The sub-routine for programming two-palce operations (operators 80 - 90)
+  The sub-routine for programming two-place operations (operators 80 - 90)
   programmes expressions existing in coded form in the partial programme. The
   boundaries of this expression are the addressses of the cells in counters B_2
   and B_1. At the start of functioning of the sub-routinethe programmed
@@ -1120,6 +1129,7 @@ arithCoder = do
 
   operator 88 $ do
     shift cellD (right 22) formedInstruction
+    chain (op 89)
 
   {-
   Op. 89 compares the indications of counters B_3 and B_1 and in the case of

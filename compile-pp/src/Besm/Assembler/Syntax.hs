@@ -12,8 +12,8 @@ data Address
   = Operator Int
   | Offset Address Int
   | Absolute Int
-  | Procedure String Address -- ^ Address inside of another procedure
   | Unknown String -- ^ Address of a variable or constant value. Each Unknown needs to have an associated ConstantDef
+  | Procedure String Address -- ^ Address inside of another procedure
   | RTC Address -- ^ Address of the RTC instructions at the end of the block the argument belongs to.
   deriving (Show, Eq, Ord)
 
@@ -22,7 +22,7 @@ formatAddr :: Address -> String
 formatAddr (Operator i) = "op. " ++ show i
 formatAddr (Offset a i) = formatAddr a ++ " + " ++ show i
 formatAddr (Absolute i) = "abs. " ++ show i
-formatAddr (Procedure s op) = show s ++ formatAddr op
+formatAddr (Procedure s op) = "proc. " ++ show s ++ " " ++ formatAddr op
 formatAddr (Unknown str) = "uk. " ++ str
 formatAddr (RTC a) = "rtc. " ++ formatAddr a
 
