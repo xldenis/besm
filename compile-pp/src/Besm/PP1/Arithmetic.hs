@@ -469,10 +469,14 @@ arithCoder = do
   Op. 34 sends to counter B_2 the contents of counter B_1, preparing "shifting
   backwards" over the partial programme.
 
+  NOTE
+
+  the source code listing seems to add one while transfering hte contents... UGH
+
   -}
 
   operator 34 $ do
-    tN' counterB1 counterB2
+    ai counterB1 oneFirstAddr counterB2
     chain (op 35)
 
   {-
@@ -496,9 +500,10 @@ arithCoder = do
 
   -}
 
-  operator 36 $ do
-    comp four' cellE (op 37) (op 38)
-
+  operator 36 $ mdo
+    comp cellE one (op 37) arith
+    arith <- comp four' cellE (op 37) (op 38)
+    return ()
 
   {-
 

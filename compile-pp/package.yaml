@@ -33,7 +33,7 @@ library:
   source-dirs: src
 
 executables:
-  compiler:
+  tools:
     main:                Compiler
     source-dirs:         app
     ghc-options:
@@ -42,15 +42,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - compile-pp
-  trace:
-    main:                TraceVisualizer
-    source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - compile-pp
+    - optparse-simple
 tests:
   compile-pp-test:
     main:                Spec.hs

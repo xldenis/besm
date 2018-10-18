@@ -38,6 +38,7 @@ data Alignment = AlignLeft | AlignRight
 
 data Stage = Input | LaidOut | Relativized | Absolutized
 
+-- Back on my type level bullshit
 type family AddressType (s :: Stage) where
   AddressType Relativized = RelativeAddr
   AddressType Absolutized = Int
@@ -48,9 +49,19 @@ type family ConstantMap (s :: Stage) where
   ConstantMap Relativized = [(String, ConstantInfo RelativeAddr)]
   ConstantMap a = [(String, ConstantInfo Address)]
 
+type family OffsetMap (s :: Stage) where
+  OffsetMap Absolutized = Map Address Int
+  OffsetMap a = ()
+
+type family RelativeMap (s :: Stage) where
+  RelativeMap Relativized = Map Address RelativeAddr
+  RelativeMap Absolutized = Map Address RelativeAddr
+  RelativeMap a = ()
+
+-- Please don't hate me
 data ModuleAssembly (stage :: Stage) = Mod
-  { offsetMap   :: Maybe (Map Address Int)
-  , relativeMap :: Maybe (Map Address RelativeAddr)
+  { offsetMap   :: OffsetMap stage
+  , relativeMap :: RelativeMap stage
   , constants   :: ConstantMap stage
   , procs       :: [Procedure (AddressType stage)]
   }
@@ -62,7 +73,7 @@ assemble defs a = compile defs a >=> pure . render a
 
 compile :: ConstantDefs -> Alignment -> [Procedure Address] -> Either [String] (ModuleAssembly 'Absolutized)
 compile defs align =
-  pure . Mod Nothing Nothing defs
+  pure . Mod () () defs
   >=> checkForMissingConstantDefs defs
   >=> pure . layout
   >=> pure . internalizeModule
@@ -112,10 +123,15 @@ debugRender align mod = let
 
 
 debugOffsets :: ModuleAssembly Absolutized -> IO ()
-debugOffsets mod = void $ traverse printMap (offsetMap mod)
+debugOffsets mod = void $ printMap (offsetMap mod)
   where
   printMap = mapM_ (\(k, v) -> putStrLn $ show v ++ " " ++ formatAddr k ) . M.toList
   -- where
+
+renderSourceMap :: ModuleAssembly Absolutized -> String
+renderSourceMap mod = let
+  flippedList =  M.toAscList $ offsetMap mod
+  in unlines $ map (\(v, k) -> show k ++ " " ++ formatAddr v) flippedList
 
 renderBlock :: BB Int -> [String]
 renderBlock bb = map show (instrs bb) ++ termToString (terminator bb)
@@ -156,7 +172,7 @@ absolutize align (Mod {..}) = let
     AlignRight -> 1023 - bSize + 1
   in Mod
     { procs = map (absolveProc cSize offset segmentOffsets) procs
-    , offsetMap = (M.map (absolve cSize offset segmentOffsets) <$> relativeMap )
+    , offsetMap = (M.map (absolve cSize offset segmentOffsets) relativeMap )
     , constants = constants', ..
     }
   where
@@ -194,7 +210,7 @@ relativize (Mod{..}) = do
   let dict = mkRelativizationDict constants procs
   procs <- first concat . unzipEithers $ map (relativizeProc dict) procs
   constants <- relativizeConstants dict constants
-  pure $ Mod{ relativeMap = Just dict, .. }
+  pure $ Mod{ relativeMap = dict, .. }
 
   where
   relativizeProc :: Map Address RelativeAddr -> Procedure Address -> Either [String] (Procedure RelativeAddr)
