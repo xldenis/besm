@@ -147,8 +147,12 @@ impl<'a> VM<'a> {
         let rfloat  = Float::from_bytes(self.memory.get(r)?);
         let mut val = lfloat.add_unnormalized(&rfloat);
 
+        warn!("ADD");
+        warn!("{} + {} = {}", lfloat, rfloat, val);
+
         if needs_norm { val.normalize() };
 
+        warn!("norm {}", val);
         self.memory.set(res, val.to_bytes())?;
         self.increment_ic();
 
@@ -336,7 +340,7 @@ impl<'a> VM<'a> {
           self.increment_ic();
         }
       }
-      Stop => { self.stopped = true; }
+      Stop => { self.stopped = true;  }
       Stop28 => { self.stopped = true; }
       i => {
         self.stopped = true;

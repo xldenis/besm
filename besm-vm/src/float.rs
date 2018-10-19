@@ -2,7 +2,7 @@ use bit_field::BitField;
 use num;
 use std::cmp::*;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Float {
     pub mant: u32, // actually only the lower 32 bits are used (u64 lets us store overflow  though...)
     pub overflow: bool,
@@ -20,7 +20,7 @@ macro_rules! equalize_exponents_shift_mant {
         let $exp = match left_exp.cmp(&right_exp) {
             Ordering::Less => {
                 $left_mant = $left_mant
-                    .checked_shr((left_exp - right_exp) as u32)
+                    .checked_shr((right_exp - left_exp) as u32)
                     .unwrap_or(0);
                 right_exp
             }
@@ -139,7 +139,31 @@ use std::fmt;
 
 impl fmt::Display for Float {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let num = 2.0f64.powf(self.exp as f64 - 33.0) * (self.mant as f64);
+        let num = 2.0f64.powf(self.exp as f64 - 32.0) * (self.mant as f64);
         write!(f, "{}", num)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn add_one_and_two() {
+        let one = Float::new(1 << 31, 1);
+        let two = Float::new( 1 << 31,  2);
+        let three = Float::new(0b11 << 30, 2);
+        let mut added = one.add_unnormalized(&two);
+        added.normalize();
+        assert_eq!(three, added);
+    }
+
+    #[test]
+    fn add_two_and_two() {
+        let two = Float::new( 1 << 31, 2);
+        let four = Float::new(1 << 31, 3);
+        let mut added = two.add_unnormalized(&two);
+        added.normalize();
+        assert_eq!(four, added);
     }
 }
