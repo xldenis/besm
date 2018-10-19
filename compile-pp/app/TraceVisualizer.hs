@@ -59,6 +59,8 @@ visualizeTrace inFile oFile smFile = do
     graph = mkGraph (map swap nodeDict) edges
   runGraphviz (graphToDot params $ (graph :: Gr String ())) Png oFile
 
+  mapM_ putStrLn trace
+
   return ()
   where
 

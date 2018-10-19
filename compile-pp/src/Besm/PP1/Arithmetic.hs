@@ -172,8 +172,8 @@ arithCoder = do
 
   operator 1 $ do
     tN' (Unknown "&completedOperator") counterK
-    tN zero symbolCounter
-    tN zero cellC
+    tN' zero symbolCounter
+    tN' zero cellC
     tN' zero (partialProgramme `offAddr` (negate 1))
 
     chain (op 2)
@@ -225,7 +225,7 @@ arithCoder = do
       chain (op 7)
 
     operator 7 $ do
-       tN zero symbolCounter
+       tN' zero symbolCounter
        chain joinP
 
     joinP <- block $ do
@@ -476,7 +476,7 @@ arithCoder = do
   -}
 
   operator 34 $ do
-    ai counterB1 oneFirstAddr counterB2
+    ai counterB1 zero counterB2
     chain (op 35)
 
   {-
@@ -951,7 +951,7 @@ arithCoder = do
 
   -}
   operator 71 $ mdo
-    let template = Unknown ",TN _ cellE"
+    let template = Unknown ",TN _ cellE" -- notes say this should be ,TN -1 cellE but why?
     let minusOne = firstAddr
     ai template counterB2 trans
     trans <- empty
@@ -964,7 +964,7 @@ arithCoder = do
   and adding 1 to the counter B_3.
   -}
   operator 72 $ mdo
-    let template = Unknown ",TN _ cellD"
+    let template = Unknown ",TN _ cellD" -- notes say this should be ,TN 1 cellD but why?
     ai template counterB3 trans
     trans <- empty
     ai counterB3 oneFirstAddr counterB3
