@@ -426,7 +426,7 @@ arithCoder = do
   -}
 
   operator 30 $ do
-    tN' cellB cellD
+    shift cellB (left 22) cellD
     chain (op 69)
 
   {-
@@ -1046,7 +1046,7 @@ arithCoder = do
   -}
 
   operator 80 $ do
-    tN' counterB2 counterB3
+    ai counterB2 oneFirstAddr counterB3
     chain (op 81)
   {-
   Op. 81 selects from cell D the code of the first quantity of the programmed
@@ -1142,7 +1142,7 @@ arithCoder = do
   -}
 
   operator 89 $ do
-    compWord counterB3 counterB1 (op 83) (op 90)
+    comp counterB3 counterB1 (op 83) (op 90)
 
   {-
   Op. 90 transfers the contents of counter B_2 to counter B_1, "erasing" the
