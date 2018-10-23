@@ -10,6 +10,7 @@ import Data.Bits
 
 data Address
   = Operator Int
+  | Block Address
   | Offset Address Int
   | Absolute Int
   | Unknown String -- ^ Address of a variable or constant value. Each Unknown needs to have an associated ConstantDef
@@ -20,6 +21,7 @@ data Address
 -- | Basic pretty-printing of addresses.
 formatAddr :: Address -> String
 formatAddr (Operator i) = "op. " ++ show i
+formatAddr (Block a) = "blk. " ++ formatAddr a
 formatAddr (Offset a i) = formatAddr a ++ " + " ++ show i
 formatAddr (Absolute i) = "abs. " ++ show i
 formatAddr (Procedure s op) = "proc. " ++ show s ++ " " ++ formatAddr op

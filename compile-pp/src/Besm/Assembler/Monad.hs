@@ -5,8 +5,6 @@ import Besm.Assembler.Syntax
 import Control.Monad.State
 import Control.Monad.Fix
 
-import Debug.Trace
-
 -- * SnocList
 
 -- | Since we want to append instructions, we build them in reverse and then flip the whole
@@ -86,7 +84,7 @@ emitTerm term = do
         }
 
   modify $ \bs -> bs
-    { currentBlock = emptyCurrentBlock (currentAddr bb `offAddr` 1)
+    { currentBlock = emptyCurrentBlock (Block (blockAddr bb))
     , builtBlocks  = builtBlocks bs `snoc` basicBlock
     }
 
@@ -152,6 +150,9 @@ sub'  a b c  = emitInstr $ Sub  a b c UnNormalized
 subE, subE' :: Address -> Address -> Address -> Builder Address
 subE  a b c  = emitInstr $ SubE a b c Normalized
 subE' a b c  = emitInstr $ SubE a b c UnNormalized
+
+-- | Extract mantissa
+i a b c = emitInstr $ I a b c
 
 {-|
   Transfer exponent. Transfers the exponent of an address.
