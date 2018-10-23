@@ -14,7 +14,7 @@ import Data.String
 import Data.Text.Lazy (pack)
 import Data.Bifunctor
 
-import Debug.Trace
+import Data.Bool
 
 toEdgeList :: [a] -> [(a, a)]
 toEdgeList (x : y : xs) = (x, y) : toEdgeList (y : xs)
@@ -54,8 +54,8 @@ sourceMapLookup map line = do
   findNearest _ [(u, nm)] = nm
   findNearest _ [] = error $ "shouldn't be possible"
 
-visualizeTrace :: String -> String -> String -> IO ()
-visualizeTrace inFile oFile smFile = do
+visualizeTrace :: Bool -> String -> String -> String -> IO ()
+visualizeTrace dedup inFile oFile smFile = do
   traceFile <- readFile inFile
   sourceMap <- readSourceMap smFile
 
@@ -63,7 +63,7 @@ visualizeTrace inFile oFile smFile = do
   let
     trace = map (sourceMapLookup sourceMap) $ lines traceFile
     nodeDict = zip (nub trace) [1..]
-    edges = dedupEdges $ map (toEdge nodeDict) (toEdgeList trace)
+    edges = bool dedupEdges constEdges dedup $ map (toEdge nodeDict) (toEdgeList trace)
     graph = mkGraph (map swap nodeDict) edges
   runGraphviz (graphToDot params $ (graph :: Gr Label Int)) Png oFile
 
@@ -72,6 +72,10 @@ visualizeTrace inFile oFile smFile = do
   return ()
   where
 
+  constEdges :: [(Node, Node, ())] -> [(Node, Node, Int)]
+  constEdges edges = map (\(a,b, _) -> (a, b, 1)) edges
+
+  dedupEdges :: [(Node, Node, ())] -> [(Node, Node, Int)]
   dedupEdges edges = let
     classes = eqClasses edges
     in map (\c@((s,t, _) : _) -> (s, t, length c)) classes
@@ -82,11 +86,13 @@ visualizeTrace inFile oFile smFile = do
   params :: GraphvizParams Node Label Int String Label
   params = defaultParams
     { fmtNode = \ (_,l) -> [toLabel $ (\(p, o) -> p ++ " " ++ o) l, style rounded, shape BoxShape, FontSize 20.0]
-    , fmtEdge = \ (_, _, l) -> [toLabel (" " ++ show l), FontSize 20.0]
+    , fmtEdge = \ (_, _, l) -> [edgeLabel l, FontSize 20.0]
     , clusterBy = \(node, lab) -> C (fst lab) (N (node, lab))
     , clusterID = Str . pack
     }
-
+    where
+    edgeLabel 1 = toLabel ""
+    edgeLabel l = toLabel (" " ++ show l)
 eqClasses :: Eq a => [a] -> [[a]]
 eqClasses [] = []
 eqClasses (x : xs) = let (cls, rest) = partition (== x) xs
