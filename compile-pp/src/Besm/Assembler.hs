@@ -276,6 +276,7 @@ internalizeAddresses proc =
   proc { blocks = map (fmap internalizeAddress) (blocks proc) }
   where
   internalizeAddress (Operator n) = Procedure (procName proc) (Operator n)
+  internalizeAddress (Block a) = Procedure (procName proc) (Block a)
   internalizeAddress (RTC a) = RTC $ internalizeAddress a
   internalizeAddress (Offset a o) = Offset (internalizeAddress a) o
   internalizeAddress i = i

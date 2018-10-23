@@ -149,6 +149,7 @@ constantMap =
   , ("tested-cell", Raw 0)
   , ("3rd-addr-of-tested", Raw 0)
   , ("CLCC", Raw 0)
+  , ("initializer", Raw $ 2 ^ 34 - 1)
   ]
 
 
@@ -172,9 +173,9 @@ arithCoder = do
 
   operator 1 $ do
     tN' (Unknown "&completedOperator") counterK
-    tN' zero symbolCounter
+
+    i (Unknown "initializer") (partialProgramme `offAddr` (negate 1)) symbolCounter
     tN' zero cellC
-    tN' zero (partialProgramme `offAddr` (negate 1))
 
     chain (op 2)
   {-
@@ -501,8 +502,8 @@ arithCoder = do
   -}
 
   operator 36 $ mdo
-    comp cellE one (op 37) arith
-    arith <- comp four' cellE (op 37) (op 38)
+    comp (Unknown "scratch-cell-1") one (op 37) arith
+    arith <- comp four' (Unknown "scratch-cell-1") (op 37) (op 38)
     return ()
 
   {-
@@ -955,6 +956,7 @@ arithCoder = do
     let minusOne = firstAddr
     ai template counterB2 trans
     trans <- empty
+    shift cellE (right 22) (Unknown "scratch-cell-1")
     ai counterB2 minusOne counterB2
     jcc
 
@@ -975,7 +977,7 @@ arithCoder = do
   single-place operation. This sub-routine realizes operator 6 in the scheme of
   the algorithm for programming formulae (section 9).
 
-  Op. 73 compares (C) with zero. IF (C) = 0, exixt from the subroutine takes
+  Op. 73 compares (C) with zero. If (C) = 0, exit from the subroutine takes
   place.
   -}
   operator 73 $ mdo
@@ -987,7 +989,7 @@ arithCoder = do
 
   operator 74 $ do
     tN' cellC cellD
-    tN' counterB1 counterB2
+    ai counterB1 zero counterB2
     chain (op 75)
   {-
   Op. 75 transfers the contents of the next cell of the partial programme to cell
@@ -1005,7 +1007,7 @@ arithCoder = do
 
   operator 76 $ do
     let xf0 = Unknown "0xf0"
-    comp xf0 cellE (op 77) (op 79)
+    comp cellE oneFirstAddr (op 77) (op 79)
   {-
   Op. 77 programmes a single-place operation according to the codes of the
   argument and the sign of the operation located simultaneously in cells D and E.
