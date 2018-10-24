@@ -32,7 +32,6 @@ constantMap =
   , ("econ-current-cell", Raw 0)
   , ("copy of working", Raw 0)
   , ("working-code", Raw 0)
-  , ("&completedOperator", Addr Third completedOperator)
   , ("&completedOperator + 144", Addr Third $ completedOperator `offAddr` 144)
   , ("0005", Raw 0)
   , ("S", Cell)
@@ -55,7 +54,6 @@ pp1_3 = do
   let working       = Unknown "econ-current-cell"
   let endOfOperator = Unknown "end-of-arith-op"
   let zero          = Absolute 0
-  let minusOne      = Unknown "-1"
   let lowerBound    = Unknown "&completedOperator"
   let upperBound    = Unknown "&completedOperator + 144"
 
@@ -79,6 +77,8 @@ pp1_3 = do
     -}
 
     select <- operator 2 $ mdo
+      let minusOne      = thirdAddr
+
       ai select minusOne select
       select <- empty
       chain (op 3)

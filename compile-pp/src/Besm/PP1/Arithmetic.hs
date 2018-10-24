@@ -81,10 +81,14 @@ counterB3 = Unknown "B3"
 symbolCounter :: Address
 symbolCounter = Unknown "symbol counter"
 
+-- The partial programme is apparently only 32 words in size
 partialProgramme :: Address
-partialProgramme = Unknown "arith-buffer"
+partialProgramme = Unknown "arith-buffer" `offAddr` 208
 
-completedOperator = Unknown "arith-buffer" `offAddr` 96
+-- The completed operators block is 208 words in size
+completedOperator = Unknown "arith-buffer"
+
+
 
 -- Apparently the first addresses of the DS store some constants
 
@@ -98,56 +102,53 @@ constantMap =
   , ("B1", Addr First (partialProgramme `offAddr` (-1)))
   , ("B2", Cell)
   , ("B3", Cell)
-  , ("F", Cell)
-  , ("E", Cell)
-  , ("D", Cell)
-  , ("C", Cell)
+  , ("C",  Cell)
+  , ("D",  Cell)
+  , ("E",  Cell)
+  , ("F",  Cell)
+  , ("transfer cell",      Cell) -- this cell is typically used to build up and transfer instructions
+  , ("result-code",        Cell)
+  , ("fixed K",            Cell)
 
   , ("symbol counter", Raw 0)
 
   -- Constant numerical values
-  , ("0xd", Raw 0xd)
-  , ("0xf0", Raw 0xf0)
-  , ("0xb", Raw 0xb)
-  , ("0x1C", Raw 0x1C)
-  , ("0xfd", Raw 0xfd)
-  , ("0xff", Raw 0xff)
+  , ("0xd",      Raw 0xd)
+  , ("0xf0",     Raw 0xf0)
+  , ("0xb",      Raw 0xb)
+  , ("0x1C",     Raw 0x1C)
+  , ("0xfd",     Raw 0xfd)
+  , ("0xff",     Raw 0xff)
   , ("0x800000", Raw 0)
 
+  , ("5",  Raw 5)
+  , ("6",  Raw 6)
+  , ("7",  Raw 7)
+  , ("9",  Raw 9)
   , ("15", Raw 15)
   , ("32", Raw 32)
-  , ("6", Raw 6)
-  , ("9", Raw 9)
-  , ("-1", Raw 0)
-  , ("2 << 22", Raw 0)
 
   -- Template values
-  , ("mult template", Raw 0)
-  , ("AI _ _ 0001",   Template (AI zero zero (Absolute 1)))
-  , ("TN 0002 _ _",   Template (TN (Absolute 2) zero Normalized))
-  , ("- 1101 _ 0001", Template (Sub (Absolute $ unsafeFromBesmAddress "1101") zero (Absolute 1) Normalized))
-  , ("transfer template", Template (TN (Unknown "transfer cell") zero UnNormalized))
+  , ("AI _ _ 0001",       Template (AI  zero zero (Absolute 1)))
+  , ("TN 0002 _ _",       Template (TN  (Absolute 2) zero Normalized))
+  , ("- 1101 _ 0001",     Template (Sub (Absolute $ unsafeFromBesmAddress "1101") zero (Absolute 1) Normalized))
+  , ("transfer template", Template (TN  (Unknown "transfer cell") zero UnNormalized))
   , ("0200 0000", Raw 0)
-  , ("pp-template", Template (TN cellD (Absolute 1) UnNormalized))
-  , (",TN _ cellE", Template (TN zero cellE UnNormalized))
-  , (",TN _ cellD", Template (TN zero cellD UnNormalized))
+  , ("pp-template",  Template (TN cellD (Absolute 1) UnNormalized))
+  , (",TN _ cellE",  Template (TN (Absolute $ 2 ^ 12 - 1) cellE UnNormalized)) -- used in first subroutine for selection (op 71)
+  , (",TN _ cellD",  Template (TN (Absolute            1) cellD UnNormalized)) -- used in the second subroutine for selection (op 72)
+  , (",CE _ -2 _",   Template (Ce (Unknown "transfer cell") (Absolute $ 2 ^ 9 - 2) (Unknown "transfer cell") UnNormalized))
+
   -- Miscellaneous / Unclassified
-  -- , ("blank", Size 1)
+  , ("&completedOperator", Addr Third completedOperator)
   , ("arith-buffer", Size 240)
   , ("&partial-programme", Addr First partialProgramme)
-  , ("transfer cell", Cell)
-  , ("result-code", Cell)
-  , ("inhibition flag", Raw 0)
   , ("comparison value", Raw 0)
-  , ("formed instruction", Raw 0)
-  , ("templateDispatch", Raw 0)
-  , ("fixed K", Raw 0)
-  , ("&K + 160", Raw 0)
-  , ("k comp", Raw 0)
+  , ("templateDispatch", Raw 0) -- this is used to find the template for trig operations
+  , ("max K",     Addr Third partialProgramme)
+  , ("k comp",       Raw 0) -- ,< 0001 builder 112
   , ("trans-opcode", Raw 0)
   , ("first-k-cell", Raw 0)
-  , ("tested-cell", Raw 0)
-  , ("3rd-addr-of-tested", Raw 0)
   , ("CLCC", Raw 0)
   , ("initializer", Raw $ 2 ^ 34 - 1)
   ]
@@ -159,7 +160,7 @@ arithCoder = do
   let two = Unknown "2"
   let six = Unknown "6"
   let eight = Unknown "8"
-
+  let inhibitFlag = Absolute $ unsafeFromBesmAddress "111A" -- apprently is normed 0 and inhibition flag setter
   {-
     """
     Op. 1 sets counter K, counter B1 and the symbol counter to the initial
@@ -292,7 +293,13 @@ arithCoder = do
   -}
   let multTemplate = Unknown "mult template"
 
-  operator 13 $ tN multTemplate cellC -- WRONG
+  operator 13 $ do
+    shift cellC (left 11) cellC
+    shift cellC (left 11) cellD
+    ai    cellC cellD     cellD
+    ce'   cellD (Absolute 3) cellC
+
+    chain (op 14)
   -- insert the quantity from c into both args
   operator 14 $ clcc (op 106)
 
@@ -304,7 +311,9 @@ arithCoder = do
 
   -}
 
-  operator 16 $ tN multTemplate cellC
+  operator 16 $ do
+    ce' cellD (Absolute 3) cellC
+    chain (op 17)
   -- insert previous cell reference and quantity as args
   operator 17 $ clcc (op 106) >> chain (op 18)
   {-
@@ -477,7 +486,7 @@ arithCoder = do
   -}
 
   operator 34 $ do
-    ai counterB1 zero counterB2
+    ai counterB1 oneFirstAddr counterB2
     chain (op 35)
 
   {-
@@ -496,8 +505,8 @@ arithCoder = do
   open-parentheses, addition or subtraction (Yes -- op. 38 functions, NO --
   op.37)
 
-  4 < E  == NO
-  E <= 4 == YES
+  0 < E <= 4 -> YES
+  otherwise -> NO
 
   -}
 
@@ -516,7 +525,7 @@ arithCoder = do
   -}
 
   operator 37 $ do
-    comp (Unknown "&partial-programme") counterB2 (op 35) (op 38)
+    comp counterB2 (Unknown "&partial-programme") (op 38) (op 35)
 
   {-
 
@@ -555,7 +564,7 @@ arithCoder = do
   -}
 
   operator 40 $ mdo
-    comp two cellB (op 30) (op 41) -- cellB > 2
+    comp cellB (Unknown "5") (op 30) (op 41) -- cellB > 2
 
   {-
 
@@ -567,7 +576,7 @@ arithCoder = do
   -}
 
   operator 41 $ do
-    compWord six cellB (op 42) (op 55)
+    comp cellB (Unknown "7") (op 55) (op 42)
   {-
   Op. 42 sets in counter B_2 the address of the start of the partial programme.
 
@@ -577,7 +586,7 @@ arithCoder = do
   -}
 
   operator 42 $ do
-    tN' partialProgramme counterB2
+    sub' (Unknown "&partial-programme") oneFirstAddr counterB2
     chain (op 43)
   {-
 
@@ -602,11 +611,6 @@ arithCoder = do
   Notes
   =====
 
-  Counter K seems to store the address of the last completed operator.
-  This means that if a constant stores the address of the _start_ of the completed
-  operators then we can easily check whether any have been stored.
-
-  Confirmed: the original code stored the start address of the block and then compared K to it.
   -}
 
   operator 44 $ do
@@ -618,12 +622,16 @@ arithCoder = do
   Op. 45 selects the last instruction from the block of the completed operator
   and extracts its third address.
 
+  NOTE
+  ====
+  The transferred instruction is stored in a fixed cell... this means that there is no need
+  to do fancy operations to read the third address out!
   -}
 
   operator 45 $ mdo
     shift counterK (left 22) cellF
-    ai cellF addr addr
-    addr <- bitAnd completedOperator thirdAddr cellF
+    ai addr cellF addr
+    addr <- bitAnd completedOperator thirdAddr cellF -- extract into a template!
 
     chain (op 46)
   {-
@@ -651,11 +659,11 @@ arithCoder = do
     where x is equal to "a" or r.
 
   -}
-  let completedInstr = Unknown "transfer cell" -- cell taht's used to transfer to block 106
+  let completedInstr = Unknown "transfer cell" -- cell that's used to transfer to block 106
 
   operator 47 $ do
     shift cellD (right 22) completedInstr
-    ce completedInstr (Absolute 0xC) completedInstr
+    ce' completedInstr (Absolute 0xC) completedInstr
 
     chain (op 48)
   {-
@@ -711,8 +719,7 @@ arithCoder = do
   isntruction.
   -}
   operator 53 $ do
-    let inhibitFlag = Unknown "inhibition flag"
-    ai completedInstr inhibitFlag completedInstr
+    ai' completedInstr inhibitFlag completedInstr
 
     chain (op 54)
   {-
@@ -785,7 +792,7 @@ arithCoder = do
   -}
 
   operator 59 $ do
-    sub counterB1 one counterB1
+    sub counterB1 oneFirstAddr counterB1
     chain (op 60)
 
   {-
@@ -820,9 +827,9 @@ arithCoder = do
     0000 00 | 000 0000 0010 000 0000 0000 000 0000 0000  = 0x800000
   -}
 
-  operator 61 $ do
-    let aiConstant = Unknown "-1" -- address of cell holding 0x1FFFFF800
+  let aiConstant = Absolute (unsafeFromBesmAddress "110F") -- address of cell holding 0x1FFFFF800
 
+  operator 61 $ do
     ai cellE aiConstant cellE
     chain (op 62)
 
@@ -868,7 +875,6 @@ arithCoder = do
   -}
 
   operator 65 $ do
-    let aiConstant = Unknown "-1"-- address of cell holding 0x1FFFFF800
     ai cellE aiConstant cellE
     chain (op 66)
 
@@ -881,7 +887,7 @@ arithCoder = do
 
   -}
 
-  operator 66 $ do
+  operator 66 $ do -- currently believe this value is unneeded
     let compVal = Unknown "comparison value" --  0x1800000
 
     compWord cellE compVal (op 68) (op 67)
@@ -989,7 +995,7 @@ arithCoder = do
 
   operator 74 $ do
     tN' cellC cellD
-    ai counterB1 zero counterB2
+    ai counterB1 oneFirstAddr counterB2
     chain (op 75)
   {-
   Op. 75 transfers the contents of the next cell of the partial programme to cell
@@ -1006,7 +1012,6 @@ arithCoder = do
   -}
 
   operator 76 $ do
-    let xf0 = Unknown "0xf0"
     comp cellE oneFirstAddr (op 77) (op 79)
   {-
   Op. 77 programmes a single-place operation according to the codes of the
@@ -1023,7 +1028,7 @@ arithCoder = do
   -}
 
   operator 78 $ do
-    sub' counterB1 one counterB1
+    sub' counterB1 oneFirstAddr counterB1
     chain (op 75)
 
   {-
@@ -1048,7 +1053,7 @@ arithCoder = do
   -}
 
   operator 80 $ do
-    ai counterB2 oneFirstAddr counterB3
+    ai counterB2 zero counterB3
     chain (op 81)
   {-
   Op. 81 selects from cell D the code of the first quantity of the programmed
@@ -1066,9 +1071,9 @@ arithCoder = do
   into account the case where the programmed expression consists only of a single
   quantity.
   -}
-  let formedInstruction = Unknown "formed instruction"
+  let formedInstruction = completedInstr
   operator 82 $ do
-    shift cellD (right 22) formedInstruction
+    shift cellD (left 22) formedInstruction
     chain (op 89)
   {-
   Op. 83 selects from cell D the code of the sign of the two-place operation.
@@ -1092,17 +1097,15 @@ arithCoder = do
   first address of the cell. This means that
   -}
 
-  operator 84 $ do
-    let twoShifted = Unknown "2 << 22"
-    sub' cellD twoShifted cellD
-    shift' cellD (left 11) cellD
-
-    ai cellD formedInstruction formedInstruction
+  operator 84 $ mdo
+    shift cellD (right 11) cellD
+    ai (Unknown ",CE _ -2 _") cellD former
+    former <- empty
 
     chain (op 85)
 
   {-
-  Op. 85 selects from cell D the code of the second componenet of the two-place
+  Op. 85 selects from cell D the code of the second component of the two-place
   operation.
   -}
 
@@ -1382,7 +1385,7 @@ arithCoder = do
   -}
 
   operator 108 $ mdo
-    let maxK = Unknown "&K + 160"
+    let maxK = Unknown "max K"
 
     compWord counterK maxK (op 109) addr
 
@@ -1437,7 +1440,7 @@ arithCoder = do
     -}
 
     operator 112 $ mdo
-      let negativeOne = Unknown "-1"
+      let negativeOne = firstAddr
       ai cmp negativeOne cmp
 
       chain (op 113)
@@ -1460,9 +1463,9 @@ arithCoder = do
 
 
     operator 114 $ mdo
-      let lastTested = Unknown "3rd-addr-of-tested"
+      let lastTested = Unknown "scratch-cell-2"
       let scratch    = Unknown "scratch-cell-1"
-      let testedCell = Unknown "tested-cell"
+      let testedCell = Unknown "scratch-cell-3"
 
       shift (op 115) (right 22) testedCell
 

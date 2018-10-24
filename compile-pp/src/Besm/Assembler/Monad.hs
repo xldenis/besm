@@ -424,6 +424,9 @@ zero = Absolute 0
 oneFirstAddr :: Address
 oneFirstAddr = Absolute $ unsafeFromBesmAddress "10B7"
 
+oneSndAddr :: Address
+oneSndAddr = Absolute $ unsafeFromBesmAddress "10B8"
+
 {-| Standard Cells
   These are standard cells that are used as pseudo-registers in BESM code.
 -}

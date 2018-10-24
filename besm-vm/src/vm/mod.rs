@@ -155,7 +155,6 @@ impl<'a> VM<'a> {
         warn!("norm {}", val);
         self.memory.set(res, val.to_bytes())?;
         self.increment_ic();
-
       }
       Sub  { a: l, b: r, c: res, normalize: needs_norm } => {
         let lfloat  = Float::from_bytes(self.memory.get(l)?);
@@ -166,7 +165,6 @@ impl<'a> VM<'a> {
 
         self.memory.set(res, val.to_bytes())?;
         self.increment_ic();
-
       },
       Mult { a: l, b: r, c: res, normalize: needs_norm } => {
         let lfloat  = Float::from_bytes(self.memory.get(l)?);
@@ -177,7 +175,6 @@ impl<'a> VM<'a> {
 
         self.memory.set(res, val.to_bytes())?;
         self.increment_ic();
-
       }
       AddE { a: x, b: y, c: z, normalize: needs_norm } => {
         let lfloat = Float::from_bytes(self.memory.get(x)?);
@@ -190,6 +187,7 @@ impl<'a> VM<'a> {
         // alarm if power is > 31
 
         self.memory.set(z, result.to_bytes())?;
+        self.increment_ic();
       }
       SubE { a: x, b: y, c: z, normalize: needs_norm } => {
         let lfloat = Float::from_bytes(self.memory.get(x)?);
@@ -202,10 +200,43 @@ impl<'a> VM<'a> {
         // alarm if power is > 31
 
         self.memory.set(z, result.to_bytes())?;
+        self.increment_ic();
       }
+      Ce { a: source, b: new_exp, c: target, normalize } => {
+        let mut float = Float::from_bytes(self.memory.get(source)?);
+
+        // The rule is if n >= 0 then new_exp = n, otherwise new_exp = 64 + n
+        let exp = new_exp as i8;
+
+        if exp <= 31 {
+          float.exp = exp;
+        } else if exp < 64 {
+          float.exp = exp - 64;
+        } else {
+          return Err(VMError::OutOfBounds {});
+        }
+
+        if normalize { float.normalize(); }
+
+        self.memory.set(target, float.to_bytes())?;
+        self.increment_ic();
+      }
+      I { a, b, c } => {
+        let float = Float::from_bytes(self.memory.get(a)?);
+
+        let mut mant = Float::new(float.mant, 0);
+        mant.sign = float.sign;
+
+        let mut exp = Float::new(0, float.exp);
+
+        self.memory.set(b, mant.to_bytes())?;
+        self.memory.set(c, exp.to_bytes())?;
+        self.increment_ic();
+      }
+      // TODO: Fix offset since right shift is _negative_
       ShiftAll { a, b, c } => {
         let val = self.memory.get(a)?;
-        let shifted = if b < 64 {
+        let shifted = if b <= 31 {
           val << b
         } else {
           val >> (b - 64)
@@ -270,7 +301,6 @@ impl<'a> VM<'a> {
       JCC => {
         self.active_ic = ActiveIC::Global;
         self.increment_ic();
-
       }
       AICarry { a: p, b: q, c: r } => {
         let left = self.memory.get(p)?;
