@@ -70,7 +70,9 @@ data ConstantInfo a
       references other unkowns / variables. At linking time those constants will be resolved,
       and properly initialized.
   -}
-  | Template (Instr a)
+  | Template  (Instr a)
+  {- | Template values for terminator instructions -}
+  | TemplateT (Term a)
   deriving (Show, Eq, Functor, Traversable, Foldable)
 
 -- | Get the size in cells of a constant
@@ -87,6 +89,7 @@ constantToCell (Addr pos i) = [bitVector . fromIntegral $ i `shift` (offset pos)
         offset Second = 11
         offset Third  = 0
 constantToCell (Template i) = [instToCell $ fmap fromIntegral i]
+constantToCell (TemplateT i) = termToCell $ fmap fromIntegral i
 constantToCell (Cell) = [bitVector 0]
 
 {- |

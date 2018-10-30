@@ -146,14 +146,15 @@ constantMap =
   , ("comparison value", Raw 0)
   , ("templateDispatch", Raw 0) -- this is used to find the template for trig operations
   , ("max K",     Addr Third partialProgramme)
-  , ("k comp",       Raw 0) -- ,< 0001 builder 112
-  , ("trans-opcode", Raw 0)
-  , ("first-k-cell", Raw 0)
+  , (",< 0001 builder 112", TemplateT (CompWord (Absolute 1) (Unknown "scratch-cell-1") (pp12 112) (pp12 116))) -- ,< 0001 builder 112
+  , ("trans-opcode", Cell)
+  , ("first-k-cell", TemplateT (CompWord completedOperator (Unknown "scratch-cell-1") (pp12 112) (pp12 116)))
   , ("CLCC", Raw 0)
   , ("initializer", Raw $ 2 ^ 34 - 1)
   ]
 
 
+pp12 = Procedure "PP-1-2" . op
 
 arithCoder :: Builder Address
 arithCoder = do
@@ -629,9 +630,7 @@ arithCoder = do
   -}
 
   operator 45 $ mdo
-    shift counterK (left 22) cellF
-    ai addr cellF addr
-    addr <- bitAnd completedOperator thirdAddr cellF -- extract into a template!
+    bitAnd (Unknown "transfer cell") thirdAddr cellF
 
     chain (op 46)
   {-
@@ -1425,7 +1424,7 @@ arithCoder = do
   -}
   mdo
     operator 111 $ do
-      let kComp = Unknown "k comp" -- ,< 0001 builder 112
+      let kComp = Unknown ",< 0001 builder 112" -- ,< 0001 builder 112
 
       shift fixedCounter (left 22) cmp
 
@@ -1459,6 +1458,8 @@ arithCoder = do
     Op. 114 verifies if the third address of the next instruction from the block of
     the completed operator coincides with the first or second address of the tested
     instruction (YES -- op. 122 functions, NO -- op. 115).
+
+    HMMMMMMMMMM????????????
     -}
 
 
