@@ -25,9 +25,9 @@ type Label = (String, String)
 readSourceMap :: String -> IO [(Int, Label)]
 readSourceMap mapFile = do
   raw <- readFile mapFile
-  let pairs = sortOn fst . map toPair $ lines raw
+  let pairs = sortOn fst . map (\(k, v) -> (read k, v)) . map toPair $ lines raw
 
-  return $ map (\(k, v) -> (read k, v)) pairs
+  return pairs
 
 
   where
