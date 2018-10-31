@@ -18,7 +18,6 @@ use std::fs::File;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-
 use byteorder::{BigEndian, ReadBytesExt};
 use interface::*;
 use std::iter;
@@ -88,7 +87,7 @@ fn run_with_interface(mut vm: VM) {
 fn trace_execution(mut vm: VM) {
     let mut previous_operator = 0;
     loop {
-
+        if vm.stopped { break; }
         use bit_field::BitField;
         let current_operator = vm.memory.get(vm.next_instr()).unwrap().get_bits(48..64);
 
@@ -123,6 +122,42 @@ fn md_from_file(file: Option<PathBuf>) -> MagDrive {
 
     MagDrive::new(buf)
 }
+
+use std::path::Path;
+use std::ffi::OsStr;
+
+fn is_from_file(path: &Path) -> [u64; 1023] {
+    let mut file = File::open(path).expect("file not found");
+    let mut is_buf = [0u64; 1023];
+
+    match path.extension().and_then(OsStr::to_str) {
+        Some("txt") => {
+            use std::io::BufReader;
+            use std::io::BufRead;
+            let buf = BufReader::new(&file);
+
+            let words: Vec<u64> = buf.lines()
+            .map(|line|
+                line.as_ref().map(|l|
+                    u64::from_str_radix(l, 16).unwrap_or(0)
+                ).unwrap_or(0)
+            ).take(1023)
+            .collect();
+
+            is_buf.copy_from_slice(&words[..]);
+        }
+        Some("bin") => {
+           let words: Vec<u64> = iter::repeat_with(|| file.read_u64::<BigEndian>().unwrap_or(0))
+           .take(1023)
+           .collect();
+
+           is_buf.copy_from_slice(&words[..]);
+       }
+       _ => { panic!("unsupported is file type.");}
+   }
+   is_buf
+}
+
 use log::LevelFilter;
 use tui_logger::*;
 
@@ -133,13 +168,8 @@ fn main() {
     let opt = Opts::from_args();
 
 
-    let mut f = File::open(opt.is_file.clone()).expect("file not found");
-    let words: Vec<u64> = iter::repeat_with(|| f.read_u64::<BigEndian>().unwrap_or(0))
-        .take(1023)
-        .collect();
-
-    let mut is_buf = [0u64; 1023];
-    is_buf.copy_from_slice(&words[..]);
+    let f = Path::new(&opt.is_file);
+    let is_buf = is_from_file(f);
 
     let mut x = [
         md_from_file(opt.md0),
