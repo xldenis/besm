@@ -344,15 +344,41 @@ impl<'a> VM<'a> {
         let left  = Float::from_bytes(self.memory.get(a)?);
         let right = Float::from_bytes(self.memory.get(b)?);
 
-        info!("CMP {} {}", left, right);
+        info!("CMP {:10.5} {:10.5}", left, right);
         let branch = match left.exp.cmp(&right.exp) {
           Ordering::Greater => { left.sign }
           Ordering::Less => { !right.sign }
-          Ordering::Equal => { left.mant < right.mant }
+          Ordering::Equal => { match (left.sign, right.sign) { // want to check left mant < right mant
+            (true, true) => left.mant < right.mant,
+            (true, false) => false,
+            (false, true) => true,
+            (false, false) => right.mant > left.mant
+            } }
         };
 
         if branch {
-          info!("Branching to {} from {}", c, self.next_instr());
+          info!("Branching: {} -> {}", self.next_instr(), c);
+          self.set_ic(c);
+        } else {
+          self.increment_ic();
+        }
+      }
+
+      CompMod { a, b, c } => {
+        use std::cmp::*;
+
+        let left  = Float::from_bytes(self.memory.get(a)?);
+        let right = Float::from_bytes(self.memory.get(b)?);
+
+        let branch = match left.exp.abs().cmp(&right.exp.abs()) {
+          Ordering::Less => { right.mant != 0 }
+          Ordering::Equal   => { left.mant < right.mant }
+          _ => false
+
+        };
+
+        if branch {
+          info!("Branching: {} -> {}", self.next_instr(), c);
           self.set_ic(c);
         } else {
           self.increment_ic();
@@ -364,7 +390,7 @@ impl<'a> VM<'a> {
 
         info!("CMPWD {} {}", left, right);
         if left != right {
-          info!("Branching to {} from {}", c, self.next_instr());
+          info!("Branching {} -> {}", self.next_instr(), c);
           self.set_ic(c);
         } else {
           self.increment_ic();
