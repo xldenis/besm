@@ -140,7 +140,13 @@ use std::fmt;
 impl fmt::Display for Float {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let num = 2.0f64.powf(self.exp as f64 - 32.0) * (self.mant as f64);
-        write!(f, "{}", num)
+
+        let string = match f.precision() {
+            Some(prec) => format!("{:.*}", prec, num),
+            None => format!("{}", num),
+        };
+
+        f.pad_integral(true, "", &string)
     }
 }
 
