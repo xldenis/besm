@@ -91,11 +91,11 @@ emitTerm term = do
   return (currentAddr bb)
 
 -- | Create a named operator block.
-operator :: Int -> Builder a -> Builder Address
+operator :: Int -> Builder a -> Builder a
 operator nm body = do
   bb <- gets currentBlock
   case bb of
-    CurrentBlock (SnocList []) _ _ -> modifyBlock (const $ CurrentBlock mempty (op nm) (op nm)) >> body >> return (op nm)
+    CurrentBlock (SnocList []) _ _ -> modifyBlock (const $ CurrentBlock mempty (op nm) (op nm)) >> body
     CurrentBlock a  _ _ -> emitTerm (Chain (op nm)) >> operator nm body
 
 -- | Create a new anonymous block. The base address will be just be the current adddress, incremented.
@@ -313,7 +313,7 @@ compWord a b c d = emitTerm $ CompWord a b c d
 -}
 
 compMod :: Address -> Address -> Address -> Address -> Builder Address
-compMod a b c d = emitTerm $ CompWord a b c d
+compMod a b c d = emitTerm $ CompMod a b c d
 
 {-|
   Bit-Shifting
