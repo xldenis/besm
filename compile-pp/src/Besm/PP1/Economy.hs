@@ -26,10 +26,10 @@ at any point within the operator.
 
 constantMap =
   [ ("β₁, .., β₁₆", Size 16)
-  , ("tn", Template (TN (Absolute 0) (Unknown "working") UnNormalized)) -- ,TN _  working
+  , ("tn", Template (TN (Absolute 0) working UnNormalized)) -- ,TN _  working
   , ("end-of-arith-op", Raw 0)
   , (",TN buffer _", Template (TN (Unknown "buffer") (Absolute 0) UnNormalized))
-  , ("econ-current-cell", Raw 0)
+  -- , ("econ-current-cell", Cell)
   , ("copy of working", Raw 0)
   , ("working-code", Raw 0)
   , ("&completedOperator + 144", Addr Third $ completedOperator `offAddr` 144)
@@ -40,18 +40,20 @@ constantMap =
   , ("ai _ cellS _", Template (AI (Absolute 0) (Unknown "S") (Absolute 0)))
   , (",TN 116F _", Template (TN (Absolute $ unsafeFromBesmAddress "116F") (Absolute 0) UnNormalized))
   , ("recall-arg", Raw 0)
-  , ("final-store", Raw 0)
+  , ("final-store", Template (AddE (Unknown "S") working zero UnNormalized))  -- ,+Exp cellS currInst _
   , (",TN β₀ βᵢ", Template (TN beta0 (Unknown "βᵢ")  UnNormalized))
   , ("βᵢ", Raw 0)
-  , ("working", Raw 0)
   ]
   where
   completedOperator = Unknown "arith-buffer" `offAddr` 96
   beta0 = Unknown "β₁, .., β₁₆" `offAddr` (negate 1)
 
+working = cellA1
+
 pp1_3 = do
+  let cellA1        = Unknown "A + 1"
   let beta          = Unknown "β₁, .., β₁₆"
-  let working       = Unknown "econ-current-cell"
+  let working       = cellA1 -- Unknown "econ-current-cell"
   let endOfOperator = Unknown "end-of-arith-op"
   let zero          = Absolute 0
   let lowerBound    = Unknown "&completedOperator"
@@ -67,7 +69,8 @@ pp1_3 = do
       let counterK = Unknown "K"
       readMD 4 (Absolute 1) (Absolute 15) beta
 
-      ai tnTemplate counterK endOfOperator
+      shift counterK (left 22) select
+      ai tnTemplate select endOfOperator
       ai endOfOperator one select
 
       chain (op 2)
@@ -78,7 +81,6 @@ pp1_3 = do
 
     select <- operator 2 $ mdo
       let minusOne      = thirdAddr
-
       ai select minusOne select
       select <- empty
       chain (op 3)
@@ -152,12 +154,12 @@ pp1_3 = do
   {-
   Op. 10 examines the contents of cell S. if it contains the conditional code
   of a working cell k', op. 11 functions; in the contrary case control is
-  transferred to the instruction JCC, located before op. 19.
+  transferred to the instruction JCC, located before op. 17.
   -}
 
   operator 10 $ mdo
-    comp cellS lowerBound (op 19) upperComp
-    upperComp <- comp upperBound cellS (op 11) (op 19)
+    comp cellS lowerBound (op 17) upperComp
+    upperComp <- comp upperBound cellS (op 11) (op 17)
     chain (op 11)
   {-
   Op. 11 selects from the block of the completed operators the instruction with
@@ -254,7 +256,7 @@ pp1_3 = do
     ai workingCode cellS cellS
     shift selectNextInstr (right 22) finalStore
 
-    let template = Unknown "final-store" -- ,+Exp cellS currInst _
+    let template = Unknown "final-store" -- ,+Exp cellS working _
     ai template finalStore finalStore
     finalStore <- empty
 
@@ -275,7 +277,6 @@ pp1_3 = do
   -}
 
   mdo
-    let cellA1 = Unknown "A + 1"
     transfer <- operator 19 $ do
       ai selectNextInstr oneFirstAddr transfer
       transfer <- empty
