@@ -247,7 +247,7 @@ impl<'a> VM<'a> {
       }
       Shift { a, b, c } => {
         let val = self.memory.get(a)?;
-        let mut shifted = if b < 64 {
+        let mut shifted = if b < 64 { // this should check <= 31 but first need to fix helpers in compile-pp
           val << b
         } else {
           val >> (b - 64)

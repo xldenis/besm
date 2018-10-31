@@ -2,7 +2,7 @@
 
 A vm for the BESM with debugging capabilities (not yet).
 
-### Usage 
+### Usage
 
 1. Install `rustup`
 2. Run `cargo run [BINARY-IS-BINARY-FILE] --md{0,1,2,3,4}=[BINARY-MD-FILE] --start-address=X`
@@ -33,7 +33,7 @@ legend: ✅ = working instruction, 🐛 = instruction has known bugs, ❌ = inst
 | Div      | ❌ |
 | AddE     | ✅ |
 | SubE     | ✅ |
-| Ce       | ❌ |
+| Ce       | ✅ |
 | Xa       | ❌ |
 | Xb       | ❌ |
 | DivA     | ❌ |
@@ -42,21 +42,21 @@ legend: ✅ = working instruction, 🐛 = instruction has known bugs, ❌ = inst
 | PN       | ❌ |
 | TMin     | ❌ |
 | TMod     | ❌ |
-| TSign    | ❌ |
-| TExp     | ❌ |
+| TSign    | ✅ |
+| TExp     | ✅ |
 | Shift    | 🐛 |
-| ShiftAll | ❌ |
+| ShiftAll | ✅ |
 | AI       | ✅ |
 | AICarry  | ✅ |
-| I        | ❌ |
+| I        | ✅ |
 | Comp     | ✅ |
-| CompWord | ❌ |
-| CompMod  | ❌ |
+| CompWord | ✅ |
+| CompMod  | ✅ |
 | Ma       | 🐛 |
 | Mb       | 🐛 |
 | JCC      | ✅ |
 | CLCC     | ✅ |
 | CCCC     | ✅ |
 | Stop28   | ✅ |
-| LogMult  | ❌ |
+| LogMult  | ✅ |
 | Stop     | ✅ |
