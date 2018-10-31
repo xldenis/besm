@@ -153,7 +153,6 @@ constantMap =
   , ("initializer", Raw $ 2 ^ 34 - 1)
   ]
 
-
 pp12 = Procedure "PP-1-2" . op
 
 arithCoder :: Builder Address
@@ -629,8 +628,10 @@ arithCoder = do
   to do fancy operations to read the third address out!
   -}
 
+  let completedInstr = Unknown "transfer cell" -- cell that's used to transfer to block 106
+
   operator 45 $ mdo
-    bitAnd (Unknown "transfer cell") thirdAddr cellF
+    bitAnd completedInstr thirdAddr completedInstr
 
     chain (op 46)
   {-
@@ -646,7 +647,7 @@ arithCoder = do
 
   -}
   operator 46 $ do
-    comp cellF zero (op 48) (op 47)
+    compWord completedInstr zero (op 48) (op 47)
 
   {-
 
@@ -658,10 +659,9 @@ arithCoder = do
     where x is equal to "a" or r.
 
   -}
-  let completedInstr = Unknown "transfer cell" -- cell that's used to transfer to block 106
 
   operator 47 $ do
-    shift cellD (right 22) completedInstr
+    shift cellD (left 22) completedInstr
     ce' completedInstr (Absolute 0xC) completedInstr
 
     chain (op 48)
@@ -679,7 +679,7 @@ arithCoder = do
 
   let resultCode = Unknown "result-code"
   operator 48 $ do
-    shift cellB (left 11) resultCode
+    shift cellF (right 11) resultCode
 
   {-
   Op. 49 verifies if this code is equal to zero (YES -- op. 50 functions, NO --
@@ -1491,7 +1491,7 @@ arithCoder = do
     -}
 
     cmp <- operator 115 $ do
-      empty
+      comp zero zero (op 112) (op 116) -- put a dummy comparison to make sure assembler lays this out properly!
 
     return ()
 
