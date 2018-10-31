@@ -3,3 +3,5 @@ compile-pp.cabal
 *~
 *.png
 *.sm
+traces/
+optrace
