@@ -131,10 +131,6 @@ impl Interface {
             }
 
             draw(terminal, &vm, &self);
-
-            if vm.stopped {
-                break;
-            }
         }
 
         terminal.show_cursor().unwrap();
