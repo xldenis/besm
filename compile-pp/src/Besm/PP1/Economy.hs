@@ -34,7 +34,7 @@ constantMap =
   , ("0005", Raw 0)
   , ("S", Cell)
   , ("k'", Raw 0)
-  , ("and-template", Raw 0)
+  , ("and-template", Template (LogMult zero thirdAddr cellS)) -- '^ _ thirdAddr cellS'
   , ("recall-arg", Raw 0)
   , (",TN buffer _",  Template (TN completedOperator  zero            UnNormalized))
   , ("tn",            Template (TN zero               working         UnNormalized)) -- ,TN _  working
@@ -205,7 +205,7 @@ pp1_3 = do
       ai selector oneFirstAddr selector -- modifies the instruction at selector: ,TN βᵣ βᵢ => ,TN βᵣ₊₁ βᵢ
       selector <- empty
 
-      chain (op 14)
+      chain (op 15)
       return selector
     {-
     Op. 15 verifies if the cell βᵢ is "marked" Yes -- op. 14 functions, NO -- op.
