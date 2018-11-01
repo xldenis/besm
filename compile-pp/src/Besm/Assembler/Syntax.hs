@@ -230,7 +230,7 @@ normToBit UnNormalized = bit 5
 termToCell :: Term Integer -> [BitVector 39]
 termToCell (Comp      a b c _) = pure $ buildInstruction (bitVector 0x014) (bitVector a) (bitVector b) (bitVector c)
 termToCell (CompWord  a b c _) = pure $ buildInstruction (bitVector 0x034) (bitVector a) (bitVector b) (bitVector c)
-termToCell (CompMod   a b c _) = pure $ buildInstruction (bitVector 0x015) (bitVector 0) (bitVector b) (bitVector c)
+termToCell (CompMod   a b c _) = pure $ buildInstruction (bitVector 0x015) (bitVector a) (bitVector b) (bitVector c)
 termToCell (CCCC          c  ) = pure $ buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector 0) (bitVector c)
 termToCell (CCCCSnd     b c  ) = pure $ buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector b) (bitVector c)
 termToCell (Stop)              = pure $ buildInstruction (bitVector 0x01F) (bitVector 0) (bitVector 0) (bitVector 0)
