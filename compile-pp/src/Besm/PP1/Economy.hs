@@ -26,38 +26,38 @@ at any point within the operator.
 
 constantMap =
   [ ("β₁, .., β₁₆", Size 16)
-  , ("tn", Template (TN (Absolute 0) working UnNormalized)) -- ,TN _  working
   , ("end-of-arith-op", Raw 0)
-  , (",TN buffer _", Template (TN (Unknown "buffer") (Absolute 0) UnNormalized))
   -- , ("econ-current-cell", Cell)
   , ("copy of working", Raw 0)
   , ("working-code", Raw 0)
-  , ("&completedOperator + 144", Addr Third $ completedOperator `offAddr` 144)
+  , ("&completedOperator + 208", Raw 0x3FF) -- Addr Third $ completedOperator `offAddr` 208)
   , ("0005", Raw 0)
   , ("S", Cell)
   , ("k'", Raw 0)
   , ("and-template", Raw 0)
-  , ("ai _ cellS _", Template (AI (Absolute 0) (Unknown "S") (Absolute 0)))
-  , (",TN 116F _", Template (TN (Absolute $ unsafeFromBesmAddress "116F") (Absolute 0) UnNormalized))
   , ("recall-arg", Raw 0)
-  , ("final-store", Template (AddE (Unknown "S") working zero UnNormalized))  -- ,+Exp cellS currInst _
-  , (",TN β₀ βᵢ", Template (TN beta0 (Unknown "βᵢ")  UnNormalized))
+  , (",TN buffer _",  Template (TN completedOperator  zero            UnNormalized))
+  , ("tn",            Template (TN zero               working         UnNormalized)) -- ,TN _  working
+  , (",TN 116F _",    Template (TN thirdAddr          zero            UnNormalized))
+  , (",TN β₀ βᵢ",     Template (TN beta0              (Unknown "βᵢ")  UnNormalized))
+  , ("ai _ cellS _",  Template (AI   zero  cellS   zero             ))
+  , ("final-store",   Template (AddE cellS working zero UnNormalized))  -- ,+Exp cellS currInst _
   , ("βᵢ", Raw 0)
   ]
   where
-  completedOperator = Unknown "arith-buffer" `offAddr` 96
+  completedOperator = Unknown "arith-buffer"
   beta0 = Unknown "β₁, .., β₁₆" `offAddr` (negate 1)
-
-working = cellA1
+  cellS = Unknown "S"
+  working = cellA1
 
 pp1_3 = do
   let cellA1        = Unknown "A + 1"
   let beta          = Unknown "β₁, .., β₁₆"
   let working       = cellA1 -- Unknown "econ-current-cell"
   let endOfOperator = Unknown "end-of-arith-op"
-  let zero          = Absolute 0
   let lowerBound    = Unknown "&completedOperator"
-  let upperBound    = Unknown "&completedOperator + 144"
+  let upperBound    = Unknown "&completedOperator + 208"
+  let cellS = Unknown "S"
 
   {-
   Op. 1 clears cells β₁, .., β₁₆ and forms the initial form of the instructiosn
@@ -71,7 +71,7 @@ pp1_3 = do
 
       shift counterK (left 22) select
       ai tnTemplate select endOfOperator
-      ai endOfOperator one select
+      ai endOfOperator oneFirstAddr select
 
       chain (op 2)
     {-
@@ -80,21 +80,20 @@ pp1_3 = do
     -}
 
     select <- operator 2 $ mdo
-      let minusOne      = thirdAddr
+      let minusOne      = firstAddr
       ai select minusOne select
       select <- empty
       chain (op 3)
 
       return select
 
-    return ()
     {-
     Op. 3 verifies if all instructions have been taken from the block,
     transferring to op. 19 on completion of selection.
     -}
     operator 3 $ do
       let startOfBlock = Unknown ",TN buffer _" -- have we reached the start of the buffer
-      compMod select startOfBlock (op 4) (op 19)
+      compMod select startOfBlock (op 19) (op 4)
 
     return select
   {-
@@ -104,18 +103,25 @@ pp1_3 = do
   let workingCopy = Unknown "copy of working"
   operator 4 $ do
     tN' working workingCopy
-    bitAnd working thirdAddr workingCode
+    bitAnd workingCopy thirdAddr workingCode
     chain (op 5)
 
   {-
   If in the selected address is the "true" (not conditional) code of working cell r + i.
   Op. 5 transfers control to op. 6.
 
+  NOTES
+
+  Objective is to check if its a 'working cell' or a constant value
+  so we need it to be in the range 0x100 - 0x3f0
+
+  This means betas _need_ to be laid out after the completed operator block.
+
   Conditional codes are values in the range of the "buffer" used by PP-1.
   -}
   operator 5 $ mdo
-    compMod workingCode lowerBound c (op 6)
-    c <- block $ compMod upperBound workingCode (op 9) (op 6)
+    compMod workingCode lowerBound (op 9) c -- this actually tests if we have a quantity
+    c <- block $ compMod upperBound workingCode (op 9) (op 6) -- tests if we are in the range of betas
 
     return ()
   {-
@@ -123,7 +129,7 @@ pp1_3 = do
   -}
 
   operator 6 $ mdo
-    ce workingCode (Absolute 0xC) clear
+    ce' workingCode (Absolute 0xC) clear
     clear <- empty
     return ()
   {-
@@ -144,10 +150,9 @@ pp1_3 = do
   passage, the second address, in the second passage, the first address) and
   shifts it to the third address of standard cell S.
   -}
-  let cellS = Unknown "S"
   operator 9 $ do
-    shift working (right 11) working
-    bitAnd working thirdAddr cellS
+    shift' workingCopy (right 11) workingCopy
+    bitAnd workingCopy thirdAddr cellS
 
     chain (op 10)
 
@@ -159,8 +164,8 @@ pp1_3 = do
 
   operator 10 $ mdo
     comp cellS lowerBound (op 17) upperComp
-    upperComp <- comp upperBound cellS (op 11) (op 17)
-    chain (op 11)
+    upperComp <- comp upperBound cellS (op 17) (op 11)
+    return ()
   {-
   Op. 11 selects from the block of the completed operators the instruction with
   addresss k', extracting its third address and sending it to cell S.
@@ -244,16 +249,16 @@ pp1_3 = do
 
     chain (op 18)
   {-
-  Op. 18 placed the contents of the third address of cellS in the first addresss
-  of ths instruction under ivnestigation, sends the investigated instruction
+  Op. 18 placed the contents of the third address of cell S in the first addresss
+  of the instruction under investigation, sends the investigated instruction
   back to the completed operator and then transfers control to op. 2, selecting
   the next instruction.
   -}
 
   operator 18 $ mdo
-    shift cellS (left 22) cellS
-    ai recallArg cellS cellS
-    ai workingCode cellS cellS
+    shift' cellS (left 22) cellS
+    ai cellS recallArg cellS
+    ai cellS workingCode cellS
     shift selectNextInstr (right 22) finalStore
 
     let template = Unknown "final-store" -- ,+Exp cellS working _
