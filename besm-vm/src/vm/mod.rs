@@ -246,16 +246,16 @@ impl<'a> VM<'a> {
         self.increment_ic();
       }
       Shift { a, b, c } => {
-        let val = self.memory.get(a)?;
-        let mut shifted = if b < 64 { // this should check <= 31 but first need to fix helpers in compile-pp
-          val << b
+        let mut float = Float::from_bytes(self.memory.get(a)?);
+
+        if b < 64 { // this should check <= 31 but first need to fix helpers in compile-pp
+          float.mant <<= b
         } else {
-          val >> (b - 64)
+          float.mant >>= (b - 64)
         };
 
-        let res = shifted.set_bits(32..39, val.get_bits(32..39));
-
-        self.memory.set(c, *res)?;
+        float.exp = 0;
+        self.memory.set(c, float.to_bytes())?;
         self.increment_ic();
       }
       TN { a: source, c: target, normalize: needs_norm } => {

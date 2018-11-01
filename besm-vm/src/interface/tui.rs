@@ -121,6 +121,7 @@ fn render_memory_panel<T: Backend>(t: &mut Terminal<T>, tabs: &TabInfo, vm: &VM,
 
         use float::Float;
         let float = Float::from_bytes(instr);
+        let active_bits = instr.get_bits(0..39);
         let style = if vm.next_instr() - 1 == addr as u16 && tabs.selection == 1 {
             &selected_style
         } else {
@@ -131,8 +132,8 @@ fn render_memory_panel<T: Backend>(t: &mut Terminal<T>, tabs: &TabInfo, vm: &VM,
             vec![
                 format!("{:04}", addr + addr_offset),
                 instr_string, format!("{}", float),
-                format!("{:010x}", instr),
-                format!("{:039b}", instr)
+                format!("{:010x}", active_bits),
+                format!("{:039b}", active_bits)
             ].into_iter(),
             style
         )
