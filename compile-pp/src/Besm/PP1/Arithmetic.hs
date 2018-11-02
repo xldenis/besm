@@ -173,7 +173,7 @@ arithCoder = do
   -}
 
   operator 1 $ do
-    tN' (Unknown "&completedOperator") counterK
+    sub' (Unknown "&completedOperator") one counterK
 
     i (Unknown "initializer") (partialProgramme `offAddr` (negate 1)) symbolCounter
     tN' zero cellC
