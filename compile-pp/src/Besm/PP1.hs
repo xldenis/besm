@@ -328,7 +328,7 @@ mp1 = do
       Op. 23 transfers the contesnts of cell A + 1 to the next cell in the arrangement of block.
     -}
     ta <- operator 23 $ do
-      ot <- tN cellA1 (completedInstructions `offAddr` 144) -- use AI to modify
+      ot <- tN' cellA1 (completedInstructions `offAddr` 144) -- use AI to modify
       ai arrangementCounter one arrangementCounter
       ai ot one ot
       retRTC

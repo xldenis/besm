@@ -278,7 +278,6 @@ pp1_3 = do
   NOTE
   ====
 
-  This relies on the idea that
   -}
 
   mdo
@@ -306,4 +305,4 @@ pp1_3 = do
     operator 22 $ do
       callRtc (Procedure "MP-1" (op 21)) (Procedure "MP-1" (op 23))
 
-      chain (op 19)
+      cccc (op 19 `offAddr` 1)
