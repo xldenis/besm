@@ -91,7 +91,7 @@ impl <'a> MagSystem<'a> {
         info!("Wrote cells {}-{} (len {}) to MD-{:?} from IS {}", n1, n2, span, id, c);
       }
       ReadMD(id, n1, c, n2) => {
-        let span = n2 + 1 - n1;
+        let span = (n2 + 1).checked_sub(*n1).ok_or(DriveError::InvalidDriveSpan)?;
 
         let drive = self.mag_drives[id.to_num() as usize];
 
