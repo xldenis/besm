@@ -40,7 +40,7 @@ constantMap =
   , ("max-selected", Raw 96)
   , ("max-written", Raw 144)
   , ("-96-shifted",  Raw $ 0b11110100000 `B.shift` 22)
-  , ("-144-shifted", Raw $ 0b11101110000 `B.shift` 22)
+  , ("-144", Raw $ 0b11101110000)
   ]
 
 
@@ -321,14 +321,14 @@ mp1 = do
 
       ai maxWritten hundredfourtyfour maxWritten -- reset selection counter comp
 
-      ai ta (Unknown "-144-shifted") ta -- reset index op
+      ai ta (Unknown "-144") ta -- reset index op
       chain (op 23)
 
     {-
       Op. 23 transfers the contesnts of cell A + 1 to the next cell in the arrangement of block.
     -}
     ta <- operator 23 $ do
-      ot <- tN cellA1 completedInstructions -- use AI to modify
+      ot <- tN cellA1 (completedInstructions `offAddr` 144) -- use AI to modify
       ai arrangementCounter one arrangementCounter
       ai ot one ot
       retRTC
