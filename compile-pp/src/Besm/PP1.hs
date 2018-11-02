@@ -84,7 +84,8 @@ mp1 = do
     tN' (header `offAddr` 4) selectionCounter
     tN' (header `offAddr` 4) maxSelected
 
-    tN' (header `offAddr` 2) arrangementCounter
+    tN' zero arrangementCounter
+    -- tN' (header `offAddr` 2) arrangementCounter
     tN' (header `offAddr` 2) maxWritten
 
     -- Absolutely way too brittle
@@ -236,7 +237,7 @@ mp1 = do
 
     let buffer = Unknown "buffer"-- Address above the executable, at most we need 256 bytes. (less since we have no constants)
     ma (Absolute $ 0x0100 + 1) (Absolute 0x10) (Absolute 0x10)
-    addr <- mb (Absolute 0)
+    addr <- mb (Absolute 0x10)
 
     let _mp2 = Procedure "MP-2" (op 1)
 
@@ -328,7 +329,7 @@ mp1 = do
       Op. 23 transfers the contesnts of cell A + 1 to the next cell in the arrangement of block.
     -}
     ta <- operator 23 $ do
-      ot <- tN' cellA1 (completedInstructions `offAddr` 144) -- use AI to modify
+      ot <- tN' cellA1 completedInstructions -- use AI to modify
       ai arrangementCounter one arrangementCounter
       ai ot one ot
       retRTC
