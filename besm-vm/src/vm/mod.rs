@@ -251,7 +251,7 @@ impl<'a> VM<'a> {
         if b < 64 { // this should check <= 31 but first need to fix helpers in compile-pp
           float.mant <<= b
         } else {
-          float.mant >>= (b - 64)
+          float.mant >>= b - 64
         };
 
         float.exp = 0;
