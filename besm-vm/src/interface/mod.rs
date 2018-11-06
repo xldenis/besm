@@ -14,6 +14,7 @@ use tui::terminal::Terminal;
 use std::sync::mpsc::*;
 use tui::backend::Backend;
 
+// This should be split into two structures, so that input can fully happen in a separate thread.
 pub struct Interface {
     pub size: Rect,
     pub past_instrs: ArrayDeque<[Instruction; 50], Wrapping>,
@@ -88,7 +89,7 @@ impl Interface {
 
         match evt {
             Key(Char('q')) => {
-
+                self.exiting = true;
             }
             Key(Char(' ')) if self.step_mode == Step => {
                 self.toggle_step();
@@ -98,15 +99,13 @@ impl Interface {
             Key(Char('<')) | Key(Char(',')) => {
                 if self.tabs.prev_tab() {
                     self.pause();
-                    // terminal.resize(self.size).unwrap();
+                    self.size = Rect::default();
                 }
             }
             Key(Char('>')) | Key(Char('.')) => {
                 if self.tabs.next_tab() {
                     self.pause();
-                    // termion appears to have a bug which causes the UI to glitch out until it's resized
-                    // so I just fake a resize to cause it to fix itself.
-                    // terminal.resize(self.size).unwrap();
+                    self.size = Rect::default();
                 }
             }
             Key(Down) => {
@@ -133,6 +132,14 @@ impl Interface {
 
             Key(Char('s')) if self.step_mode == Step => {
                 step_vm(vm, self);
+            }
+            Key(Char('r')) => {
+                for _ in 0..1000 {
+                    step_vm(vm, self);
+                    if vm.stopped {
+                        break;
+                    }
+                }
             }
             _ => {}
         }

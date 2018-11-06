@@ -20,7 +20,7 @@ pub fn setup_input_stream() -> Receiver<Event> {
 
     let tx2 = tx.clone();
     thread::spawn(move || {
-        let speed = time::Duration::from_millis(50);
+        let speed = time::Duration::from_millis(25);
         loop {
             tx2.send(Event::Tick).unwrap();
             thread::sleep(speed);
