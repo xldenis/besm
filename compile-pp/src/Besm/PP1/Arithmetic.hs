@@ -4,6 +4,7 @@ module Besm.PP1.Arithmetic where
 import Besm.Assembler.Monad
 import Besm.Assembler.Syntax
 
+import Data.Bits (shiftL, shiftR)
 {-
   PP-1
 
@@ -88,8 +89,6 @@ partialProgramme = Unknown "arith-buffer" `offAddr` 208
 -- The completed operators block is 208 words in size
 completedOperator = Unknown "arith-buffer"
 
-
-
 -- Apparently the first addresses of the DS store some constants
 
 four' = Unknown "4"
@@ -106,9 +105,9 @@ constantMap =
   , ("D",  Cell)
   , ("E",  Cell)
   , ("F",  Cell)
-  , ("transfer cell",      Cell) -- this cell is typically used to build up and transfer instructions
-  , ("result-code",        Cell)
-  , ("fixed K",            Cell)
+  , ("transfer cell",  Cell) -- this cell is typically used to build up and transfer instructions
+  , ("result-code",    Cell)
+  , ("fixed K",        Cell)
 
   , ("symbol counter", Raw 0)
 
@@ -133,7 +132,7 @@ constantMap =
   , ("TN 0002 _ _",       Template (TN  (Absolute 2) zero Normalized))
   , ("- 1101 _ 0001",     Template (Sub (Absolute $ unsafeFromBesmAddress "1101") zero (Absolute 1) Normalized))
   , ("transfer template", Template (TN  (Unknown "transfer cell") zero UnNormalized))
-  , ("0200 0000", Raw 0)
+  , ("0200 0000",    Raw $ 0x200 `shiftL` 11)
   , ("pp-template",  Template (TN cellD (Absolute 1) UnNormalized))
   , (",TN _ cellE",  Template (TN (Absolute $ 2 ^ 12 - 1) cellE UnNormalized)) -- used in first subroutine for selection (op 71)
   , (",TN _ cellD",  Template (TN (Absolute            1) cellD UnNormalized)) -- used in the second subroutine for selection (op 72)
@@ -144,14 +143,35 @@ constantMap =
   , ("arith-buffer", Size 240)
   , ("&partial-programme", Addr First partialProgramme)
   , ("comparison value", Raw 0)
-  , ("templateDispatch", Raw 0) -- this is used to find the template for trig operations
+  , ("templateDispatch", Template (AI (Unknown "template-table") cellD builder)) -- this is used to find the template for trig operations
   , ("max K",     Addr Third partialProgramme)
-  , (",< 0001 builder 112", TemplateT (CompWord (Absolute 1) (Unknown "scratch-cell-1") (pp12 112) (pp12 116))) -- ,< 0001 builder 112
+  , (",< 0001 builder 112", TemplateT (CompWord (Absolute 1) builder (pp12 112) (pp12 116))) -- ,< 0001 builder 112
   , ("trans-opcode", Cell)
   , ("first-k-cell", TemplateT (CompWord completedOperator (Unknown "scratch-cell-1") (pp12 112) (pp12 116)))
   , ("CLCC", Raw 0)
   , ("initializer", Raw $ 2 ^ 34 - 1)
+  , ("template-table", Table
+    [ Template (CLCC . Absolute $ fromAddr "10E0")
+    , Template (CLCC . Absolute $ fromAddr "10E0")
+    , Template (CLCC . Absolute $ fromAddr "1090")
+    , Template (CLCC . Absolute $ fromAddr "1140")
+    , Template (CLCC . Absolute $ fromAddr "10A2")
+    , Template (CLCC . Absolute $ fromAddr "1150")
+    , Template (CLCC . Absolute $ fromAddr "10D5")
+    , Template (CLCC . Absolute $ fromAddr "10F1")
+    , Template (CLCC . Absolute $ fromAddr "10C0")
+    , Template (CLCC . Absolute $ fromAddr "10C0")
+    , Template (I zero zero zero)
+    , Template (TExp zero zero UnNormalized)
+    , Raw 0
+    , Template (Ce zero zero zero UnNormalized)
+    , Template (Shift zero zero zero)
+    , Template (TSign (Absolute $ fromAddr "1081") zero zero UnNormalized)
+    ])
   ]
+  where
+  builder = (Unknown "scratch-cell-1")
+  fromAddr = unsafeFromBesmAddress
 
 pp12 = Procedure "PP-1-2" . op
 
@@ -986,7 +1006,7 @@ arithCoder = do
   place.
   -}
   operator 73 $ mdo
-    compWord cellC zero (op 74) (RTC (op 79))
+    compWord cellC zero (op 74) (RTC (op 79) `offAddr` (-1))
     return ()
   {-
   Op. 74 sends (C) to cell D and the contents of counter B_1 to the counter B_2.
@@ -1244,7 +1264,7 @@ arithCoder = do
   -}
 
   operator 97 $ do
-    compWord zero cellD (op 98) (op 99)
+    comp zero cellE (op 99) (op 98)
 
   {-
   Op. 98 forms the instruction or dispatching the argument in the form

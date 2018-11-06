@@ -25,8 +25,8 @@ at any point within the operator.
 -}
 
 constantMap =
-  [ ("β₁, .., β₁₆", Size 16)
-  , ("end-of-arith-op", Raw 0)
+  [ -- ("β₁, .., β₁₆", Size 16)
+    ("end-of-arith-op", Raw 0)
   -- , ("econ-current-cell", Cell)
   , ("copy of working", Raw 0)
   , ("working-code", Raw 0)
@@ -46,13 +46,16 @@ constantMap =
   ]
   where
   completedOperator = Unknown "arith-buffer"
-  beta0 = Unknown "β₁, .., β₁₆" `offAddr` (negate 1)
+  partialProgramme = Unknown "arith-buffer" `offAddr` 208
+
+  beta0 = partialProgramme `offAddr` (negate 1) -- β₀
   cellS = Unknown "S"
   working = cellA1
 
 pp1_3 = do
+  let partialProgramme = Unknown "arith-buffer" `offAddr` 208
   let cellA1        = Unknown "A + 1"
-  let beta          = Unknown "β₁, .., β₁₆"
+  let beta          = partialProgramme -- Unknown "β₁, .., β₁₆"
   let working       = cellA1 -- Unknown "econ-current-cell"
   let endOfOperator = Unknown "end-of-arith-op"
   let lowerBound    = Unknown "&completedOperator"
