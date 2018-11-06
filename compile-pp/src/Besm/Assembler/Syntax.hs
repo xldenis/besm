@@ -66,18 +66,21 @@ data ConstantInfo a
     All working cells will be initialized to 0 in the final program.
   -}
   | Cell
-  {- | This is a cell that holds a partial instruction that potentially
+  {-| This is a cell that holds a partial instruction that potentially
       references other unkowns / variables. At linking time those constants will be resolved,
       and properly initialized.
   -}
   | Template  (Instr a)
-  {- | Template values for terminator instructions -}
+  {-| Template values for terminator instructions -}
   | TemplateT (Term a)
+  {-| A series of constants that need to be laid out side-by-side and are treated as a large constant -}
+  | Table [ConstantInfo a]
   deriving (Show, Eq, Functor, Traversable, Foldable)
 
 -- | Get the size in cells of a constant
 constantSize :: ConstantInfo a -> Int
 constantSize (Size i) = i
+constantSize (Table cs) = sum $ map constantSize cs
 constantSize _ = 1
 
 constantToCell :: ConstantInfo Int -> [BitVector 39]
@@ -91,7 +94,7 @@ constantToCell (Addr pos i) = [bitVector . fromIntegral $ i `shift` (offset pos)
 constantToCell (Template i) = [instToCell $ fmap fromIntegral i]
 constantToCell (TemplateT i) = termToCell $ fmap fromIntegral i
 constantToCell (Cell) = [bitVector 0]
-
+constantToCell (Table cs) = concatMap constantToCell cs
 {- |
   To help preserve sanity while writing the compiler, the assembly is structured using
   basic blocks. It turns out that the 'operators' in the compiler almost map 1-1 with

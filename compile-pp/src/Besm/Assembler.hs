@@ -24,7 +24,6 @@ import Besm.Put
 import Data.Either (partitionEithers)
 import Data.Bifunctor (first)
 
-type ConstantDefs = [(String, ConstantInfo Address)] -- map of constant name to value
 type Output = [BitVector 64]
 
 {-
@@ -35,6 +34,7 @@ type Output = [BitVector 64]
 -}
 
 data Alignment = AlignLeft | AlignRight
+  deriving (Show)
 
 data Stage = Input | LaidOut | Relativized | Absolutized
 
@@ -63,26 +63,27 @@ data ModuleAssembly (stage :: Stage) = Mod
   { offsetMap   :: OffsetMap stage
   , relativeMap :: RelativeMap stage
   , constants   :: ConstantMap stage
+  , alignment   :: Alignment
   , procs       :: [Procedure (AddressType stage)]
   }
 
 deriving instance Show (ModuleAssembly 'Absolutized)
 
-assemble :: ConstantDefs -> Alignment -> [Procedure Address] -> Either [String] Output
-assemble defs a = compile defs a >=> pure . render a
+assemble :: ConstantMap Input -> Alignment -> [Procedure Address] -> Either [String] Output
+assemble defs a = compile defs a >=> pure . render
 
-compile :: ConstantDefs -> Alignment -> [Procedure Address] -> Either [String] (ModuleAssembly 'Absolutized)
+compile :: ConstantMap Input -> Alignment -> [Procedure Address] -> Either [String] (ModuleAssembly 'Absolutized)
 compile defs align =
-  pure . Mod () () defs
+  pure . Mod () () defs align
   >=> checkForMissingConstantDefs defs
   >=> pure . layout
   >=> pure . internalizeModule
   >=> relativize
-  >=> pure . absolutize align
+  >=> pure . absolutize
 
   where
 
-  checkForMissingConstantDefs :: ConstantDefs -> ModuleAssembly 'Input -> Either [String] (ModuleAssembly 'Input)
+  checkForMissingConstantDefs :: ConstantMap Input -> ModuleAssembly 'Input -> Either [String] (ModuleAssembly 'Input)
   checkForMissingConstantDefs defs mod = let
     (ms, es) = unzip $ map (missingConstants defs) (procs mod)
     in case (anyMissing ms, allExtra es) of
@@ -97,7 +98,7 @@ compile defs align =
     allExtra :: Eq a => [[a]] -> [a]
     allExtra es = foldl1 intersect es
 
-  missingConstants :: ConstantDefs -> Procedure Address -> ([String], [String])
+  missingConstants :: ConstantMap Input -> Procedure Address -> ([String], [String])
   missingConstants defs proc = let
     templateNeeds = filter (isTemplate . snd) defs >>= toList >>= toList >>= unknowns
     needed = nub $ (blocks proc >>= toList >>= unknowns) ++ templateNeeds
@@ -110,17 +111,23 @@ compile defs align =
 
 -- * Rendering output
 
-debugRender :: Alignment -> ModuleAssembly Absolutized -> IO ()
-debugRender align mod = let
-  (o, dataS) = mapAccumL (\off (s, v) -> (off + constantSize v, (off, s ++ " " ++ show v))) 0 (constants mod)
+debugRender :: ModuleAssembly Absolutized -> IO ()
+debugRender mod = let
+  (o, dataS) = mapAccumL (\off (s, v) -> showConstant off s v) 0 (constants mod)
   text  = procs mod >>= blocks >>= renderBlock
   textS = zip [o..] text
   len = o + length textS
-  offset = case align of
+  offset = case (alignment mod) of
             AlignLeft -> 16
             AlignRight -> 1024 - len
-  in forM_ (dataS ++ textS) $ \(addr, inst) -> putStrLn $ show (addr + offset) ++ ": " ++ inst
+  in forM_ (concat dataS ++ textS) $ \(addr, inst) -> putStrLn $ show (addr + offset) ++ ": " ++ inst
+  where
 
+  showConstant :: Int -> String -> ConstantInfo Int -> (Int, [(Int, String)])
+  showConstant off str (Table cs) = let
+    (off', out) = mapAccumL (\off c -> showConstant off str c) off cs
+    in (off', concat out)
+  showConstant off str cons = (off + constantSize cons, [(off, str ++ " " ++ show cons)])
 
 debugOffsets :: ModuleAssembly Absolutized -> IO ()
 debugOffsets mod = void $ printMap (offsetMap mod)
@@ -142,16 +149,14 @@ termToString (Chain     _) = []
 termToString c = [show c]
 
 -- | Print the hex for a module
-render :: Alignment -> ModuleAssembly Absolutized -> Output
-render a mod = let
+render :: ModuleAssembly Absolutized -> Output
+render mod = let
   textS = zip [1..] (procs mod) >>= uncurry renderProc
   dataS = constants mod >>= \cons -> map (b0 <:>) $ constantToCell (snd cons)
   total = dataS ++ textS
-  in case a of
+  in case (alignment mod) of
     AlignLeft -> (replicate 15 (bitVector 0)) ++ total
     AlignRight -> replicate (1023 - length total) (bitVector 0) ++ total
-
-  -- where
 
 renderProc :: Integer -> Procedure Int -> Output
 renderProc ix proc = let
@@ -162,12 +167,12 @@ renderProc ix proc = let
 -- * Absolutization
 
 -- | Given an alignment for a module, assign concrete addresses to everything.
-absolutize :: Alignment -> ModuleAssembly Relativized -> ModuleAssembly Absolutized
-absolutize align (Mod {..}) = let
+absolutize :: ModuleAssembly Relativized -> ModuleAssembly Absolutized
+absolutize (Mod {..}) = let
   constants' = forgetNames cSize offset segmentOffsets constants
   cSize = sum (map (constantSize . snd) constants')
   (bSize, segmentOffsets) = buildOffsetMap procName (sum . map blockLen . blocks) procs
-  offset = case align of
+  offset = case alignment of
     AlignLeft  -> 0x10 + cSize
     AlignRight -> 1023 - bSize + 1
   in Mod
@@ -240,13 +245,13 @@ relativize (Mod{..}) = do
   relativizeAddr m (Absolute a)   = Right $ Abs a
 
 -- | Build up a map giving the relative offset of every constant and block
-mkRelativizationDict :: ConstantDefs -> [Procedure Address] -> Map Address RelativeAddr
+mkRelativizationDict :: ConstantMap Input -> [Procedure Address] -> Map Address RelativeAddr
 mkRelativizationDict constants procs = let
   constantOffsets = dataOffsets constants
   bbOffsets = procs >>= \proc -> blockOffsets (procName proc) 0 (blocks proc)
   in M.fromList $ bbOffsets ++ constantOffsets
 
-dataOffsets :: [(String, ConstantInfo Address)] -> [(Address, RelativeAddr)]
+dataOffsets :: ConstantMap Input -> [(Address, RelativeAddr)]
 dataOffsets = map (fmap (Rel Data)) . snd . buildOffsetMap (Unknown . fst) (constantSize . snd)
 
 -- | For a procedure, and a starting offset, give the relative address of every operator

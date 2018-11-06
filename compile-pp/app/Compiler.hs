@@ -61,8 +61,8 @@ compileCommand (oFile, smFile) = do
       case oFile of
         Just o -> do
           writeFile o . unlines $
-            render AlignRight mod & (map toHexString)
-        Nothing -> putStrLn . unlines $ render AlignRight mod & (map toHexString)
+            render mod & (map toHexString)
+        Nothing -> putStrLn . unlines $ render mod & (map toHexString)
 
       case smFile of
         Just path -> writeFile path $ renderSourceMap mod
