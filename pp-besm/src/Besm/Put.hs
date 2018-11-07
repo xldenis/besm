@@ -503,14 +503,14 @@ encodeLogicalOp pa opSign (Op x defaultOp branches) following = let
     in Full $ buildInstruction (rangeCode rangeType) (quantityOffsetBits pa lowerBound) (secondBound) (getOperator op)
 
 rangeCode :: RangeType -> BitVector 6
-rangeCode (LeftImproper)      = bitVector 1
-rangeCode (LeftImproperSemi)  = bitVector 2
-rangeCode (RightImproper)     = bitVector 3
-rangeCode (RightImproperSemi) = bitVector 4
-rangeCode (Interval)          = bitVector 8
-rangeCode (SemiInterval)      = bitVector 13
-rangeCode (SemiSegment)       = bitVector 18
-rangeCode (Segment)           = bitVector 19
+rangeCode (RightImproperSemi) = bitVector 1
+rangeCode (Segment)           = bitVector 2
+rangeCode (SemiSegment)       = bitVector 3
+rangeCode (LeftImproper)      = bitVector 4
+rangeCode (RightImproper)     = bitVector 8
+rangeCode (LeftImproperSemi)  = bitVector 13
+rangeCode (SemiInterval)      = bitVector 18
+rangeCode (Interval)          = bitVector 19
 
 arithOpcode :: ArithOperator -> IntermediateValue
 arithOpcode (NLParen n)          = Long (0x0200 + fromIntegral n)

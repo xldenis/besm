@@ -51,14 +51,14 @@ data ComparisonOp
   deriving (Show, Eq)
 
 data Range
-  = LeftImproperInterval      Quantity
-  | LeftImproperSemiInterval  Quantity
-  | RightImproperInterval     Quantity
-  | RightImproperSemiInterval Quantity
-  | Interval      Quantity Quantity
-  | SemiInterval  Quantity Quantity
-  | SemiSegment   Quantity Quantity
-  | Segment       Quantity Quantity
+  = LeftImproperInterval      Quantity -- (-∞, a)
+  | LeftImproperSemiInterval  Quantity -- (-∞, a]
+  | RightImproperInterval     Quantity -- (a, ∞)
+  | RightImproperSemiInterval Quantity -- [a, ∞)
+  | Interval      Quantity Quantity -- (a, b)
+  | SemiInterval  Quantity Quantity -- (a, b]
+  | SemiSegment   Quantity Quantity -- [a, b)
+  | Segment       Quantity Quantity -- [a, b]
   deriving (Show, Eq)
 
 -- TODO: Add parentheses

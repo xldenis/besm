@@ -103,14 +103,14 @@ data LogicalOperator = Op
   } deriving Show
 
 data RangeType
-  = LeftImproper
-  | LeftImproperSemi
-  | RightImproper
-  | RightImproperSemi
-  | Interval
-  | SemiInterval
-  | SemiSegment
-  | Segment
+  = LeftImproper      -- (-∞, a)
+  | LeftImproperSemi  -- (-∞, a]
+  | RightImproper     -- (a, ∞)
+  | RightImproperSemi -- [a, ∞)
+  | Interval          -- (a, b)
+  | SemiInterval      -- (a, b]
+  | SemiSegment       -- [a, b)
+  | Segment           -- [a, b]
   deriving Show
 
 data BlockV
