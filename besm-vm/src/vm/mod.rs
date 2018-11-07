@@ -268,15 +268,17 @@ impl<'a> VM<'a> {
       }
       TExp { a: source, c: target, normalize: needs_norm } => {
         let val = Float::from_bytes(self.memory.get(source)?);
+
         warn!("Transferring exponent from {:?}", val);
 
-        let mut res = Float::from_bytes(val.exp as u64);
-
-        if needs_norm { res.normalize() };
+        let mut res = if needs_norm {
+          Float::from_int(val.exp as u32)
+        } else {
+          Float::from_bytes(val.exp as u64)
+        };
 
         self.memory.set(target, res.to_bytes())?;
         self.increment_ic();
-
       }
       TSign { a: source, b: sign, c: target, normalize: needs_norm } => {
         let mut val = Float::from_bytes(self.memory.get(source)?);
