@@ -63,7 +63,6 @@ constantMap =
   , ("α", Size 4)
   , ("Y", Cell)
   , ("Y'", Cell)
-  , ("<", Raw 0)
   , ("0202", Raw 0x202)
   , ("firstAndSndAddr", Raw 0)
   , ("scratch-cell-1", Cell)
@@ -92,6 +91,8 @@ pp1_1 = do
 
   let purge = callRtc (op 35) (op 45)
 
+  let firstArg  = Unknown "C"
+  let secondArg = Unknown "D"
   {-
 
     Op. 1 forms the constants
@@ -187,26 +188,12 @@ pp1_1 = do
     let template = Unknown "0202"
     tExp' cellA cellY
 
-    comp cellY eight direct inverse
+    ce' template (Absolute 0x14) alpha1
 
+    bitAnd cellA firstAddr firstArg
+    tN' constantX secondArg
 
-    inverse <- block $ do
-      bitAnd cellA firstAddr cellC
-      ai constantX cellC alpha1
-
-      chain direct
-
-    direct <- block $ mdo
-      comp1 <- comp cellY four internal comp2
-      comp2 <- comp eight cellY internal (op 13)
-
-      return comp1
-
-    internal <- block $ do
-      ai' alpha1 template alpha1
-
-      chain (op 13)
-    return ()
+    chain (op 13)
   {-
 
   Op. 13 for y > 8 transfers control to op. 19, forming for this case the
@@ -240,9 +227,7 @@ pp1_1 = do
     comp cellY four (op 15) template -- if Y < 4 then next else apply template
 
     template <- block $ do
-      let compTemplate = Unknown "<" -- cell with just < code
-      ai' alpha1 compTemplate alpha1
-      ai' alpha1 cellB alpha1 -- we stored N in cell B in operator 3x
+      ce' cellB (Absolute 0x14) alpha1
 
       chain (op 15)
 
@@ -276,12 +261,8 @@ pp1_1 = do
   -}
 
   operator 16 $ do
-    shift constantX (left 11) cellC
-    ai alpha1 cellC alpha1
-
-    bitAnd cellA firstAddr cellC
-    shift cellC (left 11) cellC
-    ai alpha1 cellC alpha1
+    shift secondArg (left 11) secondArg
+    shift firstArg (right 11) firstArg
 
     chain (op 17)
 
@@ -306,24 +287,17 @@ pp1_1 = do
 
   -}
   operator 18 $ do
-    ce constantN (Absolute 0x14) alpha1
+    ce' constantN (Absolute 0x14) alpha1
 
     chain (op 19)
 
   {-
   Op. 19 forms the the first comparison.
-
-  NOTES
-  =====
-
-  Uh what?
-
-  Unclear what "forming the first comparison" means!
-
-  I suppose if all the 'preparations' were held in special memory and then added
-  here that could make sense...
   -}
   operator 19 $ do
+    ai alpha1 firstArg alpha1
+    ai alpha1 secondArg alpha1
+
     chain (op 20)
 
   {-
@@ -350,7 +324,7 @@ pp1_1 = do
   -}
 
   operator 22 $ do
-    ce constantN (Absolute 0x1B) alpha1
+    ce' constantN (Absolute 0x1B) alpha1
 
     chain (op 23)
   {-
@@ -409,7 +383,7 @@ pp1_1 = do
   let bVal = Unknown "b"
 
   operator 27 $ do
-    ce cellB (Absolute 0x1b) alpha1
+    ce' cellB (Absolute 0x1b) alpha1
 
     shift constantX (left 11) xVal
     bitAnd cellA secondAddr   bVal
@@ -438,7 +412,7 @@ pp1_1 = do
   operator 29 $ do
     let template = Unknown "0202"
 
-    ce template (Absolute 0x14) alpha1
+    ce' template (Absolute 0x14) alpha1
 
     shift xVal (right 11) xVal
     shift bVal (left  11) bVal
@@ -469,7 +443,7 @@ pp1_1 = do
   Op. 32 constructs the last CCCC.
   -}
   operator 32 $ do
-    ce cellB (Absolute 0x1b) alpha1
+    ce' cellB (Absolute 0x1b) alpha1
 
     chain (op 33)
 
@@ -654,7 +628,7 @@ pp1_1 = do
   in cell α+1
   -}
   operator 7 $ do
-    ce constantN (Absolute 0x1b) alpha1
+    ce' constantN (Absolute 0x1b) alpha1
 
     chain (op 9)
   {-
