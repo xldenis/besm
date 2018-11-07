@@ -57,11 +57,31 @@ impl Float {
         }
     }
 
+    // For now lets not worry about negative numbers
+    pub fn from_int(mut x: u32) -> Float {
+        let mut exp = 0;
+        let mut mant = 0 << 31;
+
+        while x > 0 {
+            mant >>= 1;
+            mant |= (x % 2) << 31;
+
+            exp += 1;
+            x /= 2;
+        }
+
+        Float::new(mant, exp)
+    }
+
     pub fn to_bytes(&mut self) -> u64 {
         let mut bytes: u64 = 0;
         bytes.set_bits(0..32, self.mant.into());
         bytes.set_bit(32, self.sign);
         *bytes.set_bits(33..39, (self.exp & 0b111111) as u64) // oh boy is this correct?
+    }
+
+    pub fn to_float(&self) -> f64 {
+        2.0f64.powf(self.exp as f64 - 32.0) * (self.mant as f64)
     }
 
     pub fn normalize(&mut self) {
@@ -139,7 +159,7 @@ use std::fmt;
 
 impl fmt::Display for Float {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let num = 2.0f64.powf(self.exp as f64 - 32.0) * (self.mant as f64);
+        let num = self.to_float();
 
         let string = match f.precision() {
             Some(prec) => format!("{:.*}", prec, num),
@@ -153,6 +173,13 @@ impl fmt::Display for Float {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn from_int_to_int() {
+        assert_eq!(Float::from_int(4).to_float(), 4f64);
+        assert_eq!(Float::from_int(16).to_float(), 16f64);
+        assert_eq!(Float::from_int(17).to_float(), 17f64);
+    }
 
     #[test]
     fn add_one_and_two() {

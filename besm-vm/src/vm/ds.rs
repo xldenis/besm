@@ -131,13 +131,13 @@ pub static DS : [u64; 384] =
   , 0x0000000000000000
   , 0x0000000000000000
   , 0x0000000280000000 // Address dec: 1153 besm: 1081, value: normalized 1
-  , 0x0000000000000000 // Address dec: 1154 besm: 1082, hyp value: normalized 2
-  , 0x0000000000000000 // Address dec: 1155 besm: 1083, hyp value: normalized 3
+  , 0x0000000480000000 // Address dec: 1154 besm: 1082, hyp value: normalized 2
+  , 0x00000004c0000000 // Address dec: 1155 besm: 1083, hyp value: normalized 3
   , 0x0000000680000000 // Address dec: 1156 besm: 1084, value: normalized 4
-  , 0x0000000000000000
-  , 0x0000000000000000
-  , 0x0000000000000000
-  , 0x0000000000000000
+  , 0x0000000880000000 // Address dec: 1157 besm: 1085, value: normalized 8
+  , 0x0000000000000000 // Address dec: 1158 besm: 1086
+  , 0x0000000000000000 // Address dec: 1159 besm: 1087
+  , 0x0000000a88000000 // Address dec: 1160 besm: 1088, value: normalized 17
   , 0x0000000000000000
   , 0x0000000000000000
   , 0x0000000000000000

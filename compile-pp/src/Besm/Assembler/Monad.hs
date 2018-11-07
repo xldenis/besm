@@ -408,9 +408,21 @@ unity = Absolute $ unsafeFromBesmAddress "1081"
 two :: Address
 two  = Absolute (unsafeFromBesmAddress "1082")
 
+-- | Normalized 3
+three :: Address
+three = Absolute (unsafeFromBesmAddress "1083")
+
 -- | Normalized 4
 four :: Address
 four = Absolute (unsafeFromBesmAddress "1084")
+
+-- | Normalized 8
+eight :: Address
+eight = Absolute (unsafeFromBesmAddress "1085")
+
+-- | Normalized 17
+seventeen :: Address
+seventeen = Absolute (unsafeFromBesmAddress "1088")
 
 zero :: Address
 zero = Absolute 0
