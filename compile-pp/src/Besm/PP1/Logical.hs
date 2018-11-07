@@ -57,7 +57,6 @@ constantMap =
   , ("2", Raw 2)
   , ("3", Raw 3)
   , ("8", Raw 8)
-  , ("18", Raw 18)
   , ("4", Raw 4)
   , ("concluding transfers", Raw 0)
   , ("α", Size 4)
@@ -68,8 +67,6 @@ constantMap =
   , ("scratch-cell-1", Cell)
   , ("scratch-cell-2", Cell)
   , ("scratch-cell-3", Cell)
-  , ("x", Cell)
-  , ("b", Cell)
   ]
 
 pp1_1 = do
@@ -87,7 +84,6 @@ pp1_1 = do
   let cellK3 = alpha4
 
   let cellY = Unknown "Y"
-  let eight = Unknown "8"
 
   let purge = callRtc (op 35) (op 45)
 
@@ -186,7 +182,7 @@ pp1_1 = do
     -}
 
     let template = Unknown "0202"
-    tExp' cellA cellY
+    tExp cellA cellY
 
     ce' template (Absolute 0x14) alpha1
 
@@ -271,7 +267,6 @@ pp1_1 = do
   output direct comparison.
   -}
   operator 17 $ do
-    let three = Unknown "3"
     comp three cellY (op 19) (op 18)
 
   {-
@@ -316,8 +311,7 @@ pp1_1 = do
   -}
 
   operator 21 $ do
-    let eighteen = Unknown "18"
-    comp cellY eighteen (op 24) (op 22)
+    comp cellY seventeen (op 24) (op 22)
 
   {-
   Op. 22 constructs the intermediate CCCC.
@@ -346,7 +340,7 @@ pp1_1 = do
 
   let cellY' = Unknown "Y'"
   operator 24 $ do
-    bitAnd cellY four cellY' -- four == 2^3 * 0.5 this means that the two lowest bits of the exp are 1
+    bitAnd cellA four cellY' -- four == 2^3 * 0.5 this means that the two lowest bits of the exp are 1
     tExp cellY' cellY' -- objective is that cellY' holds a normalized version of those bits.
 
     chain (op 25)
@@ -358,7 +352,7 @@ pp1_1 = do
 
   -}
   operator 25 $ do
-    compWord cellY' unity (op 26) (op 34)
+    comp cellY' unity (op 34) (op 26)
   {-
 
   Op. 26 determines the case y' = 1, for which only the last CCCC remains to
@@ -379,11 +373,11 @@ pp1_1 = do
   for the output direct comparison.
   -}
 
-  let xVal = Unknown "x"
-  let bVal = Unknown "b"
+  let xVal = firstArg
+  let bVal = secondArg
 
   operator 27 $ do
-    ce' cellB (Absolute 0x1b) alpha1
+    ce' cellB (Absolute 0x14) alpha1
 
     shift constantX (left 11) xVal
     bitAnd cellA secondAddr   bVal
