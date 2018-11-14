@@ -160,7 +160,7 @@ mp1 = do
     operator of the open-parentheses of the loop, which
   -}
   operator 8 $ do
-    compWord zero cellA1 (op 10) (op 9)
+    compWord zero cellA1 (op 9) (op 10)
   {-
     Op. 9 transfers to the block of completed instructions.
   -}
@@ -183,7 +183,7 @@ mp1 = do
 
   -}
   operator 11 $ do
-    tN cellA cellA1
+    tN' cellA cellA1
     callRtc (op 21) (op 23)
     chain (op 2)
   {-
@@ -191,7 +191,7 @@ mp1 = do
     address of the last cell of block K.
   -}
   operator 12 $ do
-    tN cellKf (Absolute 0x000C)
+    tN' cellKf (Absolute 0x000C)
     chain (op 13)
 
   {-
