@@ -28,41 +28,112 @@ import Besm.Assembler.Syntax
   Let us consider the functioning of the introductory programme.
 
 -}
+gammaBuilder   = Unknown "ɣ-builder"
+gammaCounter   = Unknown "ɣ-counter"
+gammaTransfer  = Unknown "ɣ-transfer"
+gammaInitial   = Unknown "ɣ-initial"
+gammaTransInit = Unknown "ɣ-trans-initial"
 
--- pp2 = do
+initialI = Unknown "i-initial"
+counterI = Unknown "i"
+
+sixteen = Unknown "16"
+
+
+pp2 = do
   {-
     Op. 1 sets counter gamma, the instruction for transfer to block gamma, and
     counter i in the initial positions.
+  -}
+  operator 1 $ do
+    tN' gammaTransInit gammaTransfer
+    tN' gammaInitial  gammaCounter
 
+    tN' initialI counterI
+
+    chain (op 2)
+
+  {-
   Op. 2 reads block I-PP-2 from MD-4 (block for loop formation).
+  -}
+  operator 2 $ do
+    readMD 4 (Unknown "I-PP-2-start") (Unknown "I-PP-2-end") (Unknown "IS-addr")
+    chain (op 3)
 
-  Op. 3 ttransfers control to block I-PP-2, which processes finformation on
+  {-
+  Op. 3 transfers control to block I-PP-2, which processes information on
   the next parameter i and locates the start of the bloop over this parameter
   in block K.
+  -}
+  operator 3 $ do
+    cccc (Unknown "IS-addr")
 
+    chain (op 4)
+  {-
   Op. 4 selects the next instruction from the working part of the loop over i.
+  -}
+  operator 4 $ do
+    clcc (op 32)
 
+    chain (op 5)
+  {-
   Op. 5 extracts the operation code x from the selected instruction.
+  -}
+  let nextInstr = Unknown "next-instr"
+  let instrExp = Unknown "instr-exp"
+  operator 5 $ do
+    tExp nextInstr instrExp
 
+    chain (op 6)
+  {-
   Op. 6 constructs the initial form of the instruction for extracting the
   addresses from the selected instruction, clears cells p and q in which will
-  be stored the positiv e and negative parts of the address-modification
-  constant, andcell z, in which will be stored the sign of dependence of the
+  be stored the positive and negative parts of the address-modification
+  constant, and cell z, in which will be stored the sign of dependence of the
   instruction on higher-order parameters.
+  -}
 
+  let cellP = Unknown "p"
+  let cellQ = Unknown "q"
+  let cellZ = Unknown "z"
+
+  let selectTemplate = Unknown "select-template"
+  let shiftTemplate = Unknown "shift-template"
+
+
+  operator 6 $ do
+    tN' zero cellP
+    tN' zero cellQ
+    tN' zero cellZ
+
+    tN' selectTemplate (Unknown "_")
+    tN' shiftTemplate (Unknown "_")
+
+    chain (op 7)
+  {-
   Op. 7 transfers control to op. 8 in the case of selection of instruction Ma
   or Mb (x = 016, 017).
+  -}
 
+  operator 7 $ do
+    comp instrExp sixteen (op 8) (op 9)
+
+  {-
   In these instructions only the third address may be variable and
   consequently, it is necessary to examine only this, while the contents of
   the first two addresses cannot be tested.
 
   Op. 8 changes the instruction for extraction of addresses in a corresponding
   manner.
+  -}
 
+  {-
   Op. 9 extracts the next address from the selected instruction, beginning
   with the first, and sets it in the third address of a certain standard cell.
+  -}
+  -- operator 9 $ do
 
+  {-
   Op. 10 comparing the magnitude of the extracted address with the boundaries
   of block V, verifies if this is a variable address ( YES -- op 11, NO -- op
   22).

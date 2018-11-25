@@ -28,6 +28,10 @@ alphaInitial = Unknown "α-initial"
 betaInitial  = Unknown "β-initial"
 gammaInitial = Unknown "ɣ-initial"
 
+alphaTransInitial = Unknown "α-trans-initial"
+betaTransInitial  = Unknown "β-trans-initial"
+gammaTransInitial = Unknown "ɣ-trans-initial"
+
 transferToAlpha = undefined
 
 counterK = Unknown "k"
@@ -82,13 +86,13 @@ pp2_1 = do
 
       -- Reset α and β counters
 
-      tN' zero alphaCounter
-      tN' zero betaCounter
+      tN' alphaInitial alphaCounter
+      tN' betaInitial betaCounter
 
       -- Reset α and β transfer-instructions
 
-      tN' betaInitial betaTransfer
-      tN' alphaInitial alphaTransfer
+      tN' betaTransInitial betaTransfer
+      tN' betaTransInitial alphaTransfer
 
       -- Having "i" in the first address is very useful
       shift counterI (left 22) shiftedI
