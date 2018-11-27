@@ -24,7 +24,6 @@ snoc (SnocList xs) x = SnocList $ x : xs
 getSnocList :: SnocList a -> [a]
 getSnocList = reverse . unSnocList
 
-
 -- * Builder Monad
 -- $builder The Builder monad. It is basically a simplified version of llvm-hs' IRBuilder monad.
 
@@ -111,17 +110,26 @@ block body = do
     CurrentBlock (SnocList []) _ _ -> body >> return (currentAddr bb)
     CurrentBlock a  _ _ -> emitTerm (Chain (currentAddr bb)) >> block body
 
-global :: String -> Constant Address -> Builder ()
-global nm c = modify $ \(BuilderState{..}) ->
-  BuilderState { builtConsts = Def Global nm c : builtConsts, ..}
+global :: String -> Constant Address -> Builder Address
+global nm c = do
+  modify $ \(BuilderState{..}) ->
+    BuilderState { builtConsts = Def Global nm c : builtConsts, ..}
 
-local :: String -> Constant Address -> Builder ()
-local nm c = modify $ \(BuilderState{..}) ->
-  BuilderState { builtConsts = Def Local nm c : builtConsts, ..}
+  return $ Unknown nm
 
-extern :: String -> Builder ()
-extern nm = modify $ \(BuilderState{..}) ->
-  BuilderState { builtConsts = Extern nm : builtConsts, ..}
+local :: String -> Constant Address -> Builder Address
+local nm c = do
+  modify $ \(BuilderState{..}) ->
+    BuilderState { builtConsts = Def Local nm c : builtConsts, ..}
+
+  return $ Unknown nm
+
+extern :: String -> Builder Address
+extern nm = do
+  modify $ \(BuilderState{..}) ->
+    BuilderState { builtConsts = Extern nm : builtConsts, ..}
+
+  return $ Unknown nm
 
 -- | Emit an empty cell. This is used to create space to insert a template.
 empty = emitInstr $ Empty

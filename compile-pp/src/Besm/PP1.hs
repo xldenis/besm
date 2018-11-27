@@ -21,26 +21,7 @@ maxSelected        = Unknown "max-selected"
 maxWritten         = Unknown "max-written"
 
 constantMap =
-  [ ("buffer", Size 240)
-  , ("programme header table", Size 9)
-  , ("selection counter",   Val 0)
-  , ("arrangement counter", Val 0)
-  , ("96",  Raw 96)
-  , ("144", Raw 144)
-  , ("A",     Cell)
-  , ("A + 1", Cell)
-  , ("B",     Cell)
-  , ("0x18", Raw $ 0x18)
-  , ("snd and third addr mask", Raw $ 0b11111111111 `B.shift` 11 B..|. 0b11111111111)
-  , ("K_f",  Raw 0)
-  , ("K_cr", Raw 0)
-  , ("start of 144 block", Val 0)
-  , ("96 shifted", Raw $ 96 `B.shift` 11)
-  , ("144 shifted 2nd addr", Raw $ 144 `B.shift` 11)
-  , ("max-selected", Raw 96)
-  , ("max-written", Raw 144)
-  , ("-96-shifted",  Raw $ 0b11110100000 `B.shift` 22)
-  , ("-144", Raw $ 0b11101110000)
+  [
   ]
 
 
@@ -55,6 +36,27 @@ mp2 = Proc "MP-2" [BB { baseAddress = Operator 1, instrs = [], terminator = Stop
 -}
 
 mp1 = do
+  global "A + 1" Cell
+  local "buffer" (Size 240)
+  local "programme header table" (Size 9)
+  local "selection counter" (  Val 0)
+  local "arrangement counter" (Val 0)
+  local "96" ( Raw 96)
+  local "144" (Raw 144)
+  global "A" Cell
+  global "B" Cell
+  local "0x18" (Raw $ 0x18)
+  local "snd and third addr mask" (Raw $ 0b11111111111 `B.shift` 11 B..|. 0b11111111111)
+  local "K_f" ( Raw 0)
+  local "K_cr" (Raw 0)
+  local "start of 144 block" (Val 0)
+  local "96 shifted" (Raw $ 96 `B.shift` 11)
+  local "144 shifted 2nd addr" (Raw $ 144 `B.shift` 11)
+  local "max-selected" (Raw 96)
+  local "max-written" (Raw 144)
+  local "-96-shifted" ( Raw $ 0b11110100000 `B.shift` 22)
+  local "-144" (Raw $ 0b11101110000)
+
   {-
 
     Op. 1 reads from MD-2 and writes the contents of blocks V and P on MD-1.

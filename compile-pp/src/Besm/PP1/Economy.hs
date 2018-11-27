@@ -24,43 +24,39 @@ r + 1, .., r + i, (i = 16). The β cells act as a bitmap of which cells are occu
 at any point within the operator.
 -}
 
-constantMap =
-  [ -- ("β₁, .., β₁₆", Size 16)
-    ("end-of-arith-op", Raw 0)
-  -- , ("econ-current-cell", Cell)
-  , ("copy of working", Raw 0)
-  , ("working-code", Raw 0)
-  , ("&completedOperator + 208", Raw 0x3FF) -- Addr Third $ completedOperator `offAddr` 208)
-  , ("0005", Raw 0)
-  , ("S", Cell)
-  , ("k'", Raw 0)
-  , ("and-template", Template (LogMult zero thirdAddr cellS)) -- '^ _ thirdAddr cellS'
-  , ("recall-arg", Raw 0)
-  , (",TN buffer _",  Template (TN completedOperator  zero            UnNormalized))
-  , ("tn",            Template (TN zero               working         UnNormalized)) -- ,TN _  working
-  , (",TN 116F _",    Template (TN thirdAddr          zero            UnNormalized))
-  , (",TN β₀ βᵢ",     Template (TN beta0              (Unknown "βᵢ")  UnNormalized))
-  , ("ai _ cellS _",  Template (AI   zero  cellS   zero             ))
-  , ("final-store",   Template (AddE cellS working zero UnNormalized))  -- ,+Exp cellS currInst _
-  , ("βᵢ", Raw 0)
-  ]
-  where
-  completedOperator = Unknown "arith-buffer"
-  partialProgramme = Unknown "arith-buffer" `offAddr` 208
-
-  beta0 = partialProgramme `offAddr` (negate 1) -- β₀
-  cellS = Unknown "S"
-  working = cellA1
-
 pp1_3 = do
+  completedOperator <- extern "arith-buffer"
   let partialProgramme = Unknown "arith-buffer" `offAddr` 208
-  let cellA1        = Unknown "A + 1"
-  let beta          = partialProgramme -- Unknown "β₁, .., β₁₆"
-  let working       = cellA1 -- Unknown "econ-current-cell"
+  let beta0 = partialProgramme `offAddr` (negate 1) -- β₀
+
+  let beta = partialProgramme -- Unknown "β₁, .., β₁₆"
+
+  extern "K"
+
+  cellA1 <- extern "A + 1"
+  let working = cellA1 -- Unknown "econ-current-cell"
+
+  cellS <- local "S" Cell
+  lowerBound <- extern "&completedOperator"
+  upperBound <- local "upperBound" (Raw 0x3FF)
+
+  local ",TN 116F _"   (Template (TN thirdAddr          zero            UnNormalized))
+  local ",TN buffer _" (Template (TN completedOperator  zero            UnNormalized))
+  local ",TN β₀ βᵢ"    (Template (TN beta0              (Unknown "βᵢ")  UnNormalized))
+  local "tn"           (Template (TN zero               working         UnNormalized)) -- ,TN _  working
+  local "ai _ cellS _" (Template (AI   zero  cellS   zero             ))
+  local "and-template" (Template (LogMult zero thirdAddr cellS)) -- '^ _ thirdAddr cellS'
+  local "final-store"  (Template (AddE cellS working zero UnNormalized)) -- ,+Exp cellS currInst _
+
+  local "copy of working" (Raw 0)
+  local "end-of-arith-op" (Raw 0)
   let endOfOperator = Unknown "end-of-arith-op"
-  let lowerBound    = Unknown "&completedOperator"
-  let upperBound    = Unknown "&completedOperator + 208"
-  let cellS = Unknown "S"
+
+  local "0005" (Raw 0)
+  local "k'" (Raw 0)
+  local "recall-arg" (Raw 0)
+  local "working-code" (Raw 0)
+  local "βᵢ" (Raw 0)
 
   {-
   Op. 1 clears cells β₁, .., β₁₆ and forms the initial form of the instructiosn

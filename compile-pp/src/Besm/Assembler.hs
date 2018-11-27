@@ -93,15 +93,15 @@ validateModule mod = let
 checkConstants :: Procedure Address -> Either [String] (Procedure Address)
 checkConstants proc = let
   templateNeeds = constDefs proc >>= templateArgs
-  needed = nub $ (blocks proc >>= toList >>= unknowns) ++ templateNeeds
-  have = map (constantName) (constDefs proc)
+  needed  = nub $ (blocks proc >>= toList >>= unknowns) ++ templateNeeds
+  have    = nub $ map (constantName) (constDefs proc)
   extra   = have \\ needed
   missing = needed \\ have
 
   in if null extra && null missing
   then Right proc
-  else Left $ map (("Missing constants: " ++) . show) missing
-           ++ map (("Extra constants: "  ++) . show) extra
+  else Left $ map (\e -> "Missing constant in " ++ procName proc ++ " : " ++ show e) missing
+           ++ map (\e -> "Extra constants in " ++ procName proc ++ " : "  ++ show e) extra
   where
 
   templateArgs :: ConstantDef Address -> [String]
@@ -113,8 +113,8 @@ checkConstants proc = let
 
 checkExternsDefined :: ModuleAssembly 'Input -> Either [String] (ModuleAssembly 'Input)
 checkExternsDefined mod = let
-  externs = catMaybes $ map externName (procs mod >>= constDefs)
-  globals = catMaybes $ map globalName (procs mod >>= constDefs)
+  externs = nub $ catMaybes $ map externName (procs mod >>= constDefs)
+  globals = nub $ catMaybes $ map globalName (procs mod >>= constDefs)
   in case externs \\ globals of
     [] ->   Right mod
     nms -> Left $ map ("Missing global constant definition: " ++) nms
@@ -133,13 +133,11 @@ checkExternsDefined mod = let
 debugRender :: ModuleAssembly Absolutized -> IO ()
 debugRender mod = let
   (o, dataS) = mapAccumL (\off (s, v) -> showConstant off s v) 0 (globals mod)
-  text  = procs mod >>= blocks >>= renderBlock
-  textS = zip [o..] text
-  len = o + length textS
+  (len,textS) = mapAccumL (\off p -> debugProc off p) o (procs mod)
   offset = case (alignment mod) of
             AlignLeft -> 16
             AlignRight -> 1024 - len
-  in forM_ (concat dataS ++ textS) $ \(addr, inst) -> putStrLn $ show (addr + offset) ++ ": " ++ inst
+  in forM_ (concat $ dataS ++ textS) $ \(addr, inst) -> putStrLn $ show (addr + offset) ++ ": " ++ inst
   where
 
   showConstant :: Int -> String -> Constant Int -> (Int, [(Int, String)])
@@ -147,6 +145,15 @@ debugRender mod = let
     (off', out) = mapAccumL (\off c -> showConstant off str c) off cs
     in (off', concat out)
   showConstant off str cons = (off + constantSize cons, [(off, str ++ " " ++ show cons)])
+
+  debugProc ix proc = let
+    (off, consts) = mapAccumL (\off (Def _ s v) -> showConstant off s v) ix (constDefs proc)
+    textS = zip [off..] $ blocks proc >>= renderBlock
+    (len, _) = last textS
+    in (len, concat consts ++ textS)
+
+  renderBlock :: BB Int -> [String]
+  renderBlock bb = map show (instrs bb) ++ termToString (terminator bb)
 
 debugOffsets :: ModuleAssembly Absolutized -> IO ()
 debugOffsets mod = void $ printMap (offsetMap mod)
@@ -159,8 +166,6 @@ renderSourceMap mod = let
   flippedList =  M.toAscList $ offsetMap mod
   in unlines $ map (\(v, k) -> show k ++ " " ++ formatAddr v) flippedList
 
-renderBlock :: BB Int -> [String]
-renderBlock bb = map show (instrs bb) ++ termToString (terminator bb)
 
 termToString :: Term Int -> [String]
 termToString (RetRTC a) = [show $ AI 0b10100001111 (a+1) (a+1), "zero"]
@@ -250,9 +255,10 @@ relativize (Mod{..}) = do
   relativizeProc dict proc = do
     relativized <- unzipEithers $ map (traverse (relativizeAddr dict)) (blocks proc)
 
+    constDefs <- unzipEithers $ map (traverse (relativizeAddr dict)) (constDefs proc)
     pure $ proc
       { blocks = relativized
-      , constDefs = []
+      , constDefs = constDefs
       }
 
   relativizeConstants :: Map Address RelativeAddr -> GlobalMap LaidOut -> Either [String] (GlobalMap Relativized)
@@ -281,7 +287,8 @@ mkRelativizationDict constants procs = let
   constantOffsets = dataOffsets constants
   bbOffsets = procs >>= \proc -> let
     (o, constOffset) = buildOffsetMap (Unknown . constantName) (constantSize . fromDef) (constDefs proc)
-    in (map (fmap (Rel Data)) constOffset) ++ blockOffsets (procName proc) o (blocks proc)
+    nm = procName proc
+    in (map (fmap (Rel (Text nm))) constOffset) ++ blockOffsets nm o (blocks proc)
   in M.fromList $ bbOffsets ++ constantOffsets
 
 dataOffsets :: GlobalMap Input -> [(Address, RelativeAddr)]
@@ -377,15 +384,23 @@ layout (Mod {..}) = Mod
 
 layoutConstants' :: [ConstantDef a] -> [ConstantDef a]
 layoutConstants' constants = let
-  (cells, rem)       = partition (isCell . def) constants
+  (_, locals)        = partition (isGlobal) constants
+  (cells, rem)       = partition (isCell . def) locals
   (blocks, rem')     = partition (isSize . def) rem
   (templates, rem'') = partition (isTemplate . def) rem'
-  in cells ++ blocks ++ templates ++ (sortOn constantName rem'')
+  (_, rem''')        = partition (isExtern) rem''
+  in cells ++ blocks ++ templates ++ (sortOn constantName rem''')
 
   where
 
+  isGlobal (Def Global _ _) = True
+  isGlobal _ = False
+
   def (Def _ _ c) = Just c
   def _ = Nothing
+
+  isExtern (Extern _) = True
+  isExtern _ = False
 
   isCell (Just Cell) = True
   isCell _ = False

@@ -44,113 +44,53 @@ import Data.Bits (shiftL, shiftR)
   Symbol Counter is used in successive extraction of the codes of symbols from lines of information.
 -}
 
-cellC :: Address
-cellC = Unknown "C"
 
-cellD :: Address
-cellD = Unknown "D"
+pp12 = Procedure "PP-1-2" . op
 
-cellE :: Address
-cellE = Unknown "E"
+arithCoder :: Builder Address
+arithCoder = do
+   -- The completed operators block is 208 words in size
+  completedOperator <- global "arith-buffer" (Size 240)
 
--- Other standard cells (16 standard cells total)
+  -- The partial programme is apparently only 32 words in size
+  let partialProgramme = Unknown "arith-buffer" `offAddr` 208
 
-cellF :: Address
-cellF = Unknown "F"
+  cellA <- extern "A"
+  cellB <- extern "B"
+  cellC <- global "C"  Cell
+  cellD <- global "D"  Cell
+  cellE <- local "E"  Cell
+  cellF <- local "F"  Cell
 
--- Counters
+  -- Counters
+  counterK <- global "K"  (Addr Third completedOperator)
+  counterB1 <- local "B1" (Addr First (partialProgramme `offAddr` (-1)))
+  counterB2 <- local "B2" Cell
+  counterB3 <- local "B3" Cell
+  symbolCounter <- local "symbol counter" (Raw 0)
 
-counterK :: Address
-counterK = Unknown "K"
 
-{-
-  Based off contextual information, the counters B_1, B_2, and B_3 each store
-  addresses that refer to locations of the partial programme.
+  -- Apparently the first addresses of the DS store some constants
 
-  Ref: Op. 42
--}
+  let four' = Unknown "4"
 
-counterB1 :: Address
-counterB1 = Unknown "B1"
+  let x1c = Unknown "0x1C"
 
-counterB2 :: Address
-counterB2 = Unknown "B2"
+  let fromAddr = unsafeFromBesmAddress
+  let builder = Unknown "scratch-cell-1"
 
-counterB3 :: Address
-counterB3 = Unknown "B3"
+  extern "scratch-cell-1"
+  extern "scratch-cell-2"
+  extern "scratch-cell-3"
 
-symbolCounter :: Address
-symbolCounter = Unknown "symbol counter"
+  global "&completedOperator" (Addr Third completedOperator)
+  local "&partial-programme" (Addr First partialProgramme)
+  local "max K" (Addr Third partialProgramme)
+  local "comparison value" (Raw 0)
+  local "CLCC" (Raw 0)
+  local "initializer" (Raw $ 2 ^ 34 - 1)
 
--- The partial programme is apparently only 32 words in size
-partialProgramme :: Address
-partialProgramme = Unknown "arith-buffer" `offAddr` 208
-
--- The completed operators block is 208 words in size
-completedOperator = Unknown "arith-buffer"
-
--- Apparently the first addresses of the DS store some constants
-
-four' = Unknown "4"
-
-x1c = Unknown "0x1C"
-
-constantMap =
-  -- Working cells.
-  [ ("K",  Addr Third completedOperator)
-  , ("B1", Addr First (partialProgramme `offAddr` (-1)))
-  , ("B2", Cell)
-  , ("B3", Cell)
-  , ("C",  Cell)
-  , ("D",  Cell)
-  , ("E",  Cell)
-  , ("F",  Cell)
-  , ("transfer cell",  Cell) -- this cell is typically used to build up and transfer instructions
-  , ("result-code",    Cell)
-  , ("fixed K",        Cell)
-
-  , ("symbol counter", Raw 0)
-
-  -- Constant numerical values
-  , ("0xd",      Raw 0xd)
-  , ("0xf0",     Raw 0xf0)
-  , ("0xb",      Raw 0xb)
-  , ("0x1C",     Raw 0x1C)
-  , ("0xfd",     Raw 0xfd)
-  , ("0xff",     Raw 0xff)
-  , ("0x800000", Raw 0)
-
-  , ("5",  Raw 5)
-  , ("6",  Raw 6)
-  , ("7",  Raw 7)
-  , ("9",  Raw 9)
-  , ("15", Raw 15)
-  , ("32", Raw 32)
-
-  -- Template values
-  , ("AI _ _ 0001",       Template (AI  zero zero (Absolute 1)))
-  , ("TN 0002 _ _",       Template (TN  (Absolute 2) zero Normalized))
-  , ("- 1101 _ 0001",     Template (Sub (Absolute $ unsafeFromBesmAddress "1101") zero (Absolute 1) Normalized))
-  , ("transfer template", Template (TN  (Unknown "transfer cell") zero UnNormalized))
-  , ("0200 0000",    Raw $ 0x200 `shiftL` 11)
-  , ("pp-template",  Template (TN cellD (Absolute 1) UnNormalized))
-  , (",TN _ cellE",  Template (TN (Absolute $ 2 ^ 12 - 1) cellE UnNormalized)) -- used in first subroutine for selection (op 71)
-  , (",TN _ cellD",  Template (TN (Absolute            1) cellD UnNormalized)) -- used in the second subroutine for selection (op 72)
-  , (",CE _ -2 _",   Template (Ce (Unknown "transfer cell") (Absolute $ 2 ^ 9 - 2) (Unknown "transfer cell") UnNormalized))
-
-  -- Miscellaneous / Unclassified
-  , ("&completedOperator", Addr Third completedOperator)
-  , ("arith-buffer", Size 240)
-  , ("&partial-programme", Addr First partialProgramme)
-  , ("comparison value", Raw 0)
-  , ("templateDispatch", Template (AI (Unknown "template-table") cellD builder)) -- this is used to find the template for trig operations
-  , ("max K",     Addr Third partialProgramme)
-  , (",< 0001 builder 112", TemplateT (CompWord (Absolute 1) builder (pp12 112) (pp12 116))) -- ,< 0001 builder 112
-  , ("trans-opcode", Cell)
-  , ("first-k-cell", TemplateT (CompWord completedOperator (Unknown "scratch-cell-1") (pp12 112) (pp12 116)))
-  , ("CLCC", Raw 0)
-  , ("initializer", Raw $ 2 ^ 34 - 1)
-  , ("template-table", Table
+  local "template-table" $ Table
     [ Template (CLCC . Absolute $ fromAddr "10E0")
     , Template (CLCC . Absolute $ fromAddr "10E0")
     , Template (CLCC . Absolute $ fromAddr "1090")
@@ -167,16 +107,49 @@ constantMap =
     , Template (Ce zero zero zero UnNormalized)
     , Template (Shift zero zero zero)
     , Template (TSign (Absolute $ fromAddr "1081") zero zero UnNormalized)
-    ])
-  ]
-  where
-  builder = (Unknown "scratch-cell-1")
-  fromAddr = unsafeFromBesmAddress
+    ]
 
-pp12 = Procedure "PP-1-2" . op
+  local "0200 0000" (   Raw $ 0x200 `shiftL` 11)
 
-arithCoder :: Builder Address
-arithCoder = do
+   -- Template values
+  local "templateDispatch" (Template (AI (Unknown "template-table") cellD builder)) -- this is used to find the template for trig operations
+  local "first-k-cell"      (TemplateT (CompWord completedOperator (Unknown "scratch-cell-1") (pp12 112) (pp12 116)))
+  local ",< 0001 builder 112" (TemplateT (CompWord (Absolute 1) builder (pp12 112) (pp12 116))) -- ,< 0001 builder 112
+  local "AI _ _ 0001"       (Template (AI  zero zero (Absolute 1)))
+  local "TN 0002 _ _"       (Template (TN  (Absolute 2) zero Normalized))
+  local "- 1101 _ 0001"     (Template (Sub (Absolute $ unsafeFromBesmAddress "1101") zero (Absolute 1) Normalized))
+  local "transfer template" (Template (TN  (Unknown "transfer cell") zero UnNormalized))
+  local "pp-template"       (Template (TN cellD (Absolute 1) UnNormalized))
+  local ",TN _ cellE"       (Template (TN (Absolute $ 2 ^ 12 - 1) cellE UnNormalized)) -- used in first subroutine for selection (op 71)
+  local ",TN _ cellD"       (Template (TN (Absolute            1) cellD UnNormalized)) -- used in the second subroutine for selection (op 72)
+  local ",CE _ -2 _"        (Template (Ce (Unknown "transfer cell") (Absolute $ 2 ^ 9 - 2) (Unknown "transfer cell") UnNormalized))
+
+  -- Constant numerical values
+  local "0xd"       (Raw 0x0d)
+  local "0xf0"      (Raw 0xf0)
+  local "0xb"       (Raw 0x0b)
+  local "0x1C"      (Raw 0x1C)
+  local "0xfd"      (Raw 0xfd)
+  local "0xff"      (Raw 0xff)
+  local "0x800000"  (Raw 0)
+
+  local "5"         (Raw 5)
+  local "6"         (Raw 6)
+  local "7"         (Raw 7)
+  local "9"         (Raw 9)
+  local "15"        (Raw 15)
+  local "32"        (Raw 32)
+  local "2" (Raw 2)
+  local "3" (Raw 3)
+  local "8" (Raw 8)
+  local "4" (Raw 4)
+
+  local "trans-opcode" (Cell)
+
+  local "transfer cell" Cell -- this cell is typically used to build up and transfer instructions
+  local "result-code"   Cell
+  local "fixed K"       Cell
+
   let two = Unknown "2"
   let six = Unknown "6"
   let eight = Unknown "8"

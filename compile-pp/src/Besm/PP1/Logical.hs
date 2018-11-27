@@ -51,27 +51,25 @@ import qualified Data.Bits as B (shift)
 
 cellC = Unknown "C"
 
-constantMap =
-  [ ("constant-x", Raw 0)
-  , ("constant-n", Raw 0)
-  , ("2", Raw 2)
-  , ("3", Raw 3)
-  , ("8", Raw 8)
-  , ("4", Raw 4)
-  , ("concluding transfers", Raw 0)
-  , ("α", Size 4)
-  , ("Y", Cell)
-  , ("Y'", Cell)
-  , ("0202", Raw 0x202)
-  , ("firstAndSndAddr", Raw 0)
-  , ("scratch-cell-1", Cell)
-  , ("scratch-cell-2", Cell)
-  , ("scratch-cell-3", Cell)
-  ]
-
 pp1_1 = do
-  let constantX = Unknown "constant-x"
-  let constantN = Unknown "constant-n"
+  extern "A"
+  extern "B"
+  extern "C"
+  extern "D"
+  extern "A + 1"
+
+  constantX <- local "constant-x" Cell
+  constantN <- local "constant-n" Cell
+
+  local "concluding transfers" (Raw 0)
+  local "α" (Size 4)
+  local "Y" (Cell)
+  local "Y'" (Cell)
+  local "0202" (Raw 0x202)
+  local "firstAndSndAddr" (Raw 0)
+  global "scratch-cell-1" (Cell)
+  global "scratch-cell-2" (Cell)
+  global "scratch-cell-3" (Cell)
 
   let alpha1 = Unknown "α" `offAddr` 0
   let alpha2 = Unknown "α" `offAddr` 1
