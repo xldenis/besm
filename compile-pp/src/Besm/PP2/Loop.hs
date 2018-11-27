@@ -11,8 +11,9 @@ import           Besm.Assembler.Syntax
 
 cellU = Unknown "U"
 cellV = Unknown "V"
+cellS = Unknown "S"
 
-alphaBuilder = Unknown "α-builder"
+alphaBuilder = Unknown "α-builder" -- cell from which a value is transferred
 betaBuilder  = Unknown "β-builder"
 gammaBuilder = Unknown "ɣ-builder"
 
@@ -20,7 +21,7 @@ alphaCounter = Unknown "α-counter"
 betaCounter  = Unknown "β-counter"
 gammaCounter = Unknown "ɣ-counter"
 
-alphaTransfer = Unknown "α-transfer"
+alphaTransfer = Unknown "α-transfer" -- address where the transfer to alpha instruction is
 betaTransfer  = Unknown "β-transfer"
 gammaTransfer = Unknown "ɣ-transfer"
 
@@ -285,14 +286,56 @@ pp2_1 = do
     │     │      │ "k"  │      │
     └─────┴──────┴──────┴──────┘
   -}
+  let i0 = Unknown "i_0"
+  let a  = Unknown "a"
+  let j  = Unknown "j"
+  let j' = Unknown "j'"
+  let k  = Unknown "k"
 
+  let iSigma = Unknown "i_sigma"
+
+  let firstHalf = Unknown "first-half"
+  let secondHalf = Unknown "second-half"
+  let firstParamSelect = Unknown ",TN _ firstHalf"
+
+  operator 15 $ mdo
+    ai firstParamSelect iSigma mkFirstHalf -- ,TN _ firstHalf
+    mkFirstHalf <- empty
+
+    ai mkFirstHalf oneFirstAndThird mkSecondHalf -- +1 _ +1
+    mkSecondHalf <- empty
+
+    bitAnd firstHalf firstAddr i0
+
+    bitAnd firstHalf secondAddr a
+    shift a (left 11) a
+
+    bitAnd secondHalf secondAddr j
+    shift j (left 11) j'
+
+    bitAnd secondHalf thirdAddr k
+    shift k (left 11) k
+
+    chain (op 16)
   {-
   Op. 16 refers to op. 17 if "k"= 0 and to op. 23 if "k" != 0
+  -}
+  operator 16 $ do
+    compMod oneSndAddr k (op 23) (op 17)
 
-  Op. 17 refers to op. 18 if "A"=0 and to op. 21 if "A" != 0
+  {-
+  Op. 17 refers to op. 18 if "A" = 0 and to op. 21 if "A" != 0
+  -}
+  operator 17 $ do
+    compMod oneFirstAddr a (op 21) (op 18)
 
+  {-
   Op. 18 refers to op. 19 if "i0" = 0, and to op. 20 if "i0" != 0.
+  -}
+  operator 18 $ do
+    compMod oneFirstAddr i0 (op 20) (op 19)
 
+  {-
   Op. 19 forms the instruction
 
     ┌─────┬──────┬──────┬──────┐
@@ -300,7 +343,13 @@ pp2_1 = do
     └─────┴──────┴──────┴──────┘
 
   and sets it in the standard cell S.
+  -}
+  operator 19 $ do
+    ce j (Absolute 0x14) cellS
 
+    chain (op 32)
+
+  {-
   Op. 20 forms the instruciton:
 
     ┌─────┬──────┬──────┬──────┐
@@ -308,7 +357,13 @@ pp2_1 = do
     └─────┴──────┴──────┴──────┘
 
   and sets it in the standard cell S.
+  -}
+  operator 20 $ do
+    ai i0 j cellS
+    ce cellS (Absolute 0x1) cellS
 
+    chain (op 32)
+  {-
   Op. 21 forms the instruction:
 
     ┌─────┬──────┬──────┬──────┐
@@ -316,19 +371,46 @@ pp2_1 = do
     └─────┴──────┴──────┴──────┘
 
   and sets it in cell S.
+  -}
+  operator 21 $ do
+    ai a j cellS
+    ce cellS (Absolute 0x3) cellS
 
+    chain (op 22)
+
+  {-
   Op. 22 refers to op. 32 if "i0" = 0 and to op. 31 if "i0" != 0.
-
+  -}
+  operator 22 $ do
+    compMod oneFirstAddr i0 (op 31) (op 32)
+  {-
   Op. 23 according to information on i_sigma, forms the constant
 
     ┌─────┬──────┬──────┬──────┐
     │     │ "B"  │      │      │
     └─────┴──────┴──────┴──────┘
+  -}
 
+  let b = Unknown "b"
+
+  operator 23 $ do
+    shift iSigma (left 22) b
+
+    chain (op 24)
+
+  {-
   Op. 24 refers to op. 25 if "A" = 0 and to op. 28 if "A" != 0
+  -}
+  operator 24 $ do
+    compMod oneFirstAddr a (op 28) (op 25)
 
+  {-
   Op. 25 refers to op. 26 if "B" = 0 and to op. 27 if "B" != 0
+  -}
+  operator 25 $ do
+    compMod oneFirstAddr b (op 27) (op 26)
 
+  {-
   Op. 26 forms the instruction
 
     ┌─────┬──────┬──────┬──────┐
@@ -336,7 +418,14 @@ pp2_1 = do
     └─────┴──────┴──────┴──────┘
 
   and sets it in cell S.
+  -}
+  operator 26 $ do
+    ai j k cellS
+    ce cellS (Absolute 1) cellS
 
+    chain (op 22)
+
+  {-
   Op. 27 forms the instruction (rho_2 = 0001, rho_1 = 0002)
 
     ┌─────┬──────┬──────┬──────┐
@@ -350,18 +439,51 @@ pp2_1 = do
     └─────┴──────┴──────┴──────┘
 
   and transfers it to cell s.
+  -}
+  let template1 = Unknown "x _ _ 0001"
+  let template2 = Unknown "+ 0001 _ _"
+  operator 27 $ do
+    ai b k alphaBuilder
+    ai template1 alphaBuilder alphaBuilder
 
+    clcc alphaTransfer
+
+    ai template2 j cellS
+
+    chain (op 22)
+
+  {-
   Op. 28 refers to op. 29 if "B" = 0, and to op. 30 if "B" != 0.
+  -}
+  operator 28 $do
+    compMod oneFirstAddr b (op 30) (op 29)
 
+  {-
   Op. 29 forms the instruction
 
     ┌─────┬──────┬──────┬──────┐
     │ X   │ "A"  │ "j"  │ 0001 │
     └─────┴──────┴──────┴──────┘
 
-  transfers it to block alpha, constructs the instruction and sets it in cell
-  S.
+  transfers it to block alpha, constructs the instruction
 
+    ┌─────┬──────┬──────┬──────┐
+    │ +   │ 0001 │ "A"  │      │
+    └─────┴──────┴──────┴──────┘
+
+  and sets it in cell S.
+  -}
+  operator 29 $ do
+    ai a j alphaBuilder
+    ai template1 alphaBuilder alphaBuilder -- x _ _ 0001
+
+    clcc alphaTransfer
+
+    ai template2 a cellS -- + 0001 _ _
+
+    chain (op 22)
+
+  {-
   Op. 30 forms the instruction
 
     ┌─────┬──────┬──────┬──────┐
@@ -379,7 +501,24 @@ pp2_1 = do
     ┌─────┬──────┬──────┬──────┐
     │ +   │ 0001 │ 0002 │      │
     └─────┴──────┴──────┴──────┘
+  -}
+  let template3 = Unknown "x _ _ 0002"
+  let template4 = Unknown "+ 0001 0002"
+  operator 30 $ do
+    ai b k alphaBuilder
+    ai template3 alphaBuilder alphaBuilder -- x _ _ 0002
 
+    clcc alphaTransfer
+
+    ai a j alphaBuilder
+    ai template1 alphaBuilder alphaBuilder -- x _ _ 0001
+
+    clcc alphaTransfer
+
+    tN' template4 cellS -- + 0001 0002 _
+
+    chain (op 22)
+  {-
   Op. 31 adds 0001 to the third address of the instruction standing in cell S,
   transfers the constructed instruction to block alpha and then forms the
   instruction
@@ -389,8 +528,25 @@ pp2_1 = do
     └─────┴──────┴──────┴──────┘
 
   and sets in cell S.
+  -}
 
+  let template5 = Unknown "+ _ 0001 _"
+
+  operator 31 $ do
+    add' unity cellS cellS
+
+    clcc alphaTransfer
+
+    ai template5 i0 cellS -- + _ 0001 _
+
+    chain (op 32)
+
+  {-
   Op. 32 adds (t) to the instruction standing in cell S and transfers the
   constructed instruction to block alpha.
 
   -}
+
+  operator 32 $ do
+    add' cellS cellT cellS
+    clcc alphaTransfer
