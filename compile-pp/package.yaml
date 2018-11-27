@@ -53,3 +53,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - compile-pp
+    - hspec

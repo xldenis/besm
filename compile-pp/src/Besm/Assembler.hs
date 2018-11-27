@@ -135,7 +135,7 @@ debugRender mod = let
   (o, dataS) = mapAccumL (\off (s, v) -> showConstant off s v) 0 (globals mod)
   (len,textS) = mapAccumL (\off p -> debugProc off p) o (procs mod)
   offset = case (alignment mod) of
-            AlignLeft -> 16
+            AlignLeft -> 0
             AlignRight -> 1024 - len
   in forM_ (concat $ dataS ++ textS) $ \(addr, inst) -> putStrLn $ show (addr + offset) ++ ": " ++ inst
   where
@@ -179,7 +179,7 @@ render mod = let
   dataS = globals mod >>= \cons -> map (b0 <:>) $ constantToCell (snd cons)
   total = dataS ++ textS
   in case (alignment mod) of
-    AlignLeft -> (replicate 15 (bitVector 0)) ++ total
+    AlignLeft -> (replicate 0 (bitVector 0)) ++ total
     AlignRight -> replicate (1023 - length total) (bitVector 0) ++ total
 
 renderProc :: Integer -> Procedure Int -> Output
@@ -205,7 +205,7 @@ absolutize (Mod {..}) = let
   cSize = sum (map (constantSize . snd) globals')
   (bSize, segmentOffsets) = buildOffsetMap procName (sum . map blockLen . blocks) procs
   offset = case alignment of
-    AlignLeft  -> 0x10 + cSize
+    AlignLeft  -> cSize
     AlignRight -> 1023 - bSize + 1
   in Mod
     { procs = map (absolveProc cSize offset segmentOffsets) procs
