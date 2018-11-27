@@ -54,7 +54,7 @@ type BasicBlock = BB Address
 data AddrPos = First | Second | Third
   deriving (Show, Eq)
 
-data ConstantInfo a
+data Constant a
   = Size Int -- ^ number of cells to reserve
   | Val  Int -- ^ Value to store in one cell
   | Raw  Int -- ^ Raw value to store
@@ -74,16 +74,16 @@ data ConstantInfo a
   {-| Template values for terminator instructions -}
   | TemplateT (Term a)
   {-| A series of constants that need to be laid out side-by-side and are treated as a large constant -}
-  | Table [ConstantInfo a]
+  | Table [Constant a]
   deriving (Show, Eq, Functor, Traversable, Foldable)
 
 -- | Get the size in cells of a constant
-constantSize :: ConstantInfo a -> Int
+constantSize :: Constant a -> Int
 constantSize (Size i) = i
 constantSize (Table cs) = sum $ map constantSize cs
 constantSize _ = 1
 
-constantToCell :: ConstantInfo Int -> [BitVector 39]
+constantToCell :: Constant Int -> [BitVector 39]
 constantToCell (Size i) = replicate i (bitVector 0)
 constantToCell (Val  i) = [numberToBesmFloating i]
 constantToCell (Raw  i) = [bitVector $ fromIntegral i]
@@ -95,6 +95,23 @@ constantToCell (Template i) = [instToCell $ fmap fromIntegral i]
 constantToCell (TemplateT i) = termToCell $ fmap fromIntegral i
 constantToCell (Cell) = [bitVector 0]
 constantToCell (Table cs) = concatMap constantToCell cs
+
+-- * Constant Definitions
+
+data Visibility = Local | Global
+  deriving (Eq, Show)
+
+data ConstantDef a
+  = Def Visibility String (Constant a) -- ^ Declaration for either a local (procedure scoped) or global constant
+  | Extern String -- ^ Use a global constant defined in another procedure
+  deriving (Show, Eq, Functor, Traversable, Foldable)
+
+constantName :: ConstantDef a -> String
+constantName (Def _ nm _) = nm
+constantName (Extern nm) = nm
+
+fromDef (Def _ _ c) = c
+
 {- |
   To help preserve sanity while writing the compiler, the assembly is structured using
   basic blocks. It turns out that the 'operators' in the compiler almost map 1-1 with
@@ -111,6 +128,7 @@ data BB a = BB
 data Procedure a = Proc
   { procName :: String
   , blocks :: [BB a]
+  , constDefs :: [ConstantDef a]
   } deriving (Show, Eq, Functor)
 
 -- | The size of a block in memory including the terminator instruction

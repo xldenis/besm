@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleContexts, RecordWildCards #-}
 module Besm.Assembler.Monad where
 
 import Besm.Assembler.Syntax
@@ -31,6 +31,7 @@ getSnocList = reverse . unSnocList
 data BuilderState = BuilderState
   { currentBlock :: CurrentBlock
   , builtBlocks  :: SnocList BasicBlock
+  , builtConsts  :: [ConstantDef Address]
   }
 
 -- | The current basic block being assembled by a builder
@@ -49,12 +50,16 @@ newtype Builder a = Builder { unBuilder :: State BuilderState a }
 runProcedure :: String -- ^ The name of the procedure
   -> Builder a  -- ^ The builder for the body
   -> Procedure Address
-runProcedure nm bbs = Proc nm (runBuilder (op 999) bbs)
+runProcedure nm bbs = let
+  (blks, constants) = runBuilder (op 999) bbs
+  in Proc nm blks constants
 
 runBuilder :: Address  -- ^ The address to start the first, anonymous, block at.
   -> Builder a -- ^ The assembly builder to run
-  -> [BasicBlock]
-runBuilder i = getSnocList . builtBlocks . flip execState (BuilderState (emptyCurrentBlock i) (SnocList [])) . unBuilder
+  -> ([BasicBlock], [ConstantDef Address])
+runBuilder i bld = let
+  s = flip execState (BuilderState (emptyCurrentBlock i) (SnocList []) []) $ unBuilder bld
+  in (getSnocList $ builtBlocks s, builtConsts s)
 
 modifyBlock :: MonadState BuilderState m => (CurrentBlock -> CurrentBlock) -> m ()
 modifyBlock f = do
@@ -105,6 +110,18 @@ block body = do
   case bb of
     CurrentBlock (SnocList []) _ _ -> body >> return (currentAddr bb)
     CurrentBlock a  _ _ -> emitTerm (Chain (currentAddr bb)) >> block body
+
+global :: String -> Constant Address -> Builder ()
+global nm c = modify $ \(BuilderState{..}) ->
+  BuilderState { builtConsts = Def Global nm c : builtConsts, ..}
+
+local :: String -> Constant Address -> Builder ()
+local nm c = modify $ \(BuilderState{..}) ->
+  BuilderState { builtConsts = Def Local nm c : builtConsts, ..}
+
+extern :: String -> Builder ()
+extern nm = modify $ \(BuilderState{..}) ->
+  BuilderState { builtConsts = Extern nm : builtConsts, ..}
 
 -- | Emit an empty cell. This is used to create space to insert a template.
 empty = emitInstr $ Empty

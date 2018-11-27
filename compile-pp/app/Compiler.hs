@@ -53,7 +53,7 @@ options =
   dedupFlag = flag True False (long "dedup-edges")
 
 compileCommand (oFile, smFile) = do
-  let compiledModule = compile pp1ConstantMap AlignRight pp1Procedures
+  let compiledModule = compile AlignRight pp1Procedures
 
   case compiledModule of
     Left err -> mapM_ putStrLn err
@@ -85,8 +85,6 @@ cfgCommand _ = do
 traceCommand :: (String, String, String, Bool) -> IO ()
 traceCommand (inFile, oFile, smFile, dedup) = do
   visualizeTrace dedup inFile oFile smFile
-
-pp1ConstantMap = Logical.constantMap ++ PP1.constantMap ++ Arith.constantMap ++ Economy.constantMap
 
 pp1Procedures =
   [ runProcedure "MP-1" mp1
