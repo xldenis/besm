@@ -131,6 +131,12 @@ data Procedure a = Proc
   , constDefs :: [ConstantDef a]
   } deriving (Show, Eq, Functor)
 
+procedureLen :: Procedure a -> Int
+procedureLen proc = sum $ map (\c -> case c of
+  Def _ _ c -> constantSize c
+  _ -> 0) (constDefs proc) ++ map blockLen (blocks proc)
+
+
 -- | The size of a block in memory including the terminator instruction
 blockLen :: BB a -> Int
 blockLen bb = length (instrs bb) + termLen (terminator bb)

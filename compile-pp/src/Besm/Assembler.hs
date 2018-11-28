@@ -133,10 +133,10 @@ checkExternsDefined mod = let
 debugRender :: ModuleAssembly Absolutized -> IO ()
 debugRender mod = let
   (o, dataS) = mapAccumL (\off (s, v) -> showConstant off s v) 0 (globals mod)
-  (len,textS) = mapAccumL (\off p -> debugProc off p) o (procs mod)
+  (len,textS) = mapAccumL (\off p -> debugProc (off + 1) p) (o - 1) (procs mod)
   offset = case (alignment mod) of
-            AlignLeft -> 0
-            AlignRight -> 1024 - len
+            AlignLeft -> 1
+            AlignRight -> 1023 - len
   in forM_ (concat $ dataS ++ textS) $ \(addr, inst) -> putStrLn $ show (addr + offset) ++ ": " ++ inst
   where
 
@@ -203,9 +203,9 @@ absolutize :: ModuleAssembly Relativized -> ModuleAssembly Absolutized
 absolutize (Mod {..}) = let
   globals' = forgetNames cSize offset segmentOffsets globals
   cSize = sum (map (constantSize . snd) globals')
-  (bSize, segmentOffsets) = buildOffsetMap procName (sum . map blockLen . blocks) procs
+  (bSize, segmentOffsets) = buildOffsetMap procName (procedureLen) procs
   offset = case alignment of
-    AlignLeft  -> cSize
+    AlignLeft  -> cSize + 1
     AlignRight -> 1023 - bSize + 1
   in Mod
     { procs = map (absolveProc cSize offset segmentOffsets) procs
