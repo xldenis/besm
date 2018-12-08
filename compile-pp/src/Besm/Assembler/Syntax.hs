@@ -16,6 +16,8 @@ data Address
   | Unknown String -- ^ Address of a variable or constant value. Each Unknown needs to have an associated ConstantDef
   | Procedure String Address -- ^ Address inside of another procedure
   | RTC Address -- ^ Address of the RTC instructions at the end of the block the argument belongs to.
+  | ProcStart String
+  | ProcEnd String
   deriving (Show, Eq, Ord)
 
 -- | Basic pretty-printing of addresses.
@@ -37,6 +39,12 @@ op = Operator
 
 rtc :: Address -> Address
 rtc = RTC
+
+var :: String -> Address
+var = Unknown
+
+addr :: Int -> Address
+addr = Absolute
 
 isUnknown (Unknown _) = True
 isUnknown _           = False

@@ -11,7 +11,7 @@ main :: IO ()
 main = hspec $ do
   describe "assembler" $ do
     it "lays out local constants before code" $ do
-      case compile AlignLeft [simpleAddition] of
+      case compile (simpleModule AlignLeft [simpleAddition]) of
         Left err -> expectationFailure (show err)
         Right mod -> do
           let compiled  = head $ procs mod
@@ -20,7 +20,7 @@ main = hspec $ do
           head rendered `shouldBe` 10
 
     it "lays out globals in common section" $ do
-      case compile AlignLeft [simpleGlobal] of
+      case compile (simpleModule AlignLeft [simpleGlobal]) of
         Left err -> expectationFailure (show err)
         Right mod -> do
           let compiled  = head $ procs mod
@@ -36,7 +36,7 @@ main = hspec $ do
       pending
 
     it "properly absolutizes addresses AlignRight" $ do
-      case compile AlignRight [omg, simpleGlobal] of
+      case compile (simpleModule AlignRight [omg, simpleGlobal]) of
         Left err -> expectationFailure (show err)
         Right mod -> do
           let compiled  = head $ procs mod
@@ -45,14 +45,14 @@ main = hspec $ do
           blocks compiled `shouldBe` [BB {instrs = [AI 1019 1008 986,TN 997 987 UnNormalized], terminator = Stop, baseAddress = 1018}]
 
     it "properly absolutizes addresses AlignLeft" $ do
-      case compile AlignLeft [omg, simpleGlobal] of
+      case compile (simpleModule AlignLeft [omg, simpleGlobal]) of
         Left err -> expectationFailure (show err)
         Right mod -> do
           let compiled  = head $ procs mod
               rendered = render mod
 
           blocks compiled `shouldBe` [BB {instrs = [AI 34 23 1,TN 12 2 UnNormalized], terminator = Stop, baseAddress = 33}]
-
+    it "check that ma / mb uses the disk mapping" $ pending
   describe "monad builder" $ do
     it "" $ do -- check that helpers return the correct addresses
       pending
