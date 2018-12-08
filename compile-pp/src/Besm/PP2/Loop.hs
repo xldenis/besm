@@ -13,49 +13,84 @@ cellU = Unknown "U"
 cellV = Unknown "V"
 cellS = Unknown "S"
 
-alphaBuilder = Unknown "α-builder" -- cell from which a value is transferred
-betaBuilder  = Unknown "β-builder"
 gammaBuilder = Unknown "ɣ-builder"
 
-alphaCounter = Unknown "α-counter"
-betaCounter  = Unknown "β-counter"
 gammaCounter = Unknown "ɣ-counter"
 
-alphaTransfer = Unknown "α-transfer" -- address where the transfer to alpha instruction is
-betaTransfer  = Unknown "β-transfer"
-gammaTransfer = Unknown "ɣ-transfer"
+alphaTransfer = Procedure "MP-2" (op 33) -- address where the transfer to alpha instruction is
+betaTransfer  = Procedure "MP-2" (op 36)
+gammaTransfer = Procedure "MP-2" (op 39)
 
-alphaInitial = Unknown "α-initial"
 betaInitial  = Unknown "β-initial"
 gammaInitial = Unknown "ɣ-initial"
 
-alphaTransInitial = Unknown "α-trans-initial"
-betaTransInitial  = Unknown "β-trans-initial"
 gammaTransInitial = Unknown "ɣ-trans-initial"
 
-transferToAlpha = undefined
-
-counterK = Unknown "k"
-counterKInitial = Unknown "k-initial"
-
-counterI = Unknown "i"
-
 pp2_1 = do
-  let cellT = Unknown "t"
-  let shiftedI = Unknown "i-shifted"
+  counterK <- extern "k"
+  counterKInitial <- extern "k-initial"
+  counterI <- extern "i"
 
-  let parameterSelect = Unknown ",TN _ parameter-info"
-  let parameterInfo = Unknown "parameter-info"
+  alphaInitial <- extern "α-initial"
+  alphaCounter <- extern "α-counter"
+  alphaBuilder <- extern "α-builder"
+  alphaTransInitial <- extern "α-trans-initial"
 
-  let iin = Unknown "i_in"
+  betaBuilder <- extern "β-initial"
+  betaCounter <- extern "β-counter"
+  -- extern "β-builder"
+  betaTransInitial <- extern "β-trans-initial"
 
-  let kInitial = Unknown "k-trans-initial"
+  extern "ɣ-builder"
+  extern "ɣ-counter"
 
-  let normTemplate = Unknown "I _ 0001"
-  let normalizeInstr = Unknown "norm-instruction"
+  cellT <- local "t" Cell
 
-  let incrTemplate = Unknown "+ _ 1081 _"
-  let incrInstr = Unknown "incr-instruction"
+  shiftedI <- local "i-shifted" Cell
+
+  parameterSelect <- local ",TN _ parameter-info" $ Template (TN zero (var "parameter-info") UnNormalized)
+  parameterInfo <- local "parameter-info" Cell
+
+  iin <- local "i_in" Cell
+  local "i_fin" Cell
+  local "i_sigma" Cell
+
+  kInitial <- extern "k-trans-initial"
+  local "selected" Cell
+
+  normTemplate <- local "I _ 0001" (Template (I zero zero zero))
+  normalizeInstr <- local "norm-instruction" Cell
+
+  incrTemplate <- local "+ _ 1081 _" (Template (Add zero zero zero UnNormalized))
+  incrInstr <- local "incr-instruction" Cell
+
+  local "+ _ 0001 _"  $ Template (Add zero (addr 1) zero UnNormalized)
+  local "+ 0001 0002" $ Template (Add (addr 1) (addr 2) zero UnNormalized)
+  local "x _ _ 0002"  $ Template (Mult zero zero (addr 2) UnNormalized)
+  local "+ 0001 _ _"  $ Template (Add (addr 1) zero zero UnNormalized)
+  local "x _ _ 0001"  $ Template (Mult zero zero (addr 1) UnNormalized)
+
+  local ",TN _ firstHalf" $ Template (TN zero (var "first-half") UnNormalized)
+
+  local "j" Cell
+  local "j'" Cell
+  local "S" Cell
+  local "b" Cell
+  local "a" Cell
+
+  local "i_0" Cell
+
+  extern "U"
+  extern "V"
+
+  local "first-half" Cell
+  local "second-half" Cell
+
+  local "paren-code" Cell
+  local "comp-operator" Cell
+  local "built-comp" Cell
+
+  local "V_f" (Raw 0)
 
   {-
   Op. 1 clears standard cells U and V of markers on the transmission to the
@@ -93,7 +128,7 @@ pp2_1 = do
       -- Reset α and β transfer-instructions
 
       tN' betaTransInitial betaTransfer
-      tN' betaTransInitial alphaTransfer
+      tN' alphaTransInitial alphaTransfer
 
       -- Having "i" in the first address is very useful
       shift counterI (left 22) shiftedI
@@ -173,7 +208,7 @@ pp2_1 = do
     ai alphaBuilder unity alphaBuilder
     ce' alphaBuilder mkTn alphaBuilder
 
-    transferToAlpha
+    clcc alphaTransfer
 
     chain (op 9)
   {-

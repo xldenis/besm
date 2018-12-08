@@ -40,7 +40,7 @@ counterI = Unknown "i"
 sixteen = Unknown "16"
 
 
-pp2 = do
+mp2 = do
   {-
     Op. 1 sets counter gamma, the instruction for transfer to block gamma, and
     counter i in the initial positions.
@@ -57,7 +57,7 @@ pp2 = do
   Op. 2 reads block I-PP-2 from MD-4 (block for loop formation).
   -}
   operator 2 $ do
-    readMD 4 (Unknown "I-PP-2-start") (Unknown "I-PP-2-end") (Unknown "IS-addr")
+    readMD 4 (ProcStart "I-PP-2") (ProcEnd "I-PP-2") (ProcStart "I-PP-2")
     chain (op 3)
 
   {-

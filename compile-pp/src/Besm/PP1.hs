@@ -20,7 +20,7 @@ hundredfourtyfour  = Unknown "144"
 maxSelected        = Unknown "max-selected"
 maxWritten         = Unknown "max-written"
 
-mp2 = Proc "MP-2" [BB { baseAddress = Operator 1, instrs = [], terminator = Stop}] []
+end = Proc "MP-2" [BB { baseAddress = Operator 1, instrs = [], terminator = Stop}] []
 
 {-
   Known Bugs
