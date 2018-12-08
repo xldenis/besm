@@ -135,7 +135,7 @@ expVar vars = lexeme $ SExpVar <$> vars
 
 opTable :: [[Operator Parser (SimpleExpr Char)]]
 opTable =
-  [ [ binary (symbol "*") STimes]
+  [ [ binary (symbol ".") STimes]
   , [ binary (symbol "+") SAdd
     ]
   ]

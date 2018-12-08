@@ -6,29 +6,29 @@
 
 (a) Block a (100 cells)
 
-<a_αβ> = 10 * α + 1 * β
-<a_ll> = 11 * l
-<a_mk> = 10 * m + 1 * k
-<a_mm> = 11 * m
-<a_im> = 10 * i + 1 * m
-<a_pr> = 10 * p + 1 * r
-<a_ij> = 10 * i + 1 * j
+<a_αβ> = 10.α + 1.β
+<a_ll> = 11.l
+<a_mk> = 10.m + 1.k
+<a_mm> = 11.m
+<a_im> = 10.i + 1.m
+<a_pr> = 10.p + 1.r
+<a_ij> = 10.i + 1.j
 
 (b) Block b (10 cells)
 
-<b_α> = 1 * α
-<b_s> = 1 * s
+<b_α> = 1.α
+<b_s> = 1.s
 
 (d) Block d (10 cells)
 
-<d_k> = 1 * k
-<d_m> = 1 * m
-<d_j> = 1 * j
+<d_k> = 1.k
+<d_m> = 1.m
+<d_j> = 1.j
 
 (e) Block e (10 cells)
 
-<e_s> = 1 * s
-<e_r> = 1 * r
+<e_s> = 1.s
+<e_r> = 1.r
 
 2. Parameters
 

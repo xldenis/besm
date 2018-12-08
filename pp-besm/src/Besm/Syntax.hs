@@ -154,7 +154,7 @@ prettyConstant :: Pretty b => SimpleExpr b -> Doc a
 prettyConstant = prettySimpleExpr
 
 prettySimpleExpr :: Pretty b => SimpleExpr b -> Doc a
-prettySimpleExpr (STimes l r)  = prettySimpleExpr l <+> pretty "*" <+> prettySimpleExpr r
+prettySimpleExpr (STimes l r)  = prettySimpleExpr l <> pretty "." <> prettySimpleExpr r
 prettySimpleExpr (SAdd l r)    = prettySimpleExpr l <+> pretty "+" <+> prettySimpleExpr r
 prettySimpleExpr (SConstant c) = pretty c
 prettySimpleExpr (SExpVar var) = pretty var
@@ -192,8 +192,53 @@ prettySchema (OpLabel op) = pretty "L" <> prettyOpSign op
 prettySchema (Print exp)  = prettyExp exp <+> pretty ", => 0"
 prettySchema Semicolon = pretty ";"
 prettySchema JCC = pretty "\\-"
+prettySchema (NS op a b c) = prettyNonstandard op a b c
+prettySchema e = error (show e)
+
 prettyQuantity (V v) = pretty (unVar v)
 prettyQuantity (C c) = pretty c
+
+prettyAddress :: Address -> Doc a
+prettyAddress (Abs i) = pretty i
+prettyAddress (VarQ v) = pretty $ unVar v
+
+tupled' ls = pretty '(' <> hcat (intersperse (pretty ",") ls )<> pretty ')'
+prettyNonstandard :: NS.NonStandardOpcode -> Address -> Address -> Address -> Doc a
+prettyNonstandard (NS.Add norm)    a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.Sub norm)    a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.Mult norm)   a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.Div norm)    a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.AddE norm)   a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.SubE norm)   a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.Ce norm)     a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.Xa norm)     a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.Xb norm)     a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.DivA norm)   a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.DivB norm)   a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.TN norm)     a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.PN)          a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.TMin norm)   a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.TMod norm)   a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.TSign norm)  a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.TExp norm)   a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.Shift)       a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.ShiftAll)    a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.AI)          a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.AICarry)     a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.I)           a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.Ma)          a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.Mb)          a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.LogMult)     a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.CLCC)        a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.JCC)         a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.Comp)        a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.CompWord)    a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.CompMod)     a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.CCCC)        a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.CCCCSnd)     a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.Stop)        a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+prettyNonstandard (NS.SwitchStop)  a b c = tupled' [pretty "Add", prettyAddress a, prettyAddress b, prettyAddress c]
+
 
 prettyExp :: SchemaExpr -> Doc a
 prettyExp (Times l r)  = prettyExp l <+> pretty "*" <+> prettyExp r
