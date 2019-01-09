@@ -1,0 +1,36 @@
+
+Description="PP-BESM"
+
+Keywords={
+  {  Id=1,
+   List={"cos", "sin",  "Form"
+        }
+  },
+  { Id=2,
+    Regex=[[\(\w\)\s+Block.+$]],
+  },
+  { Id=3,
+    Regex=[[\d\..+$]],
+  },
+  { Id=4,
+    Regex=[[\]|\[|P|stop|Stop|L\d+]]
+  },
+  {
+    Id=5,
+    Regex= [[(?:,\s*)?=>|=]]
+  }
+}
+
+Comments = {
+
+   {
+     Block=false,
+     Delimiter = { [[#]] }
+   }
+}
+
+Operators=[[\(|\)|\;|\-|\+|=>|\*|\:|\/|<|>|\,|\]|\[]]
+
+Digits = [[-∞|∞|\d+]]
+
+Identifiers = [[[a-zA-Z]+|[a-zA-Z]|[a-z]_\w+?]]
