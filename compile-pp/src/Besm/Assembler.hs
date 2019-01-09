@@ -47,7 +47,7 @@ type family AddressType (s :: Stage) where
   AddressType Absolutized = Int
   AddressType a = Address
 
-type GlobalMap (s :: Stage) = [(String, Constant (AddressType s))]
+type GlobalMap (s :: Stage) = [(String, Section, Constant (AddressType s))]
 
 type family OffsetMap (s :: Stage) where
   OffsetMap Absolutized = Map Address Int
@@ -100,21 +100,17 @@ checkConstants proc = let
   templateNeeds = constDefs proc >>= templateArgs
   needed  = nub $ (blocks proc >>= toList >>= unknowns) ++ templateNeeds
   have    = nub $ map (constantName) (constDefs proc)
-  extra   = have \\ needed
+  globals = catMaybes (map globalName (constDefs proc))
+  extra   = (have \\ globals) \\ needed
   missing = needed \\ have
 
   in if null extra && null missing
   then Right proc
-  else Left $ map (\e -> "Missing constant in " ++ procName proc ++ " : " ++ show e) missing
-           ++ map (\e -> "Extra constants in " ++ procName proc ++ " : "  ++ show e) extra
+  else Left $ map (\e -> "Missing constant in " ++ procName proc ++ ": " ++ redString e) missing
+           ++ map (\e -> "Extra constants in "  ++ procName proc ++ ": " ++ e) extra
   where
 
-  templateArgs :: ConstantDef Address -> [String]
-  templateArgs (Def _ _ c) | isTemplate c = toList c >>= unknowns
-  templateArgs _ = []
 
-  isTemplate (Template _) = True
-  isTemplate _ = False
 
 checkExternsDefined :: ModuleAssembly 'Input -> Either [String] (ModuleAssembly 'Input)
 checkExternsDefined mod = let
@@ -122,22 +118,16 @@ checkExternsDefined mod = let
   globals = nub $ catMaybes $ map globalName (procs mod >>= constDefs)
   in case externs \\ globals of
     [] ->   Right mod
-    nms -> Left $ map ("Missing global constant definition: " ++) nms
+    nms -> Left $ map (\s -> "Missing global constant definition: " ++ redString s) nms
 
   where
-  globalName :: ConstantDef a -> Maybe String
-  globalName (Def Global nm _) = Just nm
-  globalName _ = Nothing
 
-  externName :: ConstantDef a -> Maybe String
-  externName (Extern nm) = Just nm
-  externName _ = Nothing
 
 -- * Rendering output
 
 debugRender :: forall a. Show (AddressType a) => ModuleAssembly a -> IO ()
 debugRender mod = let
-  (o, dataS) = mapAccumL (\off (s, v) -> showConstant off s v) 0 (globals mod)
+  (o, dataS) = mapAccumL (\off (s, _, v) -> showConstant off s v) 0 (globals mod)
   (len,textS) = mapAccumL (\off p -> debugProc (off + 1) p) (o - 1) (procs mod)
   offset = case (alignment mod) of
             AlignLeft -> 1
@@ -181,7 +171,7 @@ renderSourceMap mod = let
 render :: ModuleAssembly Absolutized -> Output
 render mod = let
   textS = zip [1..] (procs mod) >>= uncurry renderProc
-  dataS = globals mod >>= \cons -> map (b0 <:>) $ constantToCell (snd cons)
+  dataS = globals mod >>= \(_, _, c) -> map (b0 <:>) $ constantToCell c
   total = dataS ++ textS
   in case (alignment mod) of
     AlignLeft -> (replicate 0 (bitVector 0)) ++ total
@@ -235,7 +225,7 @@ absolutize mod@(Mod {..}) = let
     }
 
   forgetNames :: Int -> MemoryLayout -> GlobalMap Relativized -> GlobalMap Absolutized
-  forgetNames offset segmentOffsets = map (fmap (fmap (absolve offset segmentOffsets)))
+  forgetNames offset segmentOffsets = map (\(n, s, c) -> (n, s, fmap (absolve offset segmentOffsets) c))
 
   absolve :: Int -> MemoryLayout -> RelativeAddr -> Int
   absolve offset textLens (Rel sec i) = case sec `lookup` (offsets textLens) of
@@ -248,13 +238,13 @@ absolutize mod@(Mod {..}) = let
     (fmap (absolve offset mem) t)
     (absolve offset mem b)
 
-  absoluteInstr offset mem disk (Ma o a s) = Ma (absolve offset mem o) (absolve offset disk a) (absolve offset mem s)
-  absoluteInstr offset mem disk (Mb b ) = Mb (absolve offset disk b)
+  absoluteInstr offset mem disk (Ma o a s) = Ma (absolve offset mem o) (absolve offset disk a - 1) (absolve offset mem s)
+  absoluteInstr offset mem disk (Mb b ) = Mb (absolve offset disk b - 1)
   absoluteInstr offset mem disk i = fmap (absolve offset mem) i
 
 memoryLayout :: ModuleAssembly Relativized -> MemoryLayout
 memoryLayout (Mod {..}) = let
-  globalSec = sum (map (constantSize . snd) globals)
+  globalSec = sum (map (\(_, _, c) -> constantSize c) globals)
   procSizes = map (\p -> (procName p, procedureLen p)) procs
   segSizes  = map (\(MkSeg seg) -> maximum . map snd $ filter (\p -> fst p `elem` seg) procSizes) segments
 
@@ -262,15 +252,15 @@ memoryLayout (Mod {..}) = let
 
   procOffs  = concat $ map (\((MkSeg seg), size) -> map (\s -> (Text s, size)) seg) (zip segments segOffs)
 
-  in MkLayout (sum segSizes + globalSec) $ (Data, 0) : procOffs
+  in MkLayout (sum segSizes + globalSec) $ (DefaultData, 0) : procOffs
 
 diskLayout :: ModuleAssembly Relativized -> MemoryLayout
 diskLayout (Mod {..}) = let
-  globalSec = sum (map (constantSize . snd) globals)
+  globalSec = sum (map (\(_, _, c) -> constantSize c) globals)
   procSizes = map (\p -> procedureLen p) procs
   sectionOffsets = scanl (+) 0 (globalSec : procSizes)
 
-  in MkLayout (sum $ globalSec : procSizes) $ zip (Data : map (Text . procName) procs) sectionOffsets
+  in MkLayout (sum $ globalSec : procSizes) $ zip (DefaultData : map (Text . procName) procs) sectionOffsets
 
 -- * Relativization
 
@@ -281,7 +271,7 @@ data RelativeAddr
   deriving (Show, Eq)
 
 -- | Relative addresses are either within a specific procedure or they refer to the data segment
-data Section = Text String | Data
+data Section = Text String | DefaultData | Data String
   deriving (Show, Eq)
 
 {- |
@@ -308,7 +298,7 @@ relativize (Mod{..}) = do
 
   relativizeConstants :: Map Address RelativeAddr -> GlobalMap LaidOut -> Either [String] (GlobalMap Relativized)
   relativizeConstants dict constants = unzipEithers $ map (
-    \(key, val) -> (,) <$> pure key <*> traverse (relativizeAddr dict) val
+    \(key, s, val) -> (,,) <$> pure key <*> pure s <*> traverse (relativizeAddr dict) val
     ) constants
 
   relativizeAddr ::  Map Address RelativeAddr -> Address -> Either String RelativeAddr
@@ -343,7 +333,11 @@ mkRelativizationDict constants procs = let
   in M.fromList $ bbOffsets ++ constantOffsets
 
 dataOffsets :: GlobalMap Input -> [(Address, RelativeAddr)]
-dataOffsets = map (fmap (Rel Data)) . snd . buildOffsetMap (Unknown . fst) (constantSize . snd)
+dataOffsets globals = let
+  (_, globalMap) = buildOffsetMap toKey toVal globals
+  in map (fmap (Rel DefaultData)) globalMap
+  where toKey (n, _, _) = Unknown n
+        toVal (_, _, c) = constantSize c
 
 -- | For a procedure, and a starting offset, give the relative address of every operator
 blockOffsets :: String -> Int -> [BB Address] -> [(Address, RelativeAddr)]
@@ -389,6 +383,39 @@ buildOffsetMap key size elems = mapAccumL (\off elem ->
   (off + size elem, (key elem, off))
   ) 0 elems
 
+redString :: String -> String
+redString str = "\27[31;1m" ++ str ++ "\27[0m"
+
+templateArgs :: ConstantDef Address -> [String]
+templateArgs (Def _ _ c) | isTemplate c = toList c >>= unknowns
+templateArgs _ = []
+
+globalName :: ConstantDef a -> Maybe String
+globalName (Def Global nm _) = Just nm
+globalName _ = Nothing
+
+isTemplate (Template _) = True
+isTemplate _ = False
+
+isGlobal (Def Local _ _) = False
+isGlobal _ = True
+
+def (Def _ _ c) = Just c
+def _ = Nothing
+
+isExtern (Extern _) = True
+isExtern _ = False
+
+isCell (Just Cell) = True
+isCell _ = False
+
+isSize (Just (Size _)) = True
+isSize _ = False
+
+externName :: ConstantDef a -> Maybe String
+externName (Extern nm) = Just nm
+externName _ = Nothing
+
 -- * Layout
 {- $layout
   The layout step performs one of the most important optimizations in the assembler.
@@ -417,7 +444,8 @@ layout (Mod {..}) = Mod
 
   globalDefs proc = catMaybes . map isGlobal $ constDefs proc
 
-  isGlobal (Def Global nm c) = Just (nm, c)
+  isGlobal (Def Global nm c) = Just (nm, DefaultData, c)
+  isGlobal (Def (Pinned s) nm c) = Just (nm, Data s, c)
   isGlobal _ = Nothing
 
   segmentProcedure proc = proc
@@ -438,29 +466,12 @@ layoutConstants' constants = let
   (_, locals)        = partition (isGlobal) constants
   (cells, rem)       = partition (isCell . def) locals
   (blocks, rem')     = partition (isSize . def) rem
-  (templates, rem'') = partition (isTemplate . def) rem'
+  (templates, rem'') = partition (or . fmap isTemplate . def) rem'
   (_, rem''')        = partition (isExtern) rem''
   in cells ++ blocks ++ templates ++ (sortOn constantName rem''')
 
   where
 
-  isGlobal (Def Global _ _) = True
-  isGlobal _ = False
-
-  def (Def _ _ c) = Just c
-  def _ = Nothing
-
-  isExtern (Extern _) = True
-  isExtern _ = False
-
-  isCell (Just Cell) = True
-  isCell _ = False
-
-  isSize (Just (Size _)) = True
-  isSize _ = False
-
-  isTemplate (Just (Template _)) = True
-  isTemplate _ = False
 
 {- | Segments are non-empty, ordered sets of basic blocks where control flow goes
      linear from start to end. The @Chain@ terminators in those blocks will be eliminated

@@ -29,6 +29,8 @@ formatAddr (Absolute i) = "abs. " ++ show i
 formatAddr (Procedure s op) = "proc. " ++ show s ++ " " ++ formatAddr op
 formatAddr (Unknown str) = "uk. " ++ str
 formatAddr (RTC a) = "rtc. " ++ formatAddr a
+formatAddr (ProcStart s) = "proc start. " ++ s
+formatAddr (ProcEnd s) = "proc end. " ++ s
 
 -- | Smart constructor to offset from an address.
 offAddr (Offset a o) i = Offset a (o + i)
@@ -106,7 +108,7 @@ constantToCell (Table cs) = concatMap constantToCell cs
 
 -- * Constant Definitions
 
-data Visibility = Local | Global
+data Visibility = Local | Global | Pinned String
   deriving (Eq, Show)
 
 data ConstantDef a
