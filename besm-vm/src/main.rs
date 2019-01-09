@@ -28,21 +28,21 @@ mod interface;
 mod vm;
 mod opt;
 
-fn runner_from_command(command: Command) -> impl for <'a> FnOnce(VM<'a>) -> () {
+fn runner_from_command(command: Command) -> impl for <'a> FnOnce(&mut VM<'a>) -> () {
     match command {
         Command::Run   => run_with_interface,
         Command::Trace => trace_execution
     }
 }
 
-fn run_with_interface(mut vm: VM) {
+fn run_with_interface(vm: &mut VM) {
     let mut terminal = Terminal::new(MouseBackend::new().unwrap()).unwrap();
     let mut interface = Interface::default();
 
-    interface.run(&mut terminal, &mut vm);
+    interface.run(&mut terminal, vm);
 }
 
-fn trace_execution(mut vm: VM) {
+fn trace_execution(vm: &mut VM) {
     let mut previous_operator = 0;
     loop {
         if vm.stopped { break; }
@@ -93,8 +93,14 @@ fn main() {
     ];
 
     let mut mem = Memory::new(is_buf);
-    let vm = VM::new(&mut mem, &mut x, &mut y, opt.start_address as u16);
+    let mut vm = VM::new(&mut mem, &mut x, &mut y, opt.start_address as u16);
 
-    runner_from_command(opt.command)(vm);
+    runner_from_command(opt.command)(&mut vm);
+
+    file_from_md(opt.md0_out, vm.mag_system.mag_drives[0]);
+    file_from_md(opt.md1_out, vm.mag_system.mag_drives[1]);
+    file_from_md(opt.md2_out, vm.mag_system.mag_drives[2]);
+    file_from_md(opt.md3_out, vm.mag_system.mag_drives[3]);
+    file_from_md(opt.md4_out, vm.mag_system.mag_drives[4]);
 }
 

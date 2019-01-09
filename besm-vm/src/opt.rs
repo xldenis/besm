@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::iter;
 
-use byteorder::{BigEndian, ReadBytesExt};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 arg_enum! {
     #[derive(StructOpt, Debug)]
@@ -34,6 +34,18 @@ pub struct Opts {
     pub md3: Option<PathBuf>,
     #[structopt(long = "md4", parse(from_os_str))]
     pub md4: Option<PathBuf>,
+
+    #[structopt(long = "md0-out", parse(from_os_str))]
+    pub md0_out: Option<PathBuf>,
+    #[structopt(long = "md1-out", parse(from_os_str))]
+    pub md1_out: Option<PathBuf>,
+    #[structopt(long = "md2-out", parse(from_os_str))]
+    pub md2_out: Option<PathBuf>,
+    #[structopt(long = "md3-out", parse(from_os_str))]
+    pub md3_out: Option<PathBuf>,
+    #[structopt(long = "md4-out", parse(from_os_str))]
+    pub md4_out: Option<PathBuf>,
+
 }
 
 use vm::mag::MagDrive;
@@ -43,16 +55,51 @@ pub fn md_from_file(file: Option<PathBuf>) -> MagDrive {
     match file {
         None => {}
         Some(path) => {
-            let mut f = File::open(path).expect("file not found");
-            let words: Vec<u64> = iter::repeat_with(|| f.read_u64::<BigEndian>().unwrap_or(0))
-            .take(1024)
-            .collect();
+            let mut f = File::open(&path).expect("file not found");
 
-            buf.copy_from_slice(&words);
+            match path.extension().and_then(OsStr::to_str) {
+                Some("txt") => {
+                    use std::io::BufReader;
+                    use std::io::BufRead;
+                    let ls = BufReader::new(&f);
+
+                    let words: Vec<u64> = ls.lines()
+                    .map(|line|
+                        line.as_ref().map(|l|
+                            u64::from_str_radix(l, 16).unwrap_or(0)
+                        ).unwrap_or(0)
+                    ).chain(iter::repeat(0))
+                    .take(1024)
+                    .collect();
+
+                    buf.copy_from_slice(&words[0..1024]);
+                }
+                Some("bin") => {
+                    let words: Vec<u64> = iter::repeat_with(|| f.read_u64::<BigEndian>().unwrap_or(0))
+                    .take(1024)
+                    .collect();
+
+                    buf.copy_from_slice(&words);
+                }
+                _ => panic!("omg")
+            }
         }
     }
 
     MagDrive::new(buf)
+}
+
+use std::io::Write;
+
+pub fn file_from_md(file: Option<PathBuf>, md: MagDrive) -> () {
+    if let Some(path) = file {
+        File::create(path)
+        .map(|mut f|
+            for x in md.drive.iter() {
+                f.write_u64::<BigEndian>(*x);
+            }
+        ).unwrap();
+    }
 }
 
 use std::path::Path;
