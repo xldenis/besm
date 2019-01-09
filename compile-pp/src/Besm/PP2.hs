@@ -1,3 +1,4 @@
+{-# LANGUAGE RecursiveDo #-}
 module Besm.PP2 where
 
 import Besm.Assembler.Monad
@@ -30,7 +31,7 @@ import Besm.Assembler.Syntax
 -}
 gammaBuilder   = Unknown "ɣ-builder"
 gammaCounter   = Unknown "ɣ-counter"
-gammaTransfer  = Unknown "ɣ-transfer"
+gammaTransfer  = Procedure "MP-2" (op 39)
 gammaInitial   = Unknown "ɣ-initial"
 gammaTransInit = Unknown "ɣ-trans-initial"
 
@@ -41,6 +42,47 @@ sixteen = Unknown "16"
 
 
 mp2 = do
+  local "16" (Val 16)
+  seven' <- local "7'" (Raw 7)
+
+  local "shift-template" (Raw 0) -- shift ? ? ?
+  shiftIncr <- local "shift-incr" (Raw 0)
+  local "select-template" (Raw 0) -- ^ ? ? ?
+  finalSelect <- local "final-select" (Raw 0)
+
+  local "p" Cell
+  local "q" Cell
+  local "z" Cell
+  global "i" Cell
+
+  global "V" Cell
+  global "U" Cell
+
+  local "i-initial" (Raw 0)
+  local "next-instr" Cell
+  local "instr-exp" Cell
+
+  global "ɣ-trans-initial" (Raw 0)
+  global "ɣ-initial" (Raw 0)
+  gammaCounter <- global "ɣ-counter" (Raw 0)
+  global "ɣ-builder" (Raw 0)
+
+  global "α-trans-initial" (Raw 0)
+  global "α-initial" (Raw 0)
+  alphaCounter <- global "α-counter" (Raw 0)
+  global "α-builder" (Raw 0)
+
+  global "β-trans-initial" (Raw 0)
+  global "β-initial" (Raw 0)
+  betaCounter <- global "β-counter" (Raw 0)
+  global "β-builder" (Raw 0)
+
+  k <- global "k" Cell
+  global "k-initial" (Raw 0)
+  global "k-trans-initial" (Template (TN (Absolute 1) (var "k") UnNormalized))
+
+  nextAddr <- local "next-addr" Cell
+
   {-
     Op. 1 sets counter gamma, the instruction for transfer to block gamma, and
     counter i in the initial positions.
@@ -66,7 +108,7 @@ mp2 = do
   in block K.
   -}
   operator 3 $ do
-    cccc (Unknown "IS-addr")
+    cccc (Procedure "I-PP-2" (op 1))
 
     chain (op 4)
   {-
@@ -100,22 +142,25 @@ mp2 = do
   let selectTemplate = Unknown "select-template"
   let shiftTemplate = Unknown "shift-template"
 
+  let shift = op 9 `offAddr` 1
+  let select = op 9
 
   operator 6 $ do
     tN' zero cellP
     tN' zero cellQ
     tN' zero cellZ
 
-    tN' selectTemplate (Unknown "_")
-    tN' shiftTemplate (Unknown "_")
+    tN' selectTemplate select
+    tN' shiftTemplate shift
 
     chain (op 7)
   {-
   Op. 7 transfers control to op. 8 in the case of selection of instruction Ma
-  or Mb (x = 016, 017).
+  or Mb (x = b:016, dec:22, b:017, dec:23).
   -}
 
   operator 7 $ do
+                --- v-- this is wrong number it's actually 22
     comp instrExp sixteen (op 8) (op 9)
 
   {-
@@ -126,21 +171,39 @@ mp2 = do
   Op. 8 changes the instruction for extraction of addresses in a corresponding
   manner.
   -}
-
+  operator 8 $ do
+    tN' finalSelect select
+    sub' shift shiftIncr shift
+    sub' shift shiftIncr shift
+    chain (op 9)
   {-
   Op. 9 extracts the next address from the selected instruction, beginning
   with the first, and sets it in the third address of a certain standard cell.
   -}
-  -- operator 9 $ do
+  operator 9 $ do
+    empty
+    empty
+
+    chain (op 10)
 
   {-
   Op. 10 comparing the magnitude of the extracted address with the boundaries
   of block V, verifies if this is a variable address ( YES -- op 11, NO -- op
   22).
+  -}
+  operator 10 $ mdo
+    comp nextAddr seven' (op 22) omgg  -- check if standard cell < 7
+    omgg <- comp (addr 8) nextAddr (op 11) (op 11) -- check if va addr < Vmax
+    return ()
 
+  {-
   Op. 11 selects information on the variable address according to the
   magnitude of the code in the extracted address.
+  -}
+  operator 11 $ do
+    stop
 
+  {-
   Op. 12 selects the next code "1" of the parameter on which this address
   depends from teh lines of information on the variablee address.
 
@@ -166,9 +229,14 @@ mp2 = do
 
   Op. 21 ensures repitition of operators 12 - 20 three times (according to the
   number of parameter codes in the information on the variable address).
+  -}
 
+  {-
   Op. 22 prepares testing of the following address of the instruction.
-
+  -}
+  operator 22 $ do
+    stop
+  {-
   Op. 23 ensures repitition of operators 9 - 22 three times (according to the
   number of addresses in the instruction).
 
@@ -208,18 +276,85 @@ mp2 = do
     the problem in standard position, prepared for funcioning of PP-3. The
     indication of counter gamma is stored in cell 0006.
 
-  Operators 33-35 for m the sub-routine for transferring to block alpha.
+  -}
+  {-
+    Op. 32 transfers cells from K
+  -}
+  operator 32 $ do
+    kTransfer <- empty
+    ai kTransfer oneFirstAddr kTransfer
+    ai k unity k
+    jcc
+  {-
+  Operators 33-35 form the sub-routine for transferring to block alpha.
 
   Op. 33 transfers the contents of some standard cell to the next cell of
   block alpha and adds one to counter alpha.
+  -}
+  operator 33 $ do
+    aTransfer <- empty
+    ai aTransfer oneFirstAddr aTransfer
+    ai unity alphaCounter alphaCounter
+    chain (op 34)
+  {-
+    Op. 34, comparing alpha_c and alpha_cr, tests block alpha for "overflow".
+  -}
+  operator 34 $ do
+    compWord alphaCounter (Absolute 0xF) (op 32 `offAddr` 3) (op 35)
 
-  Op. 34, comparing alpha_c and alpha_cr, tests block alpha for "overflow".
+  {-
+    Op. 35 is a check stop for overflow.
+  -}
+  operator 35 $ do
+    checkStop
+  {-
+    The sub-routine for transferring to block beta (operators 36 -38) and to
+    block gamma (operators 39-41) functions identically. As follows from the
+    positions of blocks alpha, beta and gamme in IS, it may be remarked that
+    gamma_cr = alpha_0, alpha_cr = beta_0, beta_cr = 0255.
+  -}
 
-  Op. 35 is a check stop for overflow.
+  {-
+  Operators 36-38 form the sub-routine for transferring to block beta.
 
-  The sub-routine for transferring to block beta (operators 36 -38) and to
-  block gamma (operators 39-41) functions identically. As follows from the
-  positions of blocks alpha, beta and gamme in IS, it may be remarked that
-  gamma_cr = alpha_0, alpha_cr = beta_0, beta_cr = 0255.
+  Op. 36 transfers the contents of some standard cell to the next cell of
+  block beta and adds one to counter beta.
+  -}
+  operator 36 $ do
+    bTransfer <- empty
+    ai bTransfer oneFirstAddr bTransfer
+    ai unity betaCounter betaCounter
+    chain (op 37)
+  {-
+    Op. 34, comparing beta_c and beta_cr, tests block beta for "overflow".
+  -}
+  operator 37 $ do
+    compWord betaCounter (Absolute 0x000) (op 32 `offAddr` 3) (op 38)
 
--}
+  {-
+    Op. 38 is a check stop for overflow.
+  -}
+  operator 38 $ do
+    checkStop
+  {-
+  Operators 39-35 form the sub-routine for transferring to block gamma.
+
+  Op. 39 transfers the contents of some standard cell to the next cell of
+  block gamma and adds one to counter gamma.
+  -}
+  operator 39 $ do
+    gTransfer <- empty
+    ai gTransfer oneFirstAddr gTransfer
+    ai unity gammaCounter gammaCounter
+    chain (op 40)
+  {-
+    Op. 34, comparing gamma_c and gamma_cr, tests block gamma for "overflow".
+  -}
+  operator 40 $ do
+    compWord gammaCounter (Absolute 0xE) (op 32 `offAddr` 3) (op 41)
+
+  {-
+    Op. 35 is a check stop for overflow.
+  -}
+  operator 41 $ do
+    checkStop

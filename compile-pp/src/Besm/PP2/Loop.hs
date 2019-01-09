@@ -14,9 +14,9 @@ cellV = Unknown "V"
 cellS = Unknown "S"
 
 gammaBuilder = Unknown "ɣ-builder"
-
 gammaCounter = Unknown "ɣ-counter"
 
+kTransfer     = Procedure "MP-2" (op 32)
 alphaTransfer = Procedure "MP-2" (op 33) -- address where the transfer to alpha instruction is
 betaTransfer  = Procedure "MP-2" (op 36)
 gammaTransfer = Procedure "MP-2" (op 39)
@@ -92,6 +92,9 @@ pp2_1 = do
 
   local "V_f" (Raw 0)
 
+  local "double-i" Cell
+
+  local "k-0" Cell
   {-
   Op. 1 clears standard cells U and V of markers on the transmission to the
   programme of instructions for normalization of the parameter, carried out at
@@ -133,6 +136,8 @@ pp2_1 = do
       -- Having "i" in the first address is very useful
       shift counterI (left 22) shiftedI
 
+
+      ai counterI shiftedI (Unknown "double-i")
       -- Select parameter info
 
       ai parameterSelect shiftedI param
@@ -144,8 +149,12 @@ pp2_1 = do
       ai incrTemplate shiftedI incrInstr -- + _ 1081 _
       ai incrInstr    counterI incrInstr
 
-      tN' counterKInitial counterK
-      tN' kInitial kTrans
+      --
+      --      v this should be the index into the info table
+      shift (Absolute 0xB) (left 22) (Unknown "k-0")
+
+      ai counterKInitial (Unknown "k-0") counterK
+      tN' kInitial kTransfer
 
       chain (op 2)
 
@@ -154,7 +163,7 @@ pp2_1 = do
     -}
     let selected = Unknown "selected"
     kTrans <- operator 2 $ do
-      empty -- ,TN _ selected
+      clcc kTransfer
 
     return ()
 
@@ -266,7 +275,7 @@ pp2_1 = do
   operator 12 $ do
     ai builtComp ifin builtComp
 
-    chain (Procedure "MP-2" (op 4))
+    cccc (Procedure "MP-2" (op 4))
 
   {-
   Op. 13 in the case of i_fin dependent on higher-order parametrs, clears the
@@ -282,10 +291,15 @@ pp2_1 = do
 
     tN' gammaCounter cellT
 
-
+    cccc (Procedure "MP-2" (op 4))
   {-
   Op. 14 forms the comparison for a characteristic loop.
   -}
+
+  operator 14 $ do
+    shift parameterInfo (left 11) builtComp
+    addE  builtComp parameterInfo builtComp
+    cccc (Procedure "MP-2" (op 4))
 
   {-
   After the functioning of block I-PP-2 control is transferred to op. 4 of
@@ -585,3 +599,4 @@ pp2_1 = do
   operator 32 $ do
     add' cellS cellT cellS
     clcc alphaTransfer
+    retRTC
