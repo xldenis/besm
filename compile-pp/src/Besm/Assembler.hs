@@ -127,12 +127,12 @@ checkExternsDefined mod = let
 
 debugRender :: forall a. Show (AddressType a) => ModuleAssembly a -> IO ()
 debugRender mod = let
-  (o, dataS) = mapAccumL (\off (s, _, v) -> showConstant off s v) 0 (globals mod)
+  (o, dataS) = mapAccumL (\off (s, _, v) -> showConstant off s v) 1 (globals mod)
   (len,textS) = mapAccumL (\off p -> debugProc (off + 1) p) (o - 1) (procs mod)
-  offset = case (alignment mod) of
-            AlignLeft -> 1
-            AlignRight -> 1023 - len
-  in forM_ (concat $ dataS ++ textS) $ \(addr, inst) -> putStrLn $ show (addr + offset) ++ ": " ++ inst
+  padding = 1023 - (len)
+  in do
+    forM_ (concat dataS) $ \(addr, inst) -> putStrLn $ show (addr) ++ ": " ++ inst
+    forM_ (concat textS) $ \(addr, inst) -> putStrLn $ show (addr + padding) ++ ": " ++ inst
   where
 
   showConstant :: Int -> String -> Constant (AddressType a) -> (Int, [(Int, String)])
@@ -173,9 +173,8 @@ render mod = let
   textS = zip [1..] (procs mod) >>= uncurry renderProc
   dataS = globals mod >>= \(_, _, c) -> map (b0 <:>) $ constantToCell c
   total = dataS ++ textS
-  in case (alignment mod) of
-    AlignLeft -> (replicate 0 (bitVector 0)) ++ total
-    AlignRight -> replicate (1023 - length total) (bitVector 0) ++ total
+  padding = replicate (1023 - length total) (bitVector 0)
+  in dataS ++ padding ++ textS
 
 renderProc :: Integer -> Procedure Int -> Output
 renderProc ix proc = let
@@ -203,64 +202,68 @@ absolutize mod@(Mod {..}) = let
   memory = memoryLayout mod
   disk   = diskLayout   mod
 
-  padding = 1024 - (size memory)
-
-  globals'  = forgetNames offset memory globals
-
-  offset = case alignment of
-    AlignLeft  -> 1
-    AlignRight -> padding
+  globals'  = forgetNames memory globals
 
   in Mod
-    { procs = map (absolveProc offset memory disk) procs
-    , offsetMap = (M.map (absolve offset memory) relativeMap )
+    { procs = map (absolveProc memory disk) procs
+    , offsetMap = (M.map (absolve memory) relativeMap )
     , globals = globals', ..
     }
   where
 
-  absolveProc :: Int -> MemoryLayout -> MemoryLayout -> Procedure RelativeAddr -> Procedure Int
-  absolveProc offset mem disk proc = proc
-    { blocks    = map (absoluteBlock offset mem disk) (blocks proc)
-    , constDefs = map (fmap (absolve offset mem)) (constDefs proc)
+  absolveProc :: MemoryLayout -> MemoryLayout -> Procedure RelativeAddr -> Procedure Int
+  absolveProc mem disk proc = proc
+    { blocks    = map (absoluteBlock mem disk) (blocks proc)
+    , constDefs = map (fmap (absolve mem)) (constDefs proc)
     }
 
-  forgetNames :: Int -> MemoryLayout -> GlobalMap Relativized -> GlobalMap Absolutized
-  forgetNames offset segmentOffsets = map (\(n, s, c) -> (n, s, fmap (absolve offset segmentOffsets) c))
+  forgetNames :: MemoryLayout -> GlobalMap Relativized -> GlobalMap Absolutized
+  forgetNames segmentOffsets = map (\(n, s, c) -> (n, s, fmap (absolve segmentOffsets) c))
 
-  absolve :: Int -> MemoryLayout -> RelativeAddr -> Int
-  absolve offset textLens (Rel sec i) = case sec `lookup` (offsets textLens) of
-    Just off -> offset + off + i
-  absolve _ _    (Abs i)      = i
+  absolve :: MemoryLayout -> RelativeAddr -> Int
+  absolve textLens (Rel sec i) = case sec `lookup` (offsets textLens) of
+    Just off -> off + i
+  absolve _    (Abs i)      = i
 
-  absoluteBlock :: Int -> MemoryLayout -> MemoryLayout -> BB RelativeAddr -> BB Int
-  absoluteBlock offset mem disk (BB i t b) = BB
-    (map (absoluteInstr offset mem disk) i)
-    (fmap (absolve offset mem) t)
-    (absolve offset mem b)
+  absoluteBlock :: MemoryLayout -> MemoryLayout -> BB RelativeAddr -> BB Int
+  absoluteBlock mem disk (BB i t b) = BB
+    (map (absoluteInstr mem disk) i)
+    (fmap (absolve mem) t)
+    (absolve mem b)
 
-  absoluteInstr offset mem disk (Ma o a s) = Ma (absolve offset mem o) (absolve offset disk a - 1) (absolve offset mem s)
-  absoluteInstr offset mem disk (Mb b ) = Mb (absolve offset disk b - 1)
-  absoluteInstr offset mem disk i = fmap (absolve offset mem) i
+  absoluteInstr mem disk (Ma o a s) = Ma (absolve mem o) (absolve disk a) (absolve mem s)
+  absoluteInstr mem disk (Mb b ) = Mb (absolve disk b)
+  absoluteInstr mem disk i = fmap (absolve mem) i
 
 memoryLayout :: ModuleAssembly Relativized -> MemoryLayout
 memoryLayout (Mod {..}) = let
-  globalSec = sum (map (\(_, _, c) -> constantSize c) globals)
+  globalSecs = group $ sortOn (\(_, s, _) -> s) globals
+  (secs, sizes) = unzip $ map (\gs -> (getSection $ head gs, sum (map (\(_, _, c) -> constantSize c) gs))) globalSecs
+  globalOffs = scanl (+) 1 sizes
+
+
+
   procSizes = map (\p -> (procName p, procedureLen p)) procs
   segSizes  = map (\(MkSeg seg) -> maximum . map snd $ filter (\p -> fst p `elem` seg) procSizes) segments
-
-  segOffs = scanl (+) globalSec segSizes
-
+  segOffs = scanl (+) (sum sizes) segSizes
   procOffs  = concat $ map (\((MkSeg seg), size) -> map (\s -> (Text s, size)) seg) (zip segments segOffs)
 
-  in MkLayout (sum segSizes + globalSec) $ (DefaultData, 0) : procOffs
+  usedSpace = sum segSizes + (sum sizes)
+  padding   = 1023 - usedSpace + 1
 
+  in MkLayout (usedSpace) $ (zip secs globalOffs) ++ map (fmap (+ padding)) procOffs
+
+  where getSection (_, s, _) = s
 diskLayout :: ModuleAssembly Relativized -> MemoryLayout
 diskLayout (Mod {..}) = let
   globalSec = sum (map (\(_, _, c) -> constantSize c) globals)
   procSizes = map (\p -> procedureLen p) procs
-  sectionOffsets = scanl (+) 0 (globalSec : procSizes)
+  procOffs = scanl (+) globalSec procSizes
 
-  in MkLayout (sum $ globalSec : procSizes) $ zip (DefaultData : map (Text . procName) procs) sectionOffsets
+  usedSpace = sum procSizes + globalSec
+  padding   = 1023 - usedSpace + 1
+
+  in MkLayout (usedSpace) $ zip (DefaultData : map (Text . procName) procs) (1 : map (+ padding) procOffs)
 
 -- * Relativization
 
@@ -271,8 +274,8 @@ data RelativeAddr
   deriving (Show, Eq)
 
 -- | Relative addresses are either within a specific procedure or they refer to the data segment
-data Section = Text String | DefaultData | Data String
-  deriving (Show, Eq)
+data Section = Text String | Data String | DefaultData
+  deriving (Show, Eq, Ord)
 
 {- |
   Drastically simplify the address represenation, converting everything
@@ -327,7 +330,7 @@ mkRelativizationDict constants procs = let
     (o, constOffset) = buildOffsetMap (Unknown . constantName) (constantSize . fromDef) (constDefs proc)
     nm = procName proc
 
-    in (ProcStart nm, Rel (Text nm) 0) : (ProcEnd nm, Rel (Text nm) (procedureLen proc)) :
+    in (ProcStart nm, Rel (Text nm) 0) : (ProcEnd nm, Rel (Text nm) (procedureLen proc - 1)) :
        map (fmap (Rel (Text nm))) constOffset
        ++ blockOffsets nm o (blocks proc)
   in M.fromList $ bbOffsets ++ constantOffsets
@@ -335,9 +338,9 @@ mkRelativizationDict constants procs = let
 dataOffsets :: GlobalMap Input -> [(Address, RelativeAddr)]
 dataOffsets globals = let
   (_, globalMap) = buildOffsetMap toKey toVal globals
-  in map (fmap (Rel DefaultData)) globalMap
-  where toKey (n, _, _) = Unknown n
-        toVal (_, _, c) = constantSize c
+  in map (\((s, n), v) -> (n, Rel s v)) globalMap
+  where toKey (n, s, _) = (s, Unknown n)
+        toVal (_, _, c) = (constantSize c)
 
 -- | For a procedure, and a starting offset, give the relative address of every operator
 blockOffsets :: String -> Int -> [BB Address] -> [(Address, RelativeAddr)]
@@ -392,6 +395,7 @@ templateArgs _ = []
 
 globalName :: ConstantDef a -> Maybe String
 globalName (Def Global nm _) = Just nm
+globalName (Def (Pinned _) nm _ ) = Just nm
 globalName _ = Nothing
 
 isTemplate (Template _) = True

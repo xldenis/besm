@@ -33,7 +33,7 @@ end = Proc "MP-2" [BB { baseAddress = Operator 1, instrs = [], terminator = Stop
 mp1 = do
   global "A + 1" Cell
   local "buffer" (Size 240)
-  local "programme header table" (Size 9)
+  pinned "header" "programme header table" (Size 9)
   local "selection counter" (  Val 0)
   local "arrangement counter" (Val 0)
   local "96" ( Raw 96)

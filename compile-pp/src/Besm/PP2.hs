@@ -40,9 +40,13 @@ counterI = Unknown "i"
 
 sixteen = Unknown "16"
 
+loader = do
+  readMD 4 (ProcStart "MP-2") (ProcEnd "MP-2") (ProcStart "MP-2")
+  chain (Procedure "MP-2" (op 1))
 
 mp2 = do
-  local "16" (Val 16)
+  pinned "header" "programme header table" (Size 9)
+  sixteen <- local "16" (Raw 16)
   seven' <- local "7'" (Raw 7)
 
   local "shift-template" (Raw 0) -- shift ? ? ?

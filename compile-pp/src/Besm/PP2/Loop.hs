@@ -27,6 +27,7 @@ gammaInitial = Unknown "ɣ-initial"
 gammaTransInitial = Unknown "ɣ-trans-initial"
 
 pp2_1 = do
+  header <- extern "programme header table"
   counterK <- extern "k"
   counterKInitial <- extern "k-initial"
   counterI <- extern "i"
@@ -151,7 +152,7 @@ pp2_1 = do
 
       --
       --      v this should be the index into the info table
-      shift (Absolute 0xB) (left 22) (Unknown "k-0")
+      shift (header `offAddr` 5) (left 22) (Unknown "k-0")
 
       ai counterKInitial (Unknown "k-0") counterK
       tN' kInitial kTransfer

@@ -131,6 +131,13 @@ extern nm = do
 
   return $ Unknown nm
 
+pinned :: String -> String -> Constant Address -> Builder Address
+pinned p nm c = do
+  modify $ \(BuilderState{..}) ->
+    BuilderState { builtConsts = Def (Pinned p) nm c : builtConsts, ..}
+
+  return $ Unknown nm
+
 -- | Emit an empty cell. This is used to create space to insert a template.
 empty = emitInstr $ Empty
 
