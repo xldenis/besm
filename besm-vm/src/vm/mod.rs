@@ -7,7 +7,7 @@ pub mod instruction;
 use vm::mag::*;
 
 pub struct VM<'a> {
-  pub memory: &'a mut Memory,
+  pub memory: &'a mut Memory<'a>,
   local_ic: u16,
   global_ic: u16,
   active_ic: ActiveIC,
@@ -15,14 +15,23 @@ pub struct VM<'a> {
   pub mag_system: MagSystem<'a>
 }
 
-pub struct Memory {
-  is: [u64; 1023],
+pub struct Memory<'a> {
+  is: &'a mut [u64; 1023],
+  ds: &'a [u64; 384],
 }
 
-impl Memory {
-  pub fn new(is: [u64; 1023]) -> Memory {
-    Memory { is: is}
+impl <'a>Memory<'a> {
+  pub fn new(is: &'a mut [u64; 1023]) -> Memory<'a> {
+    Memory { is: is, ds: &ds::DS }
   }
+
+  // This method leaks memory! I haven't figured out the right api for this yet :/
+  pub fn new_with_bootloader(is: &'a mut [u64; 1023], boot: &'a [u64; 9]) -> Memory<'a> {
+    let ds = Box::leak(Box::new(ds::DS));
+    ds[..9].copy_from_slice(&boot[..]);
+    Memory { is: is, ds: ds }
+  }
+
   pub fn get(&self, ix: u16) -> Result<u64, VMError> {
     if ix == 0 {
       Ok(0)
@@ -31,7 +40,7 @@ impl Memory {
     } else if ix == 1024 {
       Ok(1024)
     } else if 1024 < ix && ix <= 1408 { // The DS annoyingly starts on address 1025 not 1024 :rage:
-      Ok(ds::DS[(ix - 1023 - 1 - 1) as usize]) // We want address 1025 to map to index 0
+      Ok(self.ds[(ix - 1023 - 1 - 1) as usize]) // We want address 1025 to map to index 0
     } else {
       Err(VMError::OutOfBounds{})
     }
@@ -63,13 +72,13 @@ impl Memory {
 }
 
 pub struct Iter<'a> {
-  mem: &'a Memory,
+  mem: &'a Memory<'a>,
   index: usize,
 }
 
 use std::slice;
 
-impl <'a>IntoIterator for &'a Memory {
+impl <'a>IntoIterator for &'a Memory<'a> {
   type Item = u64;
   type IntoIter = Iter<'a>;
 
@@ -108,7 +117,7 @@ use vm::instruction::*;
 use vm::instruction::Instruction::*;
 
 impl<'a> VM<'a> {
-  pub fn new(is: &'a mut Memory, drives: &'a mut [MagDrive; 5], tapes: &'a mut [MagTape; 4], start: u16) -> VM<'a> {
+  pub fn new(is: &'a mut Memory<'a>, drives: &'a mut [MagDrive; 5], tapes: &'a mut [MagTape; 4], start: u16) -> VM<'a> {
     VM {
       memory: is,
       global_ic: start,

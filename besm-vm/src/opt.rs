@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::path::PathBuf;
-use std::iter;
+// use std::iter;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
@@ -19,10 +19,13 @@ pub struct Opts {
     pub command: Command,
 
     #[structopt(name = "FILE", parse(from_os_str))]
-    pub is_file: PathBuf,
+    pub is_file: Option<PathBuf>,
 
     #[structopt(short = "s", long = "start-address", default_value = "1")]
     pub start_address: u64,
+
+    #[structopt(long = "bootloader", parse(from_os_str))]
+    pub bootloader: Option<PathBuf>,
 
     #[structopt(long = "md0", parse(from_os_str))]
     pub md0: Option<PathBuf>,
@@ -56,22 +59,20 @@ pub fn md_from_file(file: Option<PathBuf>) -> MagDrive {
     match file {
         None => {}
         Some(f) => {
-            let words = read_file(&f);
-            buf.copy_from_slice(&words[..1024])
+            let words: Vec<u64> = read_file(&f).take(1024).collect();
+            buf.copy_from_slice(&words[..])
         }
     }
 
     MagDrive::new(buf)
 }
 
-use std::io::Write;
-
 pub fn file_from_md(file: Option<PathBuf>, md: MagDrive) -> () {
     if let Some(path) = file {
         File::create(path)
         .map(|mut f|
             for x in md.drive.iter() {
-                f.write_u64::<BigEndian>(*x);
+                f.write_u64::<BigEndian>(*x).unwrap();
             }
         ).unwrap();
     }
@@ -80,37 +81,53 @@ pub fn file_from_md(file: Option<PathBuf>, md: MagDrive) -> () {
 use std::path::Path;
 use std::ffi::OsStr;
 
+struct IntReader<R> {
+    src: R
+}
+use std::io::Read;
+use std;
+
+impl <R: Read> Iterator for IntReader<R> {
+    type Item = std::io::Result<u64>;
+
+    fn next(&mut self) -> Option<std::io::Result<u64>> {
+        match self.src.read_u64::<BigEndian>() {
+            Ok(v) => Some(Ok(v)),
+            Err(ref e) if e.kind() == std::io::ErrorKind::UnexpectedEof => None,
+            e @ Err(_) => Some(e),
+        }
+    }
+}
 pub fn is_from_file(path: &Path) -> [u64; 1023] {
     let mut is_buf = [0u64; 1023];
 
-    let words = read_file(path);
-    is_buf.copy_from_slice(&words[..1023]);
+    let words: Vec<u64> = read_file(path).take(1023).collect();
+    is_buf.copy_from_slice(&words[..]);
     is_buf
 }
 
-pub fn read_file(path: &Path) -> Vec<u64> {
-    let mut file = File::open(path).expect("file not found");
+pub fn read_file(path: &Path) -> Box<Iterator<Item = u64>> {
+    let file = Box::new(File::open(path).expect("file not found"));
+    use std::io::BufReader;
+    use std::io::BufRead;
+    let buf = BufReader::new(*file);
+
     match path.extension().and_then(OsStr::to_str) {
         Some("txt") => {
-            use std::io::BufReader;
-            use std::io::BufRead;
-            let buf = BufReader::new(&file);
-
-            let words: Vec<u64> = buf.lines()
+            let words = buf.lines()
             .map(|line|
                 line.as_ref().map(|l|
                     u64::from_str_radix(l, 16).unwrap_or(0)
                 ).unwrap_or(0)
-            )
-            .collect();
+            ).chain(std::iter::repeat(0));
 
-            return words;
+            return Box::new(words);
         }
         Some("bin") => {
-           let words: Vec<u64> = iter::repeat_with(|| file.read_u64::<BigEndian>().unwrap_or(0))
-           .collect();
-
-           return words;
+            let words = IntReader { src: buf }
+                .map(|r| r.unwrap_or(0))
+                .chain(std::iter::repeat(0));
+            return Box::new(words);
        }
        _ => { panic!("unsupported is file type.");}
    }

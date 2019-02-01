@@ -73,8 +73,16 @@ fn main() {
 
     let opt = Opts::from_args();
 
-    let f = Path::new(&opt.is_file);
-    let is_buf = is_from_file(f);
+    let mut is_buf = match &opt.is_file {
+        Some(file) => is_from_file(file),
+        None => [0u64; 1023],
+    };
+
+    let mut bootloader: [u64; 9] = [0u64; 9];
+    if let Some(boot) = opt.bootloader {
+        let words : Vec<u64> = read_file(&boot).take(9).collect();
+        bootloader.copy_from_slice(&words[..])
+    }
 
     let mut x = [
         md_from_file(opt.md0),
@@ -92,7 +100,7 @@ fn main() {
         MagTape::new(),
     ];
 
-    let mut mem = Memory::new(is_buf);
+    let mut mem = Memory::new_with_bootloader(&mut is_buf, &bootloader);
     let mut vm = VM::new(&mut mem, &mut x, &mut y, opt.start_address as u16);
 
     runner_from_command(opt.command)(&mut vm);
