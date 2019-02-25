@@ -43,6 +43,7 @@ executables:
     dependencies:
     - compile-pp
     - optparse-simple
+    - filepath
 tests:
   compile-pp-test:
     main:                Spec.hs

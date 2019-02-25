@@ -235,15 +235,23 @@ absolutize mod@(Mod {..}) = let
   absoluteInstr mem disk (Mb b ) = Mb (absolve disk b)
   absoluteInstr mem disk i = fmap (absolve mem) i
 
-memoryLayout :: ModuleAssembly Relativized -> MemoryLayout
+{-|
+  PP-2 and PP-3 hot-swap the individual routines in memory. This means that theh position of
+  the code in memory will not be the same as it's position in disk. This is reflected by the
+  memoryLayout and diskLayout functions that calculate the position of everything in memory
+  and disk respectively. The disk layout should only be used in Ma/Mb commands when we are
+  trying to load data from a disk.
+-}
+memoryLayout :: Eq (AddressType a) => ModuleAssembly a -> MemoryLayout
 memoryLayout (Mod {..}) = let
   globalSecs = group $ sortOn (\(_, s, _) -> s) globals
   (secs, sizes) = unzip $ map (\gs -> (getSection $ head gs, sum (map (\(_, _, c) -> constantSize c) gs))) globalSecs
   globalOffs = scanl (+) 1 sizes
 
-
-
   procSizes = map (\p -> (procName p, procedureLen p)) procs
+
+  -- Procedures are grouped into segments which share the same memory block. This means the size of a given
+  -- segment will be the maximum of the sizes of all procedures inside that segment.
   segSizes  = map (\(MkSeg seg) -> maximum . map snd $ filter (\p -> fst p `elem` seg) procSizes) segments
   segOffs = scanl (+) (sum sizes) segSizes
   procOffs  = concat $ map (\((MkSeg seg), size) -> map (\s -> (Text s, size)) seg) (zip segments segOffs)
@@ -254,7 +262,8 @@ memoryLayout (Mod {..}) = let
   in MkLayout (usedSpace) $ (zip secs globalOffs) ++ map (fmap (+ padding)) procOffs
 
   where getSection (_, s, _) = s
-diskLayout :: ModuleAssembly Relativized -> MemoryLayout
+
+diskLayout :: Eq (AddressType a) => ModuleAssembly a -> MemoryLayout
 diskLayout (Mod {..}) = let
   globalSec = sum (map (\(_, _, c) -> constantSize c) globals)
   procSizes = map (\p -> procedureLen p) procs
@@ -452,6 +461,8 @@ layout (Mod {..}) = Mod
   isGlobal (Def (Pinned s) nm c) = Just (nm, Data s, c)
   isGlobal _ = Nothing
 
+  -- We store all the local variables of a procedure with the procedure itself so that it can
+  -- be efficiently hot-swapped in from disk.
   segmentProcedure proc = proc
     { blocks = join $ map (addJump . fromSegment) . M.elems $ go (toUnsegmentedMap (blocks proc))
     , constDefs = layoutConstants' (constDefs proc)
