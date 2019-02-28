@@ -25,6 +25,7 @@ import           Besm.Assembler
 import           Control.Monad
 import Besm.Put
 
+import qualified Data.Map as M
 import Options.Applicative.Simple as S
 
 import TraceVisualizer
@@ -39,12 +40,6 @@ outputFileArg = strOption $ long "output-file" <> metavar "OUT" <> short 'o'
 sourceMapArg :: S.Parser String
 sourceMapArg = strOption $ long "source-map" <> metavar "SOURCEMAP"
   <> help "location of the sourcemap file"
-
-phase :: ReadM [Procedure Address]
-phase = do
-  str >>= \case
-    "pp1" -> return pp1Procedures
-    "pp2" -> return pp2Procedures
 
 options =
   simpleOptions "v0.1.0" "PP-BESM Compiler Source Code and Debugger" "" (pure ()) $ do
@@ -78,7 +73,7 @@ compileCommand (oDir, smDir) = do
         Just o -> do
           writeFile (o </> "mp1.txt") . unlines $ render pp1 & (map toHexString)
           writeFile (o </> "mp2.txt") . unlines $ render pp2 & (map toHexString)
-          writeFile (o </> "boot.txt") . unlines $ renderProc 0 (bootloader pp2) & (map toHexString)
+          writeFile (o </> "boot.txt") . unlines $ renderProc 0 (bootloader pp1 pp2) & (map toHexString)
         Nothing -> do
           putStrLn . unlines $ render pp1 & (map toHexString)
           putStrLn "\n\n PP-2 \n\n"
@@ -93,26 +88,29 @@ compileCommand (oDir, smDir) = do
   return ()
 
   where
-  bootloader :: ModuleAssembly 'Absolutized -> Procedure Int
-  bootloader pp2 = let
-    Just loadAddr = DefaultData `lookup` (offsets $ memoryLayout pp2)
+  bootloader :: ModuleAssembly 'Absolutized -> ModuleAssembly 'Absolutized -> Procedure Int
+  bootloader pp1 pp2 = let
+    Just destAddr = DefaultData `lookup` (offsets $ memoryLayout pp2)
+    Just srcAddr = DefaultData `lookup` (offsets $ diskLayout pp2)
+    Just pp1Start = Procedure "MP-1" (Operator 1) `M.lookup` (offsetMap pp1)
+    Just pp2Start = Procedure "MP-2" (Operator 1) `M.lookup` (offsetMap pp2)
     in Proc
     { procName = "bootloader"
     , constDefs = []
     , blocks =
       [ BB
         { instrs =
-          [ Ma (0x100) 1 1
+          [ Ma (0x100) 0 1
           , Mb 1023
           ]
-        , terminator = CCCC (-1)
+        , terminator = CCCC (pp1Start   )
         }
       , BB
         { instrs =
-          [ Ma (0x104) 1 loadAddr
-          , Mb (-1)
+          [ Ma (0x104) srcAddr destAddr
+          , Mb 1023
           ]
-        , terminator = CCCC (-1)
+        , terminator = CCCC pp2Start
         }
       ]
     }
@@ -148,12 +146,10 @@ pp1Procedures =
   , runProcedure "PP-1-1" Logical.pp1_1
   , runProcedure "PP-1-2" Arith.arithCoder
   , runProcedure "PP-1-3" Economy.pp1_3
-  , end
   ]
 
 pp2Procedures =
-  [ runProcedure ".loader" loader
-  , runProcedure "MP-2" mp2
+  [ runProcedure "MP-2" mp2
   , runProcedure "I-PP-2" Loop.pp2_1
   -- , runProcedure "II-PP-2" Control.pp2_2
   -- , runProcedure "III-PP-3" Distribute.pp2_3
