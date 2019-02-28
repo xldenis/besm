@@ -236,7 +236,7 @@ mp1 = do
     ma (Absolute $ 0x0100 + 1) (Absolute 0x10) (Absolute 0x10)
     addr <- mb (Absolute 0x10)
 
-    let _mp2 = Procedure "MP-2" (op 1)
+    let _mp2 = Absolute (1025 + 3)
 
     chain _mp2
 

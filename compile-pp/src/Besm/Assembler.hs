@@ -25,6 +25,8 @@ import Besm.Put
 import Data.Either (partitionEithers)
 import Data.Bifunctor (first)
 
+import Data.Function
+
 import Debug.Trace
 
 type Output = [BitVector 64]
@@ -242,9 +244,9 @@ absolutize mod@(Mod {..}) = let
   and disk respectively. The disk layout should only be used in Ma/Mb commands when we are
   trying to load data from a disk.
 -}
-memoryLayout :: Eq (AddressType a) => ModuleAssembly a -> MemoryLayout
+memoryLayout :: (Show (AddressType a), Eq (AddressType a)) => ModuleAssembly a -> MemoryLayout
 memoryLayout (Mod {..}) = let
-  globalSecs = group $ sortOn (\(_, s, _) -> s) globals
+  globalSecs = groupBy ((==) `on` (\(_, s, _) -> s)) $ sortOn (\(_, s, _) -> s) globals
   (secs, sizes) = unzip $ map (\gs -> (getSection $ head gs, sum (map (\(_, _, c) -> constantSize c) gs))) globalSecs
   globalOffs = scanl (+) 1 sizes
 
@@ -265,14 +267,21 @@ memoryLayout (Mod {..}) = let
 
 diskLayout :: Eq (AddressType a) => ModuleAssembly a -> MemoryLayout
 diskLayout (Mod {..}) = let
-  globalSec = sum (map (\(_, _, c) -> constantSize c) globals)
-  procSizes = map (\p -> procedureLen p) procs
-  procOffs = scanl (+) globalSec procSizes
+  globalSecs = groupBy ((==) `on` (\(_, s, _) -> s)) $ sortOn (\(_, s, _) -> s) globals
+  (secs, sizes) = unzip $ map (\gs -> (getSection $ head gs, sum (map (\(_, _, c) -> constantSize c) gs))) globalSecs
+  globalOffs = scanl (+) 0 sizes
 
-  usedSpace = sum procSizes + globalSec
+  procSizes = map (\p -> procedureLen p) procs
+  procOffs = scanl (+) (sum sizes) procSizes
+
+  usedSpace = sum procSizes + sum sizes
   padding   = 1023 - usedSpace + 1
 
-  in MkLayout (usedSpace) $ zip (DefaultData : map (Text . procName) procs) (1 : map (+ padding) procOffs)
+  globalMap = zip secs globalOffs
+
+
+  in MkLayout (usedSpace) $ zip secs globalOffs ++ zip (map (Text . procName) procs) (map (+ padding) procOffs)
+  where getSection (_, s, _) = s
 
 -- * Relativization
 
@@ -346,7 +355,8 @@ mkRelativizationDict constants procs = let
 
 dataOffsets :: GlobalMap Input -> [(Address, RelativeAddr)]
 dataOffsets globals = let
-  (_, globalMap) = buildOffsetMap toKey toVal globals
+  globalGroups = groupBy ((==) `on` \(_, s, _) -> s) globals
+  ( globalMap) = concat $ map (snd . buildOffsetMap toKey toVal) globalGroups
   in map (\((s, n), v) -> (n, Rel s v)) globalMap
   where toKey (n, s, _) = (s, Unknown n)
         toVal (_, _, c) = (constantSize c)
@@ -449,7 +459,7 @@ externName _ = Nothing
 layout :: ModuleAssembly Input -> ModuleAssembly LaidOut
 layout (Mod {..}) = Mod
   { procs = map segmentProcedure procs
-  , globals = procs >>= globalDefs
+  , globals = sortOn (\(_, s, _) -> s) (procs >>= globalDefs)
   , ..
   }
 
