@@ -110,9 +110,6 @@ checkConstants proc = let
   then Right proc
   else Left $ map (\e -> "Missing constant in " ++ procName proc ++ ": " ++ redString e) missing
            ++ map (\e -> "Extra constants in "  ++ procName proc ++ ": " ++ e) extra
-  where
-
-
 
 checkExternsDefined :: ModuleAssembly 'Input -> Either [String] (ModuleAssembly 'Input)
 checkExternsDefined mod = let
@@ -121,9 +118,6 @@ checkExternsDefined mod = let
   in case externs \\ globals of
     [] ->   Right mod
     nms -> Left $ map (\s -> "Missing global constant definition: " ++ redString s) nms
-
-  where
-
 
 -- * Rendering output
 
@@ -135,6 +129,7 @@ debugRender mod = let
   in do
     forM_ (concat dataS) $ \(addr, inst) -> putStrLn $ show (addr) ++ ": " ++ inst
     forM_ (concat textS) $ \(addr, inst) -> putStrLn $ show (addr + padding) ++ ": " ++ inst
+
   where
 
   showConstant :: Int -> String -> Constant (AddressType a) -> (Int, [(Int, String)])
@@ -275,7 +270,7 @@ diskLayout (Mod {..}) = let
   procOffs = scanl (+) (sum sizes) procSizes
 
   usedSpace = sum procSizes + sum sizes
-  padding   = 1023 - usedSpace + 1
+  padding   = 1023 - usedSpace
 
   globalMap = zip secs globalOffs
 

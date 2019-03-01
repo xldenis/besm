@@ -21,8 +21,9 @@ alphaTransfer = Procedure "MP-2" (op 33) -- address where the transfer to alpha 
 betaTransfer  = Procedure "MP-2" (op 36)
 gammaTransfer = Procedure "MP-2" (op 39)
 
-betaInitial  = Unknown "β-initial"
-gammaInitial = Unknown "ɣ-initial"
+betaInitial  = Unknown "programme header table" `offAddr` 8
+alphaInitial = Unknown "programme header table" `offAddr` 7
+gammaInitial = Unknown "programme header table" `offAddr` 6
 
 gammaTransInitial = Unknown "ɣ-trans-initial"
 
@@ -32,12 +33,10 @@ pp2_1 = do
   counterKInitial <- extern "k-initial"
   counterI <- extern "i"
 
-  alphaInitial <- extern "α-initial"
   alphaCounter <- extern "α-counter"
   alphaBuilder <- extern "α-builder"
   alphaTransInitial <- extern "α-trans-initial"
 
-  betaBuilder <- extern "β-initial"
   betaCounter <- extern "β-counter"
   -- extern "β-builder"
   betaTransInitial <- extern "β-trans-initial"

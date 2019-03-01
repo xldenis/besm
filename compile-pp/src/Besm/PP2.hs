@@ -32,10 +32,11 @@ import Besm.Assembler.Syntax
 gammaBuilder   = Unknown "ɣ-builder"
 gammaCounter   = Unknown "ɣ-counter"
 gammaTransfer  = Procedure "MP-2" (op 39)
-gammaInitial   = Unknown "ɣ-initial"
+header = Unknown "programme header table"
+gammaInitial   = Unknown "programme header table" `offAddr` 6
 gammaTransInit = Unknown "ɣ-trans-initial"
 
-initialI = Unknown "i-initial"
+initialI = Unknown "programme header table" `offAddr` 1
 counterI = Unknown "i"
 
 sixteen = Unknown "16"
@@ -46,6 +47,7 @@ loader = do
 
 mp2 = do
   pinned "header" "programme header table" (Size 9)
+  pinned "prog" "programme" (Size 750)
   sixteen <- local "16" (Raw 16)
   seven' <- local "7'" (Raw 7)
 
@@ -62,24 +64,22 @@ mp2 = do
   global "V" Cell
   global "U" Cell
 
-  local "i-initial" (Raw 0)
   local "next-instr" Cell
   local "instr-exp" Cell
 
-  global "ɣ-trans-initial" (Raw 0)
-  global "ɣ-initial" (Raw 0)
-  gammaCounter <- global "ɣ-counter" (Raw 0)
+  -- these should all be merged together
+  global "ɣ-trans-initial" (Template (TN (var "ɣ-builder") (Absolute 1) UnNormalized))
+  global "β-trans-initial" (Template (TN (var "β-builder") (Absolute 1) UnNormalized))
+  global "α-trans-initial" (Template (TN (var "α-builder") (Absolute 1) UnNormalized))
+
+  -- same
   global "ɣ-builder" (Raw 0)
-
-  global "α-trans-initial" (Raw 0)
-  global "α-initial" (Raw 0)
-  alphaCounter <- global "α-counter" (Raw 0)
   global "α-builder" (Raw 0)
-
-  global "β-trans-initial" (Raw 0)
-  global "β-initial" (Raw 0)
-  betaCounter <- global "β-counter" (Raw 0)
   global "β-builder" (Raw 0)
+
+  gammaCounter <- global "ɣ-counter" (Raw 0)
+  alphaCounter <- global "α-counter" (Raw 0)
+  betaCounter  <- global "β-counter" (Raw 0)
 
   k <- global "k" Cell
   global "k-initial" (Raw 0)
@@ -95,7 +95,7 @@ mp2 = do
     tN' gammaTransInit gammaTransfer
     tN' gammaInitial  gammaCounter
 
-    tN' initialI counterI
+    ai initialI one counterI
 
     chain (op 2)
 
