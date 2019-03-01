@@ -1,8 +1,9 @@
 use tui::backend::*;
-use tui::layout::{Group, Rect, Size};
-use tui::style::{Alignment, Style, Color};
-use tui::widgets::{Block, Borders, Paragraph, Widget, Tabs, Table};
+use tui::layout::{Layout, Rect, Alignment};
+use tui::style::{Style, Color};
+use tui::widgets::{Block, Borders, Paragraph, Widget, Tabs, Table, Text};
 use tui::Terminal;
+use tui::Frame;
 
 use vm::VM;
 use vm::instruction::{first_addr, second_addr, third_addr, Instruction};
@@ -50,55 +51,51 @@ impl TabInfo {
 }
 
 
-use tui::layout::Size::*;
+use tui::layout::Constraint::*;
 use tui::layout::Direction::*;
 
 pub fn draw<T : Backend>(t: &mut Terminal<T>, vm: &VM, app: &Interface) {
-    let chunks: &[Size] = &[Min(23), Fixed(3)];
+    t.draw(|mut f| {
+        let chunks = Layout::default()
+            .direction(Vertical)
+            .constraints(vec![Min(23), Length(3)])
+            .split(app.size);
 
-    Group::default()
-        .direction(Vertical)
-        .sizes(&chunks)
-        .render(t, &app.size, |t, chunks| {
-            match app.tabs.selection {
-                0 => { render_main_panel(t, app, vm, chunks[0]) }
-                1 => { render_memory_panel(t, &app.tabs, vm, chunks[0]) }
-                2 => { render_memory_panel(t, &app.tabs, vm, chunks[0]) }
-                3 => { render_memory_panel(t, &app.tabs, vm, chunks[0]) }
-                4 => { render_memory_panel(t, &app.tabs, vm, chunks[0]) }
-                5 => { render_memory_panel(t, &app.tabs, vm, chunks[0]) }
-                6 => { render_memory_panel(t, &app.tabs, vm, chunks[0]) }
-                _ => {}
-            }
-            render_status_line(t, app, chunks[1]);
-
-        });
-
-    t.draw().unwrap();
+        match app.tabs.selection {
+            0 => { render_main_panel(&mut f, app, vm, chunks[0]) }
+            1 => { render_memory_panel(&mut f, &app.tabs, vm, chunks[0]) }
+            2 => { render_memory_panel(&mut f, &app.tabs, vm, chunks[0]) }
+            3 => { render_memory_panel(&mut f, &app.tabs, vm, chunks[0]) }
+            4 => { render_memory_panel(&mut f, &app.tabs, vm, chunks[0]) }
+            5 => { render_memory_panel(&mut f, &app.tabs, vm, chunks[0]) }
+            6 => { render_memory_panel(&mut f, &app.tabs, vm, chunks[0]) }
+            _ => {}
+        }
+        render_status_line(&mut f, app, &vm.active_ic, chunks[1]);
+    }).unwrap();
 }
 
-fn render_main_panel<T: Backend>(t: &mut Terminal<T>, app: &Interface, vm: &VM, rect: Rect) {
-    Group::default()
+fn render_main_panel<T: Backend>(t: &mut Frame<T>, app: &Interface, vm: &VM, rect: Rect) {
+    let chunks = Layout::default()
         .direction(Vertical)
-        .sizes(&[Fixed(3), Min(20)])
-        .render(t, &rect, |t, chunks| {
-            render_current_instruction_box(t, vm, chunks[0]);
+        .constraints(vec![Length(3), Min(20)])
+        .split(rect);
 
-            Group::default()
-                .sizes(&[Min(20), Fixed(24)])
-                .direction(Horizontal)
-                .render(t, &chunks[1], |t, chunks| {
-                    TuiLoggerWidget::default()
-                        .block(Block::default().title("Log").borders(Borders::ALL))
-                        .render(t, &chunks[0]);
+    render_current_instruction_box(t, vm.next_instr(), vm.memory.get(vm.next_instr()).unwrap(), chunks[0]);
 
-                    render_past_instructions(t, app, chunks[1]);
+    let inner_chunks = Layout::default()
+        .constraints(vec![Min(20), Length(24)])
+        .direction(Horizontal)
+        .split(chunks[1]);
 
-                });
-        })
+    TuiLoggerWidget::default()
+        .block(Block::default().title("Log").borders(Borders::ALL))
+        .render(t, inner_chunks[0]);
+
+    render_past_instructions(t, app.past_instrs.iter(), inner_chunks[1]);
 }
 
-fn render_memory_panel<T: Backend>(t: &mut Terminal<T>, tabs: &TabInfo, vm: &VM, rect: Rect) {
+fn render_memory_panel<T: Backend>(t: &mut Frame<T>, tabs: &TabInfo, vm: &VM, rect: Rect) {
     use tui::widgets::Row;
 
     let (mem_vec, addr_offset) : (Box<Iterator<Item = u64>>, usize) = match tabs.selection {
@@ -111,9 +108,6 @@ fn render_memory_panel<T: Backend>(t: &mut Terminal<T>, tabs: &TabInfo, vm: &VM,
     };
     let tab_offset = tabs.offsets[tabs.selection].saturating_sub(addr_offset);
 
-    let selected_style = Box::new(Style::default().fg(Color::Yellow)); //.modifier(Modifier::Bold)
-    let basic_style = Box::new(Style::default());
-
     let rows = mem_vec.enumerate().skip(tab_offset).map(|(addr, instr)| {
         let instr_string = Instruction::from_bytes(instr)
             .map(|s| format!("{} ", s))
@@ -123,9 +117,9 @@ fn render_memory_panel<T: Backend>(t: &mut Terminal<T>, tabs: &TabInfo, vm: &VM,
         let float = Float::from_bytes(instr);
         let active_bits = instr.get_bits(0..39);
         let style = if vm.next_instr() - 1 == addr as u16 && tabs.selection == 1 {
-            &selected_style
+            Style::default().fg(Color::Yellow)
         } else {
-            &basic_style
+            Style::default()
         };
 
         Row::StyledData(
@@ -147,106 +141,113 @@ fn render_memory_panel<T: Backend>(t: &mut Terminal<T>, tabs: &TabInfo, vm: &VM,
         .column_spacing(2)
         .block(Block::default().title(tabs.titles[tabs.selection]).borders(Borders::ALL))
         .header_style(Style::default().fg(Color::Yellow))
-        .render(t, &rect)
+        .render(t, rect)
 }
 
-fn render_status_line<T: Backend>(t: &mut Terminal<T>, app: &Interface, rect: Rect) {
+use vm::ActiveIC;
+fn render_status_line<T: Backend>(t: &mut Frame<T>, app: &Interface, active_ic: &ActiveIC, rect: Rect) {
     Block::default()
         .borders(Borders::ALL)
-        .render(t, &rect);
+        .render(t, rect);
 
-    Group::default()
+    let chunks = Layout::default()
         .margin(1)
         .direction(Horizontal)
-        .sizes(&[Fixed(6), Min(0), Fixed(11)])
-        .render(t, &rect, |t, chunks| {
-            let (style, text) = match &app.step_mode {
-                StepMode::Run => (Style::default().fg(Color::Green),   "RUN"),
-                StepMode::Step => (Style::default().fg(Color::Yellow), "STEP"),
-                StepMode::Stop => (Style::default().fg(Color::Red),  "STOP"),
-            };
+        .constraints(vec![Length(6), Length(8), Min(0), Length(11)])
+        .split(rect);
 
-            Paragraph::default()
-                .alignment(Alignment::Center)
-                .style(style)
-                .text(&format!("{:4}", text))
-                .render(t, &chunks[0]);
+    let (style, text) = match &app.step_mode {
+        StepMode::Run => (Style::default().fg(Color::Green),   "RUN"),
+        StepMode::Step => (Style::default().fg(Color::Yellow), "STEP"),
+        StepMode::Stop => (Style::default().fg(Color::Red),  "STOP"),
+    };
 
-            Tabs::default()
-                .titles(&app.tabs.titles)
-                .select(app.tabs.selection)
-                .highlight_style(Style::default().fg(Color::Yellow))
-                .render(t, &chunks[1]);
+    Paragraph::new([Text::styled(format!("{:4}", text), style)].iter())
+        .alignment(Alignment::Center)
+        .render(t, chunks[0]);
 
-            if let Some(b) = app.breakpoint {
-                Paragraph::default()
-                    .style(Style::default().fg(Color::Yellow))
-                    .text(&format!("BREAK {:04} ", b))
-                    .render(t, &chunks[2]);
-            }
-        });
+    let ic = match active_ic {
+        ActiveIC::Global => "GLOBAL",
+        ActiveIC::Local => "LOCAL",
+    };
+
+    Paragraph::new([Text::raw(format!("{:6}", ic))].iter())
+        .alignment(Alignment::Center)
+        .render(t, chunks[1]);
+
+    Tabs::default()
+        .titles(&app.tabs.titles)
+        .select(app.tabs.selection)
+        .highlight_style(Style::default().fg(Color::Yellow))
+        .render(t, chunks[2]);
+
+    if let Some(b) = app.breakpoint {
+        Paragraph::new([
+                Text::styled(format!("BREAK {:04} ", b), Style::default().fg(Color::Yellow))
+            ].iter())
+            .render(t, chunks[3]);
+    }
 }
 
-fn render_past_instructions<T: Backend>(t: &mut Terminal<T>, app: &Interface, rect: Rect) {
+
+fn render_past_instructions<'a, T, I>(t: &mut Frame<T>, app: I, rect: Rect)
+    where T: Backend,
+          I : Iterator<Item = &'a Instruction>
+{
+
     Block::default()
         .borders(Borders::ALL)
         .title("Past Instructions")
-        .render(t, &rect);
+        .render(t, rect);
 
-    Group::default()
+    let chunks = Layout::default()
         .margin(1)
         .direction(Vertical)
-        .sizes(&vec![Fixed(1); rect.height as usize])
-        .render(t, &rect, |t, chunks| {
-            for (instr, chunk) in app.past_instrs.iter().zip(chunks.iter()) {
-                Paragraph::default()
-                    .text(&format!("{} ", instr))
-                    .alignment(Alignment::Center)
-                    .render(t, &chunk);
-            }
-        });
+        .constraints(vec![Length(1); rect.height as usize])
+        .split(rect);
+
+    for (instr, chunk) in app.zip(chunks.iter()) {
+        Paragraph::new([Text::raw(format!("{} ", instr))].iter())
+            .alignment(Alignment::Center)
+            .render(t, *chunk);
+    }
 }
 
-fn render_current_instruction_box<T: Backend>(t: &mut Terminal<T>, vm: &VM, rect: Rect) {
+fn render_current_instruction_box<T: Backend>(t: &mut Frame<T>, ix: u16, instr_bytes: u64, rect: Rect) {
     Block::default()
         .borders(Borders::ALL)
         .title("Current Instruction")
-        .render(t, &rect);
+        .render(t, rect);
 
-    Group::default()
+    let chunks = Layout::default()
         .margin(1)
         .direction(Horizontal)
-        .sizes(&[Fixed(5), Fixed(2), Fixed(42), Fixed(2), Fixed(10), Fixed(2), Percent(100)])
-        .render(t, &rect, |t, chunks| {
-            let ins = vm.memory.get(vm.next_instr()).unwrap();
+        .constraints(vec!(Length(5), Length(2), Length(42), Length(2), Length(10), Length(2), Percentage(100)))
+        .split(rect);
 
-            Paragraph::default()
-                .text(&format!("{:04}", vm.next_instr()))
-                .alignment(Alignment::Right)
-                .render(t, &chunks[0]);
+    Paragraph::new([Text::raw(format!("{:04}", ix))].iter())
+        .alignment(Alignment::Right)
+        .render(t, chunks[0]);
 
-            Paragraph::default()
-                .text(&format!(
-                    "{:06b} {:011b} {:011b} {:011b}",
-                    ins.get_bits(33..38),
-                    first_addr(ins),
-                    second_addr(ins),
-                    third_addr(ins)
-                ))
-                .render(t, &chunks[2]);
+    Paragraph::new([Text::raw(format!(
+            "{:06b} {:011b} {:011b} {:011b}",
+            instr_bytes.get_bits(33..38),
+            first_addr(instr_bytes),
+            second_addr(instr_bytes),
+            third_addr(instr_bytes)
+        ))].iter())
+        .render(t, chunks[2]);
 
-            Paragraph::default()
-                .text(&format!("{:010x}", ins))
-                .render(t, &chunks[4]);
+    Paragraph::new([Text::raw(format!("{:010x}", instr_bytes))].iter())
+        .render(t, chunks[4]);
 
-            Paragraph::default()
-                .text(
-                    &Instruction::from_bytes(ins)
-                        .map(|s| format!("{} ", s))
-                        .unwrap_or_else(|_| "ERROR".to_string()),
-                )
-                .alignment(Alignment::Right)
-                .wrap(true)
-                .render(t, &chunks[6]);
-        });
+    Paragraph::new([
+            Text::raw(Instruction::from_bytes(instr_bytes)
+                .map(|s| format!("{} ", s))
+                .unwrap_or_else(|_| "ERROR".to_string()))
+            ].iter()
+        )
+        .alignment(Alignment::Right)
+        .wrap(true)
+        .render(t, chunks[6]);
 }

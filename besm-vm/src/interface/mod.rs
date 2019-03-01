@@ -17,7 +17,7 @@ use tui::backend::Backend;
 // This should be split into two structures, so that input can fully happen in a separate thread.
 pub struct Interface {
     pub size: Rect,
-    pub past_instrs: ArrayDeque<[Instruction; 50], Wrapping>,
+    pub past_instrs: ArrayDeque<[Instruction; 100], Wrapping>,
     pub step_mode: StepMode,
     pub tabs: TabInfo,
     pub breakpoint: Option<u16>,

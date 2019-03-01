@@ -20,7 +20,12 @@ use interface::*;
 use vm::*;
 use structopt::StructOpt;
 
-use tui::backend::MouseBackend;
+use termion::input::MouseTerminal;
+use termion::raw::IntoRawMode;
+use termion::screen::AlternateScreen;
+use tui::backend::TermionBackend;
+use std::io;
+
 use tui::Terminal;
 
 mod float;
@@ -36,7 +41,12 @@ fn runner_from_command(command: Command) -> impl for <'a> FnOnce(&mut VM<'a>) ->
 }
 
 fn run_with_interface(vm: &mut VM) {
-    let mut terminal = Terminal::new(MouseBackend::new().unwrap()).unwrap();
+    let stdout = io::stdout().into_raw_mode().unwrap();
+    let stdout = MouseTerminal::from(stdout);
+    let stdout = AlternateScreen::from(stdout);
+    let backend = TermionBackend::new(stdout);
+    let mut terminal = Terminal::new(backend).unwrap();
+
     let mut interface = Interface::default();
 
     interface.run(&mut terminal, vm);

@@ -10,7 +10,7 @@ pub struct VM<'a> {
   pub memory: &'a mut Memory<'a>,
   local_ic: u16,
   global_ic: u16,
-  active_ic: ActiveIC,
+  pub active_ic: ActiveIC,
   pub stopped: bool,
   pub mag_system: MagSystem<'a>
 }
@@ -102,7 +102,7 @@ impl < 'a>Iterator for Iter< 'a> {
   }
 }
 
-enum ActiveIC { Global, Local}
+pub enum ActiveIC { Global, Local}
 
 #[derive(Debug)]
 pub enum VMError {
