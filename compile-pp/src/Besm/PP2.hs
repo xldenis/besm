@@ -32,11 +32,13 @@ import Besm.Assembler.Syntax
 gammaBuilder   = Unknown "ɣ-builder"
 gammaCounter   = Unknown "ɣ-counter"
 gammaTransfer  = Procedure "MP-2" (op 39)
-header = Unknown "programme header table"
-gammaInitial   = Unknown "programme header table" `offAddr` 6
+
+header = Unknown "programme header table" `offAddr` 6 -- This should be cell 7
+
+gammaInitial   = header `offAddr` 6
 gammaTransInit = Unknown "ɣ-trans-initial"
 
-initialI = Unknown "programme header table" `offAddr` 1
+initialI = header `offAddr` 1
 counterI = Unknown "i"
 
 sixteen = Unknown "16"
@@ -46,7 +48,7 @@ loader = do
   chain (Procedure "MP-2" (op 1))
 
 mp2 = do
-  pinned "header" "programme header table" (Size 9)
+  pinned "header" "programme header table" (Size 15)
   pinned "prog" "programme" (Size 750)
   sixteen <- local "16" (Raw 16)
   seven' <- local "7'" (Raw 7)
@@ -97,7 +99,38 @@ mp2 = do
 
     ai initialI one counterI
 
-    chain (op 2)
+    chain (op 31)
+
+  {-
+
+    !! IMPORTANT !!
+
+    DEVIATION FROM BOOK
+
+    In the book, PP-2 only checks for exhaustion of loop parameters at the _end_ of the loop. This means
+    that if there are no loop parameters, the program will return incorrect results! While in practice
+    no useful programs can be written without using a loop, for correctness' sake I rotated the check to
+    the head of the loop so that we properly abort if there is nothing to check!
+
+    ===========
+
+    Op. 31 ensures construction of loops over all parameters of the block P.
+
+    At the completion of operation of PP-2 there remains in IS information on
+    the problem in standard position, prepared for funcioning of PP-3. The
+      ndication of counter gamma is stored in cell 0006.
+
+  -}
+
+  operator 31 $ mdo
+    compMod counterI (header `offAddr` 2) (op 2) exit
+
+    exit <- block $ do
+      tN' gammaCounter (header `offAddr` (-1)) -- TO BE FIXED: The header block should probably occupy the first 16 cells like in the book
+
+      cccc (Absolute $ 1025 + 6)
+
+    return ()
 
   {-
   Op. 2 reads block I-PP-2 from MD-4 (block for loop formation).
@@ -270,17 +303,16 @@ mp2 = do
   constructed control instructions from the standard cells and from blocks
   alpha and beta to teh programme, changing the addresses of variable
   instructions to their relative addresses.
-
-  Op. 30 adding unity to countery i, obtains the code of the following
+-}
+{-
+  Op. 30 adding unity to counter i, obtains the code of the following
   parameter.
+-}
+  operator 30 $ do
+    ai counterI one counterI
 
-  Op. 31 ensures construction of loops over all parameters of the block P.
+    chain (op 31)
 
-    At the completio nof operation of PP-2 there remains in Is information on
-    the problem in standard position, prepared for funcioning of PP-3. The
-    indication of counter gamma is stored in cell 0006.
-
-  -}
   {-
     Op. 32 transfers cells from K
   -}

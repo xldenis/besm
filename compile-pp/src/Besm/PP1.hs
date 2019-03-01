@@ -14,11 +14,13 @@ cellKcr = Unknown "K_cr"
 
 selectionCounter   = Unknown "selection counter"
 ninetysix          = Unknown "96"
-cellKlast          = Unknown "programme header table" `offAddr` 5
+header             = Unknown "programme header table" `offAddr` 6 -- This should be cell 7
+cellKlast          = header `offAddr` 5
 arrangementCounter = Unknown "arrangement counter"
 hundredfourtyfour  = Unknown "144"
 maxSelected        = Unknown "max-selected"
 maxWritten         = Unknown "max-written"
+
 
 end = Proc "MP-2" [BB { baseAddress = Operator 1, instrs = [], terminator = Stop}] []
 
@@ -33,7 +35,7 @@ end = Proc "MP-2" [BB { baseAddress = Operator 1, instrs = [], terminator = Stop
 mp1 = do
   global "A + 1" Cell
   local "buffer" (Size 240)
-  pinned "header" "programme header table" (Size 9)
+  pinned "header" "programme header table" (Size 15)
   local "selection counter" (  Val 0)
   local "arrangement counter" (Val 0)
   local "96" ( Raw 96)
@@ -59,8 +61,6 @@ mp1 = do
     can be done in one pass by using the upper memory
   -}
   operator 1 $ mdo
-    let header = Unknown "programme header table"
-
     cellC <- readMD 2 (Absolute 7) (Absolute 15) header
     sub' (header `offAddr` 2) one cellB
 

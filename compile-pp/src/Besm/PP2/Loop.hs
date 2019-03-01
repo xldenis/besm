@@ -21,9 +21,11 @@ alphaTransfer = Procedure "MP-2" (op 33) -- address where the transfer to alpha 
 betaTransfer  = Procedure "MP-2" (op 36)
 gammaTransfer = Procedure "MP-2" (op 39)
 
-betaInitial  = Unknown "programme header table" `offAddr` 8
-alphaInitial = Unknown "programme header table" `offAddr` 7
-gammaInitial = Unknown "programme header table" `offAddr` 6
+header       = Unknown "programme header table" `offAddr` 6
+
+betaInitial  = header `offAddr` 8
+alphaInitial = header `offAddr` 7
+gammaInitial = header `offAddr` 6
 
 gammaTransInitial = Unknown "ɣ-trans-initial"
 
