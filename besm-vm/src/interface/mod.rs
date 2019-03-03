@@ -70,20 +70,22 @@ impl Interface {
                 draw(terminal, &vm, &self);
             }
 
-            self.handle_input(vm, &rx);
+            let need_draw = self.handle_input(vm, &rx);
 
-            draw(terminal, &vm, &self);
+            if need_draw {
+                draw(terminal, &vm, &self);
+            }
         }
 
         terminal.show_cursor().unwrap();
     }
 
-    fn handle_input(&mut self, vm: &mut VM, rx: &Receiver<Event>) {
+    fn handle_input(&mut self, vm: &mut VM, rx: &Receiver<Event>) -> bool {
         use termion::event::Key::*;
         use self::StepMode::*;
 
         let evt = match rx.recv() {
-            Err(_) => {self.exiting = true; return},
+            Err(_) => { self.exiting = true; return false },
             Ok(e) => e,
         };
 
@@ -141,8 +143,10 @@ impl Interface {
                     }
                 }
             }
-            _ => {}
+            _ => { return false }
         }
+
+        return true
     }
 }
 
