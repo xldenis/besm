@@ -9,9 +9,6 @@ import qualified Data.Bits as B
 informationBlock      = Unknown "buffer" `offAddr` 0
 completedInstructions = Unknown "buffer" `offAddr` 96
 
-cellKf  = Unknown "K_f"
-cellKcr = Unknown "K_cr"
-
 selectionCounter   = Unknown "selection counter"
 ninetysix          = Unknown "96"
 header             = Unknown "programme header table" `offAddr` 6 -- This should be cell 7
@@ -44,8 +41,6 @@ mp1 = do
   global "B" Cell
   local "0x18" (Raw $ 0x18)
   local "snd and third addr mask" (Raw $ 0b11111111111 `B.shift` 11 B..|. 0b11111111111)
-  local "K_f" ( Raw 0)
-  local "K_cr" (Raw 0)
   local "start of 144 block" (Val 0)
   local "96 shifted" (Raw $ 96 `B.shift` 11)
   local "144 shifted 2nd addr" (Raw $ 144 `B.shift` 11)
@@ -58,13 +53,14 @@ mp1 = do
 
     Op. 1 reads from MD-2 and writes the contents of blocks V and P on MD-1.
 
-    can be done in one pass by using the upper memory
   -}
   operator 1 $ mdo
     cellC <- readMD 2 (Absolute 7) (Absolute 15) header
-    sub' (header `offAddr` 2) one cellB
+    sub' (header `offAddr` 2) one cellA
 
-    shift cellB (left 11) cellB
+    -- Read blocks V and P from MD-2 and then write them to MD-1
+    shift cellA (left 11) cellB
+
     ai addr cellB addr
 
     let buffer = Unknown "buffer" -- Address above the executable, at most we need 256 bytes. (less since we have no constants)
@@ -78,12 +74,17 @@ mp1 = do
     ma (Absolute $ 0x0300 + 1) (Absolute 0x10) buffer
     addr' <- mb (Absolute 0)
 
+    {-
+      During the execution of PP-1 we change the layout of the program in memory, from
+      V, P, C, K to V, P, K. this means that the first cell of K is now what was the first
+      cell of C. To this end we initialize the arrangementCounter with this value.
+    -}
+
+    tN' cellA arrangementCounter
+    ai maxWritten cellA maxWritten
+
     tN' (header `offAddr` 4) selectionCounter
     tN' (header `offAddr` 4) maxSelected
-
-    tN' zero arrangementCounter
-    -- tN' (header `offAddr` 2) arrangementCounter
-    tN' (header `offAddr` 2) maxWritten
 
     -- Absolutely way too brittle
     -- Initialize values inside of the selection and arrangement subroutines
@@ -97,6 +98,9 @@ mp1 = do
 
     ai (op 22) cellB (op 22)
     ai (op 22 `offAddr` 1) cellB (op 22 `offAddr` 1)
+
+    -- Update the start position of K in the header table
+    tN' cellA (header `offAddr` 4)
 
     chain (op 2)
 
@@ -188,7 +192,7 @@ mp1 = do
     address of the last cell of block K.
   -}
   operator 12 $ do
-    tN' cellKf (Absolute 0x000C)
+    tN' arrangementCounter cellKlast
     chain (op 13)
 
   {-
@@ -196,7 +200,7 @@ mp1 = do
 
   -}
   operator 13 $ do
-    comp cellKf cellKcr (op 14) (op 15)
+    comp arrangementCounter (header `offAddr` 6) (op 15) (op 14)
 
   {-
     Op. 14 is a "control stop", occuring for K_f >= K_cr. After termination of
@@ -209,6 +213,10 @@ mp1 = do
     Op. 15 writes the last portion of instructions from the block of completed
     operators on MD-1 in "forced order" with the use of the writing
     instructions located in the arrangement block.
+
+    ====
+
+    Can probably be rewritten to use a jump instead! would save 3 instructions
   -}
   operator 15 $ mdo
     let _startMDKMinus144 = Unknown "start of 144 block"

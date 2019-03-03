@@ -84,7 +84,6 @@ mp2 = do
   betaCounter  <- global "β-counter" (Raw 0)
 
   k <- global "k" Cell
-  global "k-initial" (Raw 0)
   global "k-trans-initial" (Template (TN (Absolute 1) (var "k") UnNormalized))
 
   nextAddr <- local "next-addr" Cell
