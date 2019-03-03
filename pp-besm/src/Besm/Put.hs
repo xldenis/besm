@@ -46,7 +46,7 @@ encodeProgramme p@(PP {..}) = let
   cCells = blockC constants
   kCells = blockK qa programme
   headerTable = programmeSummaryTable (fromIntegral block0Len) (length vCells) (length cCells)
-    (length pCells) (length kCells) (fromIntegral blockGammaLen) (fromIntegral blockAlphaLen)
+    (length pCells) (length kCells) (fromIntegral blockGammaLen) (fromIntegral blockAlphaLen) (fromIntegral blockBetaLen)
   in replicate 7 b0 ++  headerTable ++ vCells ++ pCells ++ cCells ++ kCells
 
 {-
@@ -70,17 +70,17 @@ encodeProgramme p@(PP {..}) = let
 
 -}
 
-programmeSummaryTable :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> [BitVector 39]
-programmeSummaryTable olen vlen clen plen klen gammalen alphalen =
+programmeSummaryTable :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> [BitVector 39]
+programmeSummaryTable olen vlen clen plen klen gammalen alphalen betalen =
   [ buildInstruction 0 0 0 (bitVector' $ olen)
   , buildInstruction 0 0 0 (bitVector' $ lastVAddr)
   , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + 1)
   , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen) -- last of C
   , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen) -- first of K - 1
   , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen)
-  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen)
-  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen + gammalen - 1)
-  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen + gammalen + alphalen - 1)
+  , buildInstruction 0 0 0 (bitVector' $ 0x2FF - (gammalen + alphalen + betalen) - 1)
+  , buildInstruction 0 0 0 (bitVector' $ 0x2FF - (alphalen + betalen) - 1)
+  , buildInstruction 0 0 0 (bitVector' $ 0x2FF - betalen - 1)
   ]
 
   where

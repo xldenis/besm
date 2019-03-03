@@ -47,6 +47,7 @@ data Programme
   , block0Len         :: Word16
   , blockAlphaLen     :: Word16
   , blockGammaLen     :: Word16
+  , blockBetaLen      :: Word16
   -- , blockBetLen -- Beta block takes remaining space to addr 02FF
   } deriving Show
 
@@ -191,7 +192,16 @@ lowerProgramme (S.P va p c k) = PP
   (lowerParameters p)
   (lowerConstants c)
   (lowerSchema k)
-  0 0 0
+  {-
+    Blocks alpha, beta, and gamma are buffers used during the compilation of loops
+
+    the required size is dependent on the specific kind of loop as well as the amount
+    of 'variable' instructions contained within. I still need to do some experimentation
+    and reading to figure out the exact relation between a program and the required
+    buffer size. For now I'm providing dummy values that should work in basic situations
+  -}
+
+  0 10 10 10
 
 data VAIR = VAIR
   { irName   :: Text
