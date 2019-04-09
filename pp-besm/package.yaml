@@ -33,6 +33,8 @@ library:
   - prettyprinter
   - digits
   - charset
+  - parser-combinators
+
   ghc-options:
   - -fwarn-incomplete-uni-patterns
   - -fwarn-incomplete-patterns
@@ -47,7 +49,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - pp-besm
-    - prettyclass
+    - pretty
     - bv-sized
     - optparse-simple
 

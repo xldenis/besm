@@ -1,9 +1,10 @@
-resolver: lts-12.0
+resolver: lts-13.10
 packages:
 - .
 
 extra-deps:
 - github: xldenis/bv-sized
-  commit: 4f42d9e2c7154dfdd543bab36cba1f8b4ae93cfa
+  commit: 9e9598976685c0a1ab54cb4729d4088edffef399
 - github: GaloisInc/parameterized-utils
-  commit: 898020da43fbf9989a8877c1404c05767bb5df98
+  commit: 573322c4d3ffc567b71d3fdb7c1993edb7e8a34b
+- graphviz-2999.20.0.3@sha256:cde383c356bc41136ed53cd27e0800f46dbd2185600dd0de18d66d5c49739d94

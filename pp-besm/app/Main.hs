@@ -3,12 +3,15 @@
 module Main where
 
 
-import           Data.Text.IO                   as T
 
 import           Control.Monad
+
 import           Data.BitVector.Sized.BitLayout
 import           Data.Semigroup
+import           Data.Text.IO                   as T
+
 import           Options.Applicative.Simple     as S
+
 import           Besm.Parser
 import           Besm.Put
 import           Besm
@@ -17,6 +20,7 @@ import           Besm.Lower
 
 
 import           System.Environment
+
 import           Text.PrettyPrint.HughesPJClass (pPrint, vcat, (<+>))
 
 fileArg :: S.Parser String
@@ -39,7 +43,7 @@ parseFromFile file = do
   f <- T.readFile file
   let res = parse pp file f
   case res of
-    Left  err -> error $ parseErrorPretty' f err
+    Left  err -> error $ errorBundlePretty err
     Right pp  -> return pp
 
 prettyCommand :: String -> IO ()

@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Besm.Put where
 
-import           Data.BitVector.Sized
+import           Data.BitVector.Sized hiding (bitVector')
 import           Data.BitVector.Sized.BitLayout
 import           Data.List                      (mapAccumL)
 import           Data.Serialize.Put

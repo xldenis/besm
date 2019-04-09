@@ -29,6 +29,9 @@ dependencies:
 - containers
 - text
 
+default-extensions:
+- NumericUnderscores
+
 library:
   source-dirs: src
 

@@ -5,29 +5,34 @@
 module Besm.Parser
 ( module Besm.Parser
 , parse
-, parseTest'
-, parseErrorPretty'
-, parseErrorPretty
+-- , parseTest'
+-- , parseErrorPretty'
+-- , parseErrorPretty
+, errorBundlePretty
 ) where
 
 import           Control.Monad
+
 import qualified Data.List.NonEmpty         as NL
 import           Data.Semigroup
 import           Data.String                (IsString)
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import           Data.Void
+
 import           Besm.Syntax
 import qualified Besm.Syntax.NonStandard as NS
+
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import           Text.Megaparsec.Expr
+import           Control.Monad.Combinators.Expr
 
-import Data.CharSet (CharSet)
+import           Data.CharSet (CharSet)
 import qualified Data.CharSet as CharSet
-import Data.CharSet.Unicode.Block (basicLatin, greekAndCoptic, cyrillic)
-import Data.Char (isLetter)
+import           Data.CharSet.Unicode.Block (basicLatin, greekAndCoptic, cyrillic)
+import           Data.Char (isLetter)
+
 {-
 
   Lexer
