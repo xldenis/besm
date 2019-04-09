@@ -328,6 +328,9 @@ comp a b c d = emitTerm $ Comp a b c d
 {-|
   If a and b are not bit-wise equal then go to c otherwise go to d
 
+  a != b -> c
+  a == b -> d
+
   Same as with comp, D is a meta-linguistic construct that will get compiled down into either
   zero or one instruction.
 -}
