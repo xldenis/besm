@@ -53,12 +53,11 @@ pp2_1 = do
   parameterSelect <- local ",TN _ parameter-info" $ Template (TN zero (var "parameter-info") UnNormalized)
   parameterInfo <- local "parameter-info" Cell
 
-  iin <- local "i_in" Cell
-  local "i_fin" Cell
+  icurrent <- local "i_current" Cell
   local "i_sigma" Cell
 
   kInitial <- extern "k-trans-initial"
-  local "selected" Cell
+  extern "selected"
 
   normTemplate <- local "I _ 0001" (Template (I zero zero zero))
   normalizeInstr <- local "norm-instruction" Cell
@@ -92,11 +91,11 @@ pp2_1 = do
   local "comp-operator" Cell
   local "built-comp" Cell
 
-  local "V_f" (Raw 0)
-
   local "double-i" Cell
 
   local "k-0" Cell
+
+  local "working" Cell
   {-
   Op. 1 clears standard cells U and V of markers on the transmission to the
   programme of instructions for normalization of the parameter, carried out at
@@ -132,8 +131,8 @@ pp2_1 = do
 
       -- Reset α and β transfer-instructions
 
-      tN' betaTransInitial betaTransfer
-      tN' alphaTransInitial alphaTransfer
+      ai alphaTransInitial alphaCounter alphaTransfer
+      ai betaTransInitial betaCounter betaTransfer
 
       -- Having "i" in the first address is very useful
       shift counterI (left 22) shiftedI
@@ -157,6 +156,8 @@ pp2_1 = do
 
       ai kInitial (Unknown "k-0") kTransfer
 
+      tN' (header `offAddr` 4) counterK
+
       chain (op 2)
 
     {-
@@ -179,18 +180,24 @@ pp2_1 = do
     operator 3 $ do
       compWord selected shiftedI (op 2) (op 4)
 
-    {-
-    Op. 4 transfers the address of the open-parentheses of the loop to the
-    standard cell and selects the code i_in from the information on the
-    parameter.
-    -}
+  {-
+  Op. 4 transfers the address of the open-parentheses of the loop to the
+  standard cell and selects the code i_in from the information on the
+  parameter.
+  -}
 
-    let parenCode = Unknown "paren-code"
+  let parenCode = Unknown "paren-code"
 
-    operator 4 $ mdo
-      shift kTrans (left 22) parenCode
-      shift parameterInfo (left 22) iin
+  let iinShifted = Unknown "working"
 
+  let iin = Unknown "i_current" -- cell which holds the current part of the parameter we are analyzing
+
+  operator 4 $ mdo
+    bitAnd parameterInfo firstAddr iin
+    shift iin (right 22) iinShifted
+    tN' counterK parenCode
+
+    chain (op 5)
   {-
   Op. 5 verifies if i_in is equal to zero (YES -- op. 7, NO -- op. 6).
   -}
@@ -198,24 +205,23 @@ pp2_1 = do
   operator 5 $ do
     compWord iin zero (op 6) (op 7)
 
-  let vf = Unknown "V_f"
+  let vf = header `offAddr` 1
 
   {-
   Op. 6 comparing "i_in" with the quantity V_f, verifies if i_in is variable
   (YES -- op. , NO -- op. 7).
   -}
   operator 6 $ do
-    comp iin vf (op 8) (op 7)
+    comp iinShifted vf (op 8) (op 7)
   {-
 
   Op. 7 forms the instruction for dispatching the initial value of the
   parameter and transfers it to block alpha.
   -}
-  let mkTn = Absolute 0x14
+  let mkTn = Absolute 0xC
 
   operator 7 $ do
-    shift iin (left 22) alphaBuilder
-    ai alphaBuilder unity alphaBuilder
+    ai iin counterI alphaBuilder
     ce' alphaBuilder mkTn alphaBuilder
 
     clcc alphaTransfer
@@ -225,7 +231,7 @@ pp2_1 = do
   Op. 8 sends to the standard cell t the code of the parameter "i" and
   transfers control to the sub-routine for forming the instructions for
   calculating the variable i_sigma (op. 15 - op. 32), which form the
-  instructiosn for calculating i_in and transsfers them to the block.
+  instructions for calculating i_in and transsfers them to the block.
   -}
 
   operator 8 $ do
@@ -263,9 +269,11 @@ pp2_1 = do
   variable.
   -}
 
-  let ifin = Unknown "i_fin"
+  let ifin = Unknown "i_current"
 
   operator 11 $ do
+    bitAnd parameterInfo secondAddr ifin
+    shift ifin (right 11) ifin
     comp ifin vf (op 13) (op 12)
 
   {-
