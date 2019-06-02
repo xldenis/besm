@@ -1,5 +1,14 @@
 module Besm.PP2.Distribute where
 
+import Besm.Assembler.Monad
+import Besm.Assembler.Syntax
+
+import qualified Data.Bits as B
+
+pp2_3 = do
+  operator 1 $ do
+    stop
+
 {-
 
 At the start of functioning of block III-PP-2 there are located in blocks

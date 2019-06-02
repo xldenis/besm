@@ -43,8 +43,6 @@ gammaTransInit = Unknown "ɣ-trans-initial"
 initialI = header `offAddr` 1
 counterI = Unknown "i"
 
-sixteen = Unknown "16"
-
 loader = do
   readMD 4 (ProcStart "MP-2") (ProcEnd "MP-2") (ProcStart "MP-2")
   chain (Procedure "MP-2" (op 1))
@@ -52,11 +50,22 @@ loader = do
 mp2 = do
   pinned "header" "programme header table" (Size 15)
   pinned "prog" "programme" (Size 750)
-  sixteen <- local "16" (Raw 16)
+
+  twentytwo <- local "22" (Val 22)
+  twentyfour <- local "24" (Val 24)
+
   seven' <- local "7'" (Raw 7)
 
-  local "shift-template" (Template (Shift (var "j") (left 22) (var "j"))) -- shift ? ? ?
-  local "select-template" (Template (LogMult (var "k") firstAddr (var "j"))) -- ^ ? ? ?
+  -- We need a local table of these selectors because the ones in DS are not adjacent, meaning we can't
+  -- simply increment between them in a loop. Why? IDK!
+  local "addr-selectors" $ Table
+    [ Raw $ 0b111_1111_1111 `B.shift` 22
+    , Raw $ 0b111_1111_1111 `B.shift` 11
+    , Raw $ 0b111_1111_1111 `B.shift` 00
+    ]
+
+  local "shift-template" (Template (Shift (var "j") (right 22) (var "j"))) -- shift ? ? ?
+  local "select-template" (Template (LogMult (var "selected") (var "addr-selectors") (var "j"))) -- ^ ? ? ?
 
   shiftIncr <- local "shift-incr" (Raw 0)
   finalSelect <- local "final-select" (Raw 0)
@@ -70,7 +79,7 @@ mp2 = do
   global "V" Cell
   global "U" Cell
 
-  local "next-instr" Cell
+  -- local "next-instr" Cell
   local "instr-exp" Cell
 
   -- these should all be merged together
@@ -92,8 +101,6 @@ mp2 = do
   global "selected" Cell
 
   global "k-trans-initial" (Template (TN (Absolute 1) (var "selected") UnNormalized))
-
-  nextAddr <- local "next-addr" Cell
 
   {-
     Op. 1 sets counter gamma, the instruction for transfer to block gamma, and
@@ -164,7 +171,7 @@ mp2 = do
   {-
   Op. 5 extracts the operation code x from the selected instruction.
   -}
-  let nextInstr = Unknown "next-instr"
+  let nextInstr = Unknown "selected"
   let instrExp = Unknown "instr-exp"
   operator 5 $ do
     tExp nextInstr instrExp
@@ -185,10 +192,14 @@ mp2 = do
   let selectTemplate = Unknown "select-template"
   let shiftTemplate = Unknown "shift-template"
 
+  local "select-loop-end" (Template (LogMult (var "selected") (var "addr-selectors" `offAddr` 2) (var "j")))
+
+  let outerloopEnd = Unknown "select-loop-end"
+
   let shiftI = op 9 `offAddr` 1
   let selectI = op 9
 
-  local "shift-back" (Template (Shift (var "head") (left 22) (var "l")))
+  local "shift-back" (Template (Shift (var "l") (left 22) (var "l")))
 
   operator 6 $ do
     tN' zero cellP
@@ -206,10 +217,11 @@ mp2 = do
   or Mb (x = b:016, dec:22, b:017, dec:23).
   -}
 
-  operator 7 $ do
-                --- v-- this is wrong number it's actually 22
-    comp instrExp sixteen (op 8) (op 9)
+  operator 7 $ mdo
+    comp instrExp twentytwo (op 9) o
+    o <- comp instrExp twentyfour (op 8) (op 9)
 
+    chain (op 7)
   {-
   In these instructions only the third address may be variable and
   consequently, it is necessary to examine only this, while the contents of
@@ -238,9 +250,10 @@ mp2 = do
   of block V, verifies if this is a variable address ( YES -- op 11, NO -- op
   22).
   -}
+  let nextAddr = var "j"
   operator 10 $ mdo
     comp nextAddr seven' (op 22) omgg  -- check if standard cell < 7
-    omgg <- comp (addr 8) nextAddr (op 22) (op 11) -- check if va addr < Vmax
+    omgg <- comp (addr 8) nextAddr (op 11) (op 22) -- check if va addr < Vmax
     return ()
 
   {-
@@ -259,23 +272,24 @@ mp2 = do
     , Raw $ 0b1111_1111 `B.shift` 08
     ]
 
-  local "head-selectors" $ Table
-    [ Raw $ 0b111_1111_1111 `B.shift` 22
-    , Raw $ 0b111_1111_1111 `B.shift` 11
-    , Raw $ 0b111_1111_1111 `B.shift` 00
-    ]
-
   vaSelect <- local "va-select" (Template (LogMult (var "va") (var "va-selectors") (var "l")))
   vaShift  <- local "va-shift" (Template (Shift (var "l") (left 24) (var "l")))
 
-  _ <- local "ugh" (Template (TN zero (var "va") UnNormalized))
+  local "ugh-1" (Template (TN zero (var "va") UnNormalized))
 
   local "ugh-3" (Template (Shift (var "head") (right 22) (var "head")))
-  local "ugh-2" (Template (LogMult zero (var "head-selectors") (var "head")))
+  local "ugh-2" (Template (LogMult zero (var "addr-selectors") (var "head")))
+
+  local "neg-bit" (Raw $ 1 `B.shift` 32)
+  local "l" Cell
+  local "va" Cell
+  local "head" Cell
+
+  local "end-loop" (Template (LogMult (var "va") (var "va-selectors" `offAddr` 2) (var "l")))
 
   operator 11 $ mdo
     shift nextAddr (left 22) nextAddr
-    ai (var "ugh") nextAddr select
+    ai (var "ugh-1") nextAddr select
     select <- empty
 
     tN' vaSelect (op 12)
@@ -327,10 +341,13 @@ mp2 = do
   {-
   Op. 16 extracts from the head the step over the parameter i.
   -}
+  local "lower-10bits" (Raw 0b11_1111_1111)
+
   operator 16 $ do
     empty -- select the value
     empty -- shift it to the rightmost position
-
+    -- select the right most 10 bits of the word, to take magnitutde!
+    bitAnd (var "head") (var "lower-10bits") (var "l")
     empty
   {-
   Op. 17 determines the sign of the step.
@@ -357,6 +374,17 @@ mp2 = do
   Op. 20 prepares selection of the next parameter code from the information on
   the variable address.
   -}
+  local "shift-dec8" (Raw $ 0x8 `B.shift` 11)
+  local "shift-dec11" (Raw $ 11 `B.shift` 11)
+
+  operator 20 $ do
+    ai (op 12) oneSndAddr (op 12)
+    sub' (op 12 `offAddr` 1) (var "shift-dec8") (op 12 `offAddr` 1)
+
+    ai (op 16) oneSndAddr (op 16)
+    sub' (op 6 `offAddr` 1) (var "shift-dec11") (op 16 `offAddr` 1)
+
+    chain (op 21)
 
   {-
   Op. 21 ensures repitition of operators 12 - 20 three times (according to the
@@ -368,25 +396,56 @@ mp2 = do
   {-
   Op. 22 prepares testing of the following address of the instruction.
   -}
+
+  local "shift-back-change" (Template (ShiftAll zero (left 11) zero))
+
   operator 22 $ do
-    stop
+    ai (op 12) oneSndAddr (op 12)
+    sub' (op 16 `offAddr` 2) (var "shift-back-change") (op 16 `offAddr` 2)
+    -- Changed from the page 8-419
+    sub' (op 12 `offAddr` 1) (var "shift-back-change") (op 12 `offAddr` 1)
+
+    chain (op 23)
+
   {-
   Op. 23 ensures repitition of operators 9 - 22 three times (according to the
   number of addresses in the instruction).
   -}
+
+  operator 23 $ do
+    comp (op 12) (var "select-loop-end") (op 9) (op 24)
 
   {-
   Op. 24 verifies if the given instruction depends on parameter i (YES -- op.
   25, NO -- op. 27). If the contents of at least one of cells p or q is
   distinct from zero, this constitutes the sign of dependence of the
   instruction on i.
+  -}
+  operator 24 $ mdo
+    compWord cellP zero (op 25) q
+    q <- compWord cellQ zero (op 25) (op 27)
 
-  Op. 25 reads blocks II-PP-3 from MD-4.
+    return ()
 
-  Op. 26 transfers control to block II-PP-3, constructing for the variable
-  instruciton all control instructions relating to it and forming the
+  {-
+  Op. 25 reads blocks II-PP-2 from MD-4.
+  -}
+  operator 25 $ do
+    readMD 4 (ProcStart "II-PP-2") (ProcEnd "II-PP-2") (ProcStart "II-PP-2")
+
+    chain (op 26)
+
+  {-
+  Op. 26 transfers control to block II-PP-2, constructing for the variable
+  instruction all control instructions relating to it and forming the
   address-modification constant.
+  -}
+  operator 26 $ do
+    cccc (Procedure "II-PP-2" (op 1))
 
+    chain (op 27)
+
+  {-
   Op. 27 verifies if all instructions of the working part of the loop have
   been examined (YES -- control is transferreds to op. 28, NO -- top op. 4).
   The sign of termination of the working part is the selection of the
@@ -395,14 +454,24 @@ mp2 = do
     ┌─────┬──────┬──────┬──────┐
     │ 01F │ 13FF │ 13FF │ 13FF │
     └─────┴──────┴──────┴──────┘
-
+  -}
+  operator 27 $ do
+    stop
+  {-
   Op. 28 reads the block III-PP-2 from MD-4.
-
+  -}
+  operator 28 $ do
+    readMD 4 (ProcStart "III-PP-2") (ProcEnd "III-PP-2") (ProcStart "III-PP-2")
+  {-
   Op. 29 transfers control to block III-PP-2. This block transfers all
   constructed control instructions from the standard cells and from blocks
-  alpha and beta to teh programme, changing the addresses of variable
+  alpha and beta to the programme, changing the addresses of variable
   instructions to their relative addresses.
 -}
+  operator 29 $ do
+    cccc (Procedure "III-PP-2" (op 1))
+
+    chain (op 30)
 {-
   Op. 30 adding unity to counter i, obtains the code of the following
   parameter.

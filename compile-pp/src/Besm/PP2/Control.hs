@@ -1,5 +1,14 @@
 module Besm.PP2.Control where
 
+import Besm.Assembler.Monad
+import Besm.Assembler.Syntax
+
+import qualified Data.Bits as B
+
+pp2_2 = do
+  operator 1 $ do
+    stop
+
 {-
 
 The block II-PP-2 constructs all control instrucitons relating to variable

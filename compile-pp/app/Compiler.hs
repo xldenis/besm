@@ -151,8 +151,8 @@ pp1Procedures =
 pp2Procedures =
   [ runProcedure "MP-2" mp2
   , runProcedure "I-PP-2" Loop.pp2_1
-  -- , runProcedure "II-PP-2" Control.pp2_2
-  -- , runProcedure "III-PP-3" Distribute.pp2_3
+  , runProcedure "II-PP-2" Control.pp2_2
+  , runProcedure "III-PP-2" Distribute.pp2_3
   ]
 
 main :: IO ()
