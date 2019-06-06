@@ -239,10 +239,17 @@ absolutize mod@(Mod {..}) = let
   and disk respectively. The disk layout should only be used in Ma/Mb commands when we are
   trying to load data from a disk.
 -}
+
+globalSections :: Eq (AddressType a) => ModuleAssembly a -> [GlobalMap a]
+globalSections (Mod {..}) = groupBy ((==) `on` (\(_, s, _) -> s)) $ sortOn (\(_, s, _) -> s) globals
+
+globalMapSize :: (Constant a -> Int) -> [(String, Section, Constant a)] -> Int
+globalMapSize sf m = sum (map (\(_, _, c) -> sf c) m)
+
 memoryLayout :: (Show (AddressType a), Eq (AddressType a)) => ModuleAssembly a -> MemoryLayout
-memoryLayout (Mod {..}) = let
-  globalSecs = groupBy ((==) `on` (\(_, s, _) -> s)) $ sortOn (\(_, s, _) -> s) globals
-  (secs, sizes) = unzip $ map (\gs -> (getSection $ head gs, sum (map (\(_, _, c) -> constantSize c) gs))) globalSecs
+memoryLayout m@(Mod {..}) = let
+  (secs, sizes) = unzip $ map (\gs -> (getSection $ head gs, globalMapSize constantSize gs)) (globalSections m)
+
   globalOffs = scanl (+) 1 sizes
 
   procSizes = map (\p -> (procName p, procedureLen p)) procs
@@ -256,24 +263,26 @@ memoryLayout (Mod {..}) = let
   usedSpace = sum segSizes + (sum sizes)
   padding   = 1023 - usedSpace + 1
 
-  in MkLayout (usedSpace) $ (zip secs globalOffs) ++ map (fmap (+ padding)) procOffs
+  in traceShow (segSizes, procOffs, padding) $ MkLayout (usedSpace) $ (zip secs globalOffs) ++ map (fmap (+ padding)) procOffs
 
   where getSection (_, s, _) = s
 
+constantDiskSize :: Constant a -> Int
+constantDiskSize (Size _) = 0
+constantDiskSize a = constantSize a
+
 diskLayout :: Eq (AddressType a) => ModuleAssembly a -> MemoryLayout
-diskLayout (Mod {..}) = let
-  globalSecs = groupBy ((==) `on` (\(_, s, _) -> s)) $ sortOn (\(_, s, _) -> s) globals
-  (secs, sizes) = unzip $ map (\gs -> (getSection $ head gs, sum (map (\(_, _, c) -> constantSize c) gs))) globalSecs
+diskLayout m@(Mod {..}) = let
+  (secs, sizes) = unzip $ map (\gs -> (getSection $ head gs, globalMapSize constantDiskSize gs)) (globalSections m)
   globalOffs = scanl (+) 0 sizes
 
   procSizes = map (\p -> procedureLen p) procs
   procOffs = scanl (+) (sum sizes) procSizes
 
   usedSpace = sum procSizes + sum sizes
-  padding   = 1023 - usedSpace
-
+  -- padding   = 1023 - usedSpace
+  padding = 0
   globalMap = zip secs globalOffs
-
 
   in MkLayout (usedSpace) $ zip secs globalOffs ++ zip (map (Text . procName) procs) (map (+ padding) procOffs)
   where getSection (_, s, _) = s

@@ -64,7 +64,8 @@ options =
 
 compileCommand (oDir, smDir) = do
   let pp1 = compile (simpleModule AlignRight pp1Procedures)
-  let pp2 = compile (simpleModule AlignRight pp2Procedures)
+  let pp2Segs = [MkSeg ["MP-2"], MkSeg ["I-PP-2", "II-PP-2", "III-PP-2"]]
+  let pp2 = compile ((simpleModule AlignRight pp2Procedures) {segments = pp2Segs })
 
   case (,) <$> pp1 <*> pp2 of
     Left err -> mapM_ putStrLn err

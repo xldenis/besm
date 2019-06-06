@@ -43,10 +43,6 @@ gammaTransInit = Unknown "ɣ-trans-initial"
 initialI = header `offAddr` 1
 counterI = Unknown "i"
 
-loader = do
-  readMD 4 (ProcStart "MP-2") (ProcEnd "MP-2") (ProcStart "MP-2")
-  chain (Procedure "MP-2" (op 1))
-
 mp2 = do
   pinned "header" "programme header table" (Size 15)
   pinned "prog" "programme" (Size 750)
