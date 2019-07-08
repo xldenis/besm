@@ -13,7 +13,7 @@ cellU = Unknown "U"
 cellV = Unknown "V"
 cellS = Unknown "S"
 
-gammaBuilder = Unknown "ɣ-builder"
+gammaBuilder = Unknown "builder"
 gammaCounter = Unknown "ɣ-counter"
 
 kTransfer     = Procedure "MP-2" (op 32)
@@ -36,66 +36,48 @@ pp2_1 = do
   counterI <- extern "i"
 
   alphaCounter <- extern "α-counter"
-  alphaBuilder <- extern "α-builder"
+  alphaBuilder <- extern "builder"
   alphaTransInitial <- extern "α-trans-initial"
 
   betaCounter <- extern "β-counter"
   -- extern "β-builder"
   betaTransInitial <- extern "β-trans-initial"
 
-  extern "ɣ-builder"
   extern "ɣ-counter"
-
-  cellT <- local "t" Cell
-
-  shiftedI <- local "i-shifted" Cell
-
-  parameterSelect <- local ",TN _ parameter-info" $ Template (TN zero (var "parameter-info") UnNormalized)
-  parameterInfo <- local "parameter-info" Cell
-
-  icurrent <- local "i_current" Cell
-  local "i_sigma" Cell
+  extern "U"
+  extern "V"
+  wm <- extern "working-cells"
 
   kInitial <- extern "k-trans-initial"
   extern "selected"
 
-  normTemplate <- local "I _ 0001" (Template (I zero zero zero))
-  normalizeInstr <- local "norm-instruction" Cell
 
+  parameterSelect <- local ",TN _ parameter-info" $ Template (TN zero (var "parameter-info") UnNormalized)
+  normTemplate <- local "I _ 0001" (Template (I zero zero zero))
   incrTemplate <- local "+ _ 1081 _" (Template (Add zero zero zero UnNormalized))
-  incrInstr <- local "incr-instruction" Cell
 
   local "+ _ 0001 _"  $ Template (Add zero (addr 1) zero UnNormalized)
   local "+ 0001 0002" $ Template (Add (addr 1) (addr 2) zero UnNormalized)
   local "x _ _ 0002"  $ Template (Mult zero zero (addr 2) UnNormalized)
   local "+ 0001 _ _"  $ Template (Add (addr 1) zero zero UnNormalized)
   local "x _ _ 0001"  $ Template (Mult zero zero (addr 1) UnNormalized)
+  local ",TN _ firstHalf" $ Template (TN zero (wm `offAddr` 0) UnNormalized)
 
-  local ",TN _ firstHalf" $ Template (TN zero (var "first-half") UnNormalized)
+  cellT <- local "t" Cell
+  shiftedI <- local "i-shifted" Cell
+  parameterInfo <- local "parameter-info" Cell
+  normalizeInstr <- local "norm-instruction" Cell
+  incrInstr <- local "incr-instruction" Cell
 
-  local "j" Cell
-  local "j'" Cell
   local "S" Cell
-  local "b" Cell
-  local "a" Cell
 
-  local "i_0" Cell
-
-  extern "U"
-  extern "V"
-
-  local "first-half" Cell
-  local "second-half" Cell
+  -- Intermediate values used to build up instructions
 
   local "paren-code" Cell
   local "comp-operator" Cell
   local "built-comp" Cell
-
-  local "double-i" Cell
-
-  local "k-0" Cell
-
   local "working" Cell
+
   {-
   Op. 1 clears standard cells U and V of markers on the transmission to the
   programme of instructions for normalization of the parameter, carried out at
@@ -116,7 +98,7 @@ pp2_1 = do
     └─────┴──────┴──────┴──────┘
 
   Counter K and the instruction for selection from block K are set in the
-  initial position.
+  initial  position.
   -}
   mdo
     operator 1 $ mdo
@@ -136,9 +118,6 @@ pp2_1 = do
 
       -- Having "i" in the first address is very useful
       shift counterI (left 22) shiftedI
-
-
-      ai counterI shiftedI (Unknown "double-i")
       -- Select parameter info
 
       ai parameterSelect shiftedI param
@@ -150,11 +129,12 @@ pp2_1 = do
       ai incrTemplate shiftedI incrInstr -- + _ 1081 _
       ai incrInstr    counterI incrInstr
 
+      let k0 = Absolute 0x0001
       --
       --      v this should be the index into the info table
-      shift (header `offAddr` 4) (left 22) (Unknown "k-0")
+      shift (header `offAddr` 4) (left 22) k0
 
-      ai kInitial (Unknown "k-0") kTransfer
+      ai kInitial k0 kTransfer
 
       tN' (header `offAddr` 4) counterK
 
@@ -190,7 +170,7 @@ pp2_1 = do
 
   let iinShifted = Unknown "working"
 
-  let iin = Unknown "i_current" -- cell which holds the current part of the parameter we are analyzing
+  let iin = Absolute 0x001 -- cell which holds the current part of the parameter we are analyzing
 
   operator 4 $ mdo
     bitAnd parameterInfo firstAddr iin
@@ -269,7 +249,7 @@ pp2_1 = do
   variable.
   -}
 
-  let ifin = Unknown "i_current"
+  let ifin = Absolute 0x001
 
   operator 11 $ do
     bitAnd parameterInfo secondAddr ifin
@@ -344,16 +324,16 @@ pp2_1 = do
     │     │      │ "k"  │      │
     └─────┴──────┴──────┴──────┘
   -}
-  let i0 = Unknown "i_0"
-  let a  = Unknown "a"
-  let j  = Unknown "j"
-  let j' = Unknown "j'"
-  let k  = Unknown "k"
+  let i0 = wm `offAddr` 2
+  let k  = wm `offAddr` 3
+  let j' = wm `offAddr` 4
+  let j  = wm `offAddr` 5
+  let a  = wm `offAddr` 6
 
-  let iSigma = Unknown "i_sigma"
+  let iSigma = Absolute 0x0001
 
-  let firstHalf = Unknown "first-half"
-  let secondHalf = Unknown "second-half"
+  let firstHalf = wm `offAddr` 0
+  let secondHalf = wm `offAddr` 1
   let firstParamSelect = Unknown ",TN _ firstHalf"
 
   operator 15 $ mdo
@@ -449,7 +429,7 @@ pp2_1 = do
     └─────┴──────┴──────┴──────┘
   -}
 
-  let b = Unknown "b"
+  let b = wm `offAddr` 7
 
   operator 23 $ do
     shift iSigma (left 22) b

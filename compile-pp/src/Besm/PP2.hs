@@ -31,7 +31,7 @@ import qualified Data.Bits as B
   Let us consider the functioning of the introductory programme.
 
 -}
-gammaBuilder   = Unknown "ɣ-builder"
+gammaBuilder   = Unknown "builder"
 gammaCounter   = Unknown "ɣ-counter"
 gammaTransfer  = Procedure "MP-2" (op 39)
 
@@ -47,6 +47,8 @@ mp2 = do
   pinned "header" "programme header table" (Size 15)
   pinned "prog" "programme" (Size 750)
 
+  wm <- global "working-cells" (Size 7)
+
   twentytwo <- local "22" (Val 22)
   twentyfour <- local "24" (Val 24)
 
@@ -60,33 +62,29 @@ mp2 = do
     , Raw $ 0b111_1111_1111 `B.shift` 00
     ]
 
-  local "shift-template" (Template (Shift (var "j") (right 22) (var "j"))) -- shift ? ? ?
-  local "select-template" (Template (LogMult (var "selected") (var "addr-selectors") (var "j"))) -- ^ ? ? ?
+  let cellJ = Absolute 0x0001
+
+  local "shift-template" (Template (Shift cellJ (right 22) cellJ)) -- shift ? ? ?
+  local "select-template" (Template (LogMult (var "selected") (var "addr-selectors") (cellJ))) -- ^ ? ? ?
 
   shiftIncr <- local "shift-incr" (Raw 0)
   finalSelect <- local "final-select" (Raw 0)
 
-  local "j" Cell
-  local "p" Cell
-  local "q" Cell
-  local "z" Cell
+  -- local "p" Cell
+  -- local "q" Cell
+  -- local "z" Cell
   global "i" Cell
 
   global "V" Cell
   global "U" Cell
 
-  -- local "next-instr" Cell
-  local "instr-exp" Cell
-
   -- these should all be merged together
-  global "ɣ-trans-initial" (Template (TN (var "ɣ-builder") (Absolute 1) UnNormalized))
-  global "β-trans-initial" (Template (TN (var "β-builder") (Absolute 1) UnNormalized))
-  global "α-trans-initial" (Template (TN (var "α-builder") (Absolute 1) UnNormalized))
+  global "ɣ-trans-initial" (Template (TN (var "builder") (Absolute 1) UnNormalized))
+  global "β-trans-initial" (Template (TN (var "builder") (Absolute 1) UnNormalized))
+  global "α-trans-initial" (Template (TN (var "builder") (Absolute 1) UnNormalized))
 
   -- same
-  global "ɣ-builder" (Raw 0)
-  global "α-builder" (Raw 0)
-  global "β-builder" (Raw 0)
+  global "builder" (Raw 0)
 
   gammaCounter <- global "ɣ-counter" (Raw 0)
   alphaCounter <- global "α-counter" (Raw 0)
@@ -168,7 +166,7 @@ mp2 = do
   Op. 5 extracts the operation code x from the selected instruction.
   -}
   let nextInstr = Unknown "selected"
-  let instrExp = Unknown "instr-exp"
+  let instrExp = Absolute 0x0001
   operator 5 $ do
     tExp nextInstr instrExp
 
@@ -181,21 +179,23 @@ mp2 = do
   instruction on higher-order parameters.
   -}
 
-  let cellP = Unknown "p"
-  let cellQ = Unknown "q"
-  let cellZ = Unknown "z"
+  let cellP = wm `offAddr` 2
+  let cellQ = wm `offAddr` 3
+  let cellZ = wm `offAddr` 4
+
+  let cellL = Absolute 0x0002
 
   let selectTemplate = Unknown "select-template"
   let shiftTemplate = Unknown "shift-template"
 
-  local "select-loop-end" (Template (LogMult (var "selected") (var "addr-selectors" `offAddr` 2) (var "j")))
+  local "select-loop-end" (Template (LogMult (var "selected") (var "addr-selectors" `offAddr` 2) cellJ))
 
   let outerloopEnd = Unknown "select-loop-end"
 
   let shiftI = op 9 `offAddr` 1
   let selectI = op 9
 
-  local "shift-back" (Template (Shift (var "l") (left 22) (var "l")))
+  local "shift-back" (Template (Shift cellL (left 22) cellL))
 
   operator 6 $ do
     tN' zero cellP
@@ -246,7 +246,7 @@ mp2 = do
   of block V, verifies if this is a variable address ( YES -- op 11, NO -- op
   22).
   -}
-  let nextAddr = var "j"
+  let nextAddr = cellJ
   operator 10 $ mdo
     comp nextAddr seven' (op 22) omgg  -- check if standard cell < 7
     omgg <- comp (addr 8) nextAddr (op 11) (op 22) -- check if va addr < Vmax
@@ -268,20 +268,19 @@ mp2 = do
     , Raw $ 0b1111_1111 `B.shift` 08
     ]
 
-  vaSelect <- local "va-select" (Template (LogMult (var "va") (var "va-selectors") (var "l")))
-  vaShift  <- local "va-shift" (Template (Shift (var "l") (left 24) (var "l")))
+  let cellHead = Absolute 0x0001
+
+  vaSelect <- local "va-select" (Template (LogMult (var "va") (var "va-selectors") cellL))
+  vaShift  <- local "va-shift" (Template (Shift cellL (left 24) cellL))
 
   local "ugh-1" (Template (TN zero (var "va") UnNormalized))
-
-  local "ugh-3" (Template (Shift (var "head") (right 22) (var "head")))
-  local "ugh-2" (Template (LogMult zero (var "addr-selectors") (var "head")))
+  local "ugh-2" (Template (LogMult zero (var "addr-selectors") cellHead))
 
   local "neg-bit" (Raw $ 1 `B.shift` 32)
-  local "l" Cell
-  local "va" Cell
-  local "head" Cell
 
-  local "end-loop" (Template (LogMult (var "va") (var "va-selectors" `offAddr` 2) (var "l")))
+  local "va" Cell
+
+  local "end-loop" (Template (LogMult (var "va") (var "va-selectors" `offAddr` 2) cellL))
 
   operator 11 $ mdo
     shift nextAddr (left 22) nextAddr
@@ -291,13 +290,13 @@ mp2 = do
     tN' vaSelect (op 12)
     tN' vaShift (op 12 `offAddr` 1)
 
-    tExp' (var "va") (var "l")
-    shift (var "l") (left 22) (var "l")
+    tExp' (var "va") (cellL)
+    shift (cellL) (left 22) (cellL)
 
-    sub' nextAddr (var "l") nextAddr
+    sub' nextAddr (cellL) nextAddr
 
     ai (var "ugh-2") nextAddr (op 16)
-    tN' (var "ugh-3") (op 16 `offAddr` 1)
+    tN' shiftTemplate (op 16 `offAddr` 1)
 
     chain (op 12)
 
@@ -321,7 +320,7 @@ mp2 = do
   higher order with regard to the parameter i in this case, about which
   -}
   operator 13 $ do
-    comp counterI (var "l") (op 14) (op 15)
+    comp counterI cellL (op 14) (op 15)
 
   {-
   Op. 14 makes a corresponding marker in cell z, transferring to it a number
@@ -332,7 +331,7 @@ mp2 = do
     chain (op 20)
 
   operator 15 $ do
-    comp (var "l") counterI (op 20) (op 16)
+    comp cellL counterI (op 20) (op 16)
 
   {-
   Op. 16 extracts from the head the step over the parameter i.
@@ -343,13 +342,13 @@ mp2 = do
     empty -- select the value
     empty -- shift it to the rightmost position
     -- select the right most 10 bits of the word, to take magnitutde!
-    bitAnd (var "head") (var "lower-10bits") (var "l")
+    bitAnd cellHead (var "lower-10bits") (cellL)
     empty
   {-
   Op. 17 determines the sign of the step.
   -}
   operator 17 $ do
-    comp (var "neg-bit") (var "head") (op 19) (op 18)
+    comp (var "neg-bit") cellHead (op 19) (op 18)
 
   {-
   If the step is positive, op. 18 functions while if it is negative, op. 19.
@@ -358,11 +357,11 @@ mp2 = do
   -}
 
   operator 18 $ do
-    ai cellP (var "l") cellP
+    ai cellP cellL cellP
     chain (op 20)
 
   operator 19 $ do
-    ai cellQ (var "l") cellQ
+    ai cellQ cellL cellQ
 
     chain (op 20)
 

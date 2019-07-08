@@ -58,16 +58,25 @@ options =
       "print the CFG of all procedures to disk"
       cfgCommand
       (pure ())
+
+    addCommand
+      "debug"
+      "print some debbug info"
+      debugCommand
+      (pure ())
   where
   dedupFlag :: S.Parser Bool
   dedupFlag = flag True False (long "dedup-edges")
 
-compileCommand (oDir, smDir) = do
+compiledModules = do
   let pp1 = compile (simpleModule AlignRight pp1Procedures)
   let pp2Segs = [MkSeg ["MP-2"], MkSeg ["I-PP-2", "II-PP-2", "III-PP-2"]]
   let pp2 = compile ((simpleModule AlignRight pp2Procedures) {segments = pp2Segs })
 
-  case (,) <$> pp1 <*> pp2 of
+  (,) <$> pp1 <*> pp2
+
+compileCommand (oDir, smDir) = do
+  case compiledModules of
     Left err -> mapM_ putStrLn err
     Right (pp1, pp2) -> do
       case oDir of
@@ -87,7 +96,6 @@ compileCommand (oDir, smDir) = do
         Nothing -> return ()
 
   return ()
-
   where
   bootloader :: ModuleAssembly 'Absolutized -> ModuleAssembly 'Absolutized -> Procedure Int
   bootloader pp1 pp2 = let
@@ -104,7 +112,7 @@ compileCommand (oDir, smDir) = do
           [ Ma (0x100) 0 1
           , Mb 1023
           ]
-        , terminator = CCCC (pp1Start   )
+        , terminator = CCCC pp1Start
         }
       , BB
         { instrs =
@@ -116,6 +124,14 @@ compileCommand (oDir, smDir) = do
       ]
     }
 
+debugCommand _ = do
+  case compiledModules of
+    Right (pp1, pp2) -> do
+      modInfo pp1
+      modInfo pp2
+      pure ()
+    Left err -> mapM_ putStrLn err
+  pure ()
 --     ma (0x100) 1 1
 --     mb 1023
 --     cccc (-1) -- how do i get this info?

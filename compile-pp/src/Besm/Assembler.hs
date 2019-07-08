@@ -188,9 +188,22 @@ renderProc ix proc = let
 
   fromDef (Def _ _ c) = c
 
+modInfo :: ModuleAssembly 'Absolutized -> IO ()
+modInfo mod = void $ do
+  globalInfo (globals mod)
+  mapM_ procInfo (procs mod)
+
+  print $ memoryLayout mod
+  where
+  procInfo proc = putStrLn $ "proc: " <> (procName proc) <> " " <> show (procedureLen proc)
+  globalInfo globals = putStrLn $ "globals: " <> show (sum $ map (\(_, _, c) -> constantSize c) globals)
 -- * Absolutization
 
-data MemoryLayout = MkLayout { size :: Int, offsets :: [(Section, Int)] }
+data MemoryLayout = MkLayout
+  { size :: Int
+  , offsets :: [(Section, Int)]
+  , padding :: Int -- debug: padding applied to module
+  }
   deriving (Show, Eq)
 
 -- | Given an alignment for a module, assign concrete addresses to everything.
@@ -263,7 +276,11 @@ memoryLayout m@(Mod {..}) = let
   usedSpace = sum segSizes + (sum sizes)
   padding   = 1023 - usedSpace + 1
 
-  in traceShow (segSizes, procOffs, padding) $ MkLayout (usedSpace) $ (zip secs globalOffs) ++ map (fmap (+ padding)) procOffs
+  in MkLayout
+    { size = (usedSpace)
+    , offsets = (zip secs globalOffs) ++ map (fmap (+ padding)) procOffs
+    , padding = padding
+    }
 
   where getSection (_, s, _) = s
 
@@ -284,7 +301,11 @@ diskLayout m@(Mod {..}) = let
   padding = 0
   globalMap = zip secs globalOffs
 
-  in MkLayout (usedSpace) $ zip secs globalOffs ++ zip (map (Text . procName) procs) (map (+ padding) procOffs)
+  in MkLayout
+    { size = (usedSpace)
+    , offsets = zip secs globalOffs ++ zip (map (Text . procName) procs) (map (+ padding) procOffs)
+    , padding = padding
+    }
   where getSection (_, s, _) = s
 
 -- * Relativization
@@ -300,7 +321,7 @@ data Section = Text String | Data String | DefaultData
   deriving (Show, Eq, Ord)
 
 {- |
-  Drastically simplify the address represenation, converting everything
+  Drastically simplify the address representation, converting everything
   to simple offsets from section heads.
 -}
 relativize :: ModuleAssembly LaidOut -> Either [String] (ModuleAssembly Relativized)
