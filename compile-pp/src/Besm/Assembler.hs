@@ -168,10 +168,11 @@ renderSourceMap mod = let
 render :: ModuleAssembly Absolutized -> Output
 render mod = let
   textS = zip [1..] (procs mod) >>= uncurry renderProc
-  dataS = globals mod >>= \(_, _, c) -> map (b0 <:>) $ constantToCell c
-  total = dataS ++ textS
-  padding = replicate (1023 - length total) (bitVector 0)
-  in dataS ++ padding ++ textS
+  dataS = globals mod >>= \(_, s, c) -> map (\c -> (s, b0 <:> c)) $ constantToCell c
+  total = length dataS + length textS
+  padding = replicate (1023 - total) (bitVector 0)
+  (pinned, def) = partition (\(s, _) -> s /= DefaultData) dataS
+  in map snd pinned ++ padding ++ map snd def ++ textS
 
 renderProc :: Integer -> Procedure Int -> Output
 renderProc ix proc = let
@@ -193,9 +194,12 @@ modInfo mod = void $ do
   globalInfo (globals mod)
   mapM_ procInfo (procs mod)
 
+  print "Memory Layout"
   print $ memoryLayout mod
+  print "Disk Layout"
+  print $ diskLayout mod
   where
-  procInfo proc = putStrLn $ "proc: " <> (procName proc) <> " " <> show (procedureLen proc)
+  procInfo proc = putStrLn $ "proc: " <> procName proc <> " " <> show (procedureLen proc)
   globalInfo globals = putStrLn $ "globals: " <> show (sum $ map (\(_, _, c) -> constantSize c) globals)
 -- * Absolutization
 
@@ -208,7 +212,7 @@ data MemoryLayout = MkLayout
 
 -- | Given an alignment for a module, assign concrete addresses to everything.
 absolutize :: ModuleAssembly Relativized -> ModuleAssembly Absolutized
-absolutize mod@(Mod {..}) = let
+absolutize mod@Mod {..} = let
   memory = memoryLayout mod
   disk   = diskLayout   mod
 
@@ -216,7 +220,7 @@ absolutize mod@(Mod {..}) = let
 
   in Mod
     { procs = map (absolveProc memory disk) procs
-    , offsetMap = (M.map (absolve memory) relativeMap )
+    , offsetMap = M.map (absolve memory) relativeMap
     , globals = globals', ..
     }
   where
@@ -253,6 +257,8 @@ absolutize mod@(Mod {..}) = let
   trying to load data from a disk.
 -}
 
+
+-- | Return a list of globals grouped by section
 globalSections :: Eq (AddressType a) => ModuleAssembly a -> [GlobalMap a]
 globalSections (Mod {..}) = groupBy ((==) `on` (\(_, s, _) -> s)) $ sortOn (\(_, s, _) -> s) globals
 
@@ -260,7 +266,7 @@ globalMapSize :: (Constant a -> Int) -> [(String, Section, Constant a)] -> Int
 globalMapSize sf m = sum (map (\(_, _, c) -> sf c) m)
 
 memoryLayout :: (Show (AddressType a), Eq (AddressType a)) => ModuleAssembly a -> MemoryLayout
-memoryLayout m@(Mod {..}) = let
+memoryLayout m@Mod {..} = let
   (secs, sizes) = unzip $ map (\gs -> (getSection $ head gs, globalMapSize constantSize gs)) (globalSections m)
 
   globalOffs = scanl (+) 1 sizes
@@ -271,14 +277,14 @@ memoryLayout m@(Mod {..}) = let
   -- segment will be the maximum of the sizes of all procedures inside that segment.
   segSizes  = map (\(MkSeg seg) -> maximum . map snd $ filter (\p -> fst p `elem` seg) procSizes) segments
   segOffs = scanl (+) (sum sizes) segSizes
-  procOffs  = concat $ map (\((MkSeg seg), size) -> map (\s -> (Text s, size)) seg) (zip segments segOffs)
-
+  procOffs  = concatMap (\((MkSeg seg), size) -> map (\s -> (Text s, size)) seg) (zip segments segOffs)
+  (pinned, default') = partition (\(s, _) -> s /= DefaultData) (zip secs globalOffs)
   usedSpace = sum segSizes + (sum sizes)
   padding   = 1023 - usedSpace + 1
 
   in MkLayout
-    { size = (usedSpace)
-    , offsets = (zip secs globalOffs) ++ map (fmap (+ padding)) procOffs
+    { size = usedSpace
+    , offsets = pinned ++ map (fmap (+ padding)) (default' ++ procOffs)
     , padding = padding
     }
 
@@ -297,13 +303,12 @@ diskLayout m@(Mod {..}) = let
   procOffs = scanl (+) (sum sizes) procSizes
 
   usedSpace = sum procSizes + sum sizes
-  -- padding   = 1023 - usedSpace
-  padding = 0
-  globalMap = zip secs globalOffs
-
+  padding   = 1023 - usedSpace
+  -- padding = 0
+  (pinned, default') = partition (\(s, _) -> s /= DefaultData) (zip secs globalOffs)
   in MkLayout
     { size = (usedSpace)
-    , offsets = zip secs globalOffs ++ zip (map (Text . procName) procs) (map (+ padding) procOffs)
+    , offsets = pinned ++ map (fmap (+ padding)) (default' ++ zip (map (Text . procName) procs) procOffs)
     , padding = padding
     }
   where getSection (_, s, _) = s
