@@ -69,9 +69,9 @@ options =
   dedupFlag = flag True False (long "dedup-edges")
 
 compiledModules = do
-  let pp1 = compile (simpleModule AlignRight pp1Procedures)
+  let pp1 = compile (simpleModule pp1Procedures)
   let pp2Segs = [MkSeg ["MP-2"], MkSeg ["I-PP-2", "II-PP-2", "III-PP-2"]]
-  let pp2 = compile ((simpleModule AlignRight pp2Procedures) {segments = pp2Segs })
+  let pp2 = compile ((simpleModule pp2Procedures) {segments = pp2Segs, packSize = True })
 
   (,) <$> pp1 <*> pp2
 
@@ -100,8 +100,11 @@ compileCommand (oDir, smDir) = do
   bootloader :: ModuleAssembly 'Absolutized -> ModuleAssembly 'Absolutized -> Procedure Int
   bootloader pp1 pp2 = let
     Just destAddr = DefaultData `lookup` (offsets $ memoryLayout pp2)
+    Just packingOff = DefaultData `lookup` (packedCells $ diskLayout pp2)
     Just srcAddr = DefaultData `lookup` (offsets $ diskLayout pp2)
     Just pp1Start = Procedure "MP-1" (Operator 1) `M.lookup` (offsetMap pp1)
+    -- incredible hack
+    -- Just destAddr = Unknown "U" `M.lookup` (offsetMap pp2)
     Just pp2Start = Procedure "MP-2" (Operator 1) `M.lookup` (offsetMap pp2)
     in Proc
     { procName = "bootloader"
@@ -116,7 +119,7 @@ compileCommand (oDir, smDir) = do
         }
       , BB
         { instrs =
-          [ Ma (0x104) srcAddr destAddr
+          [ Ma (0x104) srcAddr (destAddr + packingOff)
           , Mb 1023
           ]
         , terminator = CCCC pp2Start

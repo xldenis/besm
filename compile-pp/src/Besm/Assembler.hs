@@ -36,10 +36,21 @@ type Output = [BitVector 64]
   1. Linearize blocks and insert explicit jumps
   2. Resolve constants and assign relative addresses in instructions
   3. Give absolute addresses
--}
 
-data Alignment = AlignLeft | AlignRight
-  deriving (Show)
+
+  Layout of Programs in Memory
+
+
+
+  +--------------------------------------------------+
+  |                 |         |         |            |
+  | Pinned Sections | Padding | Globals | Procedures |
+  |                 |         |         |            |
+  +--------------------------------------------------+
+  ^                                                  ^
+  1                                                 1023
+
+-}
 
 data Stage = Input | LaidOut | Relativized | Absolutized
 
@@ -65,9 +76,9 @@ data ModuleAssembly (stage :: Stage) = Mod
   { offsetMap   :: OffsetMap stage
   , relativeMap :: RelativeMap stage
   , globals     :: GlobalMap stage
-  , alignment   :: Alignment
   , segments    :: [LayoutSegment]
   , procs       :: [Procedure (AddressType stage)]
+  , packSize    :: Bool
   }
 
 deriving instance Show (ModuleAssembly 'Absolutized)
@@ -75,8 +86,8 @@ deriving instance Show (ModuleAssembly 'Absolutized)
 data LayoutSegment = MkSeg { segProcs :: [String] }
   deriving (Show, Eq)
 
-simpleModule :: Alignment -> [Procedure Address] -> ModuleAssembly 'Input
-simpleModule align procs = Mod () () [] align segs procs
+simpleModule :: [Procedure Address] -> ModuleAssembly 'Input
+simpleModule procs = Mod () () [] segs procs False
   where segs = map (MkSeg . pure . procName) procs
 
 assemble :: ModuleAssembly 'Input -> Either [String] Output
@@ -90,6 +101,11 @@ compile =
   >=> relativize
   >=> pure . absolutize
 
+debugComp =
+      validateModule
+  >=> pure . layout
+  >=> pure . internalizeModule
+  >=> relativize
 -- * Validating input
 
 validateModule :: ModuleAssembly 'Input -> Either [String] (ModuleAssembly 'Input)
@@ -123,11 +139,14 @@ checkExternsDefined mod = let
 
 debugRender :: forall a. Show (AddressType a) => ModuleAssembly a -> IO ()
 debugRender mod = let
-  (o, dataS) = mapAccumL (\off (s, _, v) -> showConstant off s v) 1 (globals mod)
-  (len,textS) = mapAccumL (\off p -> debugProc (off + 1) p) (o - 1) (procs mod)
-  padding = 1023 - (len)
+  (pinned, def) = partition (\(_, s, _) -> s /= DefaultData) (globals mod)
+  (o, pinnedS)  = mapAccumL (\off (s, _, v) -> showConstant off s v) 1 pinned
+  (o', dataS)    = mapAccumL (\off (s, _, v) -> showConstant off s v) (o - 1) def
+  (len,textS)   = mapAccumL (\off p -> debugProc (off + 1) p) (o' - 1) (procs mod)
+  padding = 1023 - len
   in do
-    forM_ (concat dataS) $ \(addr, inst) -> putStrLn $ show (addr) ++ ": " ++ inst
+    forM_ (concat pinnedS) $ \(addr, inst) -> putStrLn $ show (addr) ++ ": " ++ inst
+    forM_ (concat dataS) $ \(addr, inst) -> putStrLn $ show (addr + padding) ++ ": " ++ inst
     forM_ (concat textS) $ \(addr, inst) -> putStrLn $ show (addr + padding) ++ ": " ++ inst
 
   where
@@ -159,6 +178,14 @@ debugOffsets mod = void $ printMap (offsetMap mod)
   printMap = mapM_ (\(k, v) -> putStrLn $ show v ++ " " ++ formatAddr k ) . M.toList
   -- where
 
+debugRelative :: ModuleAssembly Absolutized -> IO ()
+debugRelative mod = void $ printMap (relativeMap mod)
+  where
+  printMap = mapM_ (\(k, v) -> putStrLn $ printRel v ++ " " ++ formatAddr k ) . M.toList
+
+  printRel (Rel s o) = show s <> " + " <> show o
+  printRel (Abs i) = show i
+
 renderSourceMap :: ModuleAssembly Absolutized -> String
 renderSourceMap mod = let
   flippedList =  M.toAscList $ offsetMap mod
@@ -168,11 +195,15 @@ renderSourceMap mod = let
 render :: ModuleAssembly Absolutized -> Output
 render mod = let
   textS = zip [1..] (procs mod) >>= uncurry renderProc
-  dataS = globals mod >>= \(_, s, c) -> map (\c -> (s, b0 <:> c)) $ constantToCell c
+  dataS = globals mod >>= \(_, s, c) -> map (\c -> (s, b0 <:> c)) $ renderGlobal c
   total = length dataS + length textS
   padding = replicate (1023 - total) (bitVector 0)
   (pinned, def) = partition (\(s, _) -> s /= DefaultData) dataS
   in map snd pinned ++ padding ++ map snd def ++ textS
+  where
+
+  renderGlobal (Size _) | (packSize mod) == True = []
+  renderGlobal a = constantToCell a
 
 renderProc :: Integer -> Procedure Int -> Output
 renderProc ix proc = let
@@ -182,6 +213,7 @@ renderProc ix proc = let
     (zip [1..] (blocks proc) >>= \(i, b) -> renderBlock procIx i b)
 
   where
+
 
   renderLocal c = map (b0 <:>) (constantToCell $ fromDef c)
 
@@ -207,6 +239,7 @@ data MemoryLayout = MkLayout
   { size :: Int
   , offsets :: [(Section, Int)]
   , padding :: Int -- debug: padding applied to module
+  , packedCells :: [(Section, Int)]
   }
   deriving (Show, Eq)
 
@@ -237,6 +270,7 @@ absolutize mod@Mod {..} = let
   absolve :: MemoryLayout -> RelativeAddr -> Int
   absolve textLens (Rel sec i) = case sec `lookup` (offsets textLens) of
     Just off -> off + i
+    Nothing -> error $ show sec
   absolve _    (Abs i)      = i
 
   absoluteBlock :: MemoryLayout -> MemoryLayout -> BB RelativeAddr -> BB Int
@@ -269,7 +303,7 @@ memoryLayout :: (Show (AddressType a), Eq (AddressType a)) => ModuleAssembly a -
 memoryLayout m@Mod {..} = let
   (secs, sizes) = unzip $ map (\gs -> (getSection $ head gs, globalMapSize constantSize gs)) (globalSections m)
 
-  globalOffs = scanl (+) 1 sizes
+  globalOffs = scanl (+) 0 sizes
 
   procSizes = map (\p -> (procName p, procedureLen p)) procs
 
@@ -286,6 +320,7 @@ memoryLayout m@Mod {..} = let
     { size = usedSpace
     , offsets = pinned ++ map (fmap (+ padding)) (default' ++ procOffs)
     , padding = padding
+    , packedCells = []
     }
 
   where getSection (_, s, _) = s
@@ -296,20 +331,23 @@ constantDiskSize a = constantSize a
 
 diskLayout :: Eq (AddressType a) => ModuleAssembly a -> MemoryLayout
 diskLayout m@(Mod {..}) = let
-  (secs, sizes) = unzip $ map (\gs -> (getSection $ head gs, globalMapSize constantDiskSize gs)) (globalSections m)
+  packingMeasure = if packSize then (\c -> constantSize c - constantDiskSize c) else const 0
+  constantMeasure = if packSize then constantDiskSize else constantSize
+  (secs, sizes, packed) = unzip3 $ map (\gs -> (getSection $ head gs, globalMapSize constantMeasure gs, globalMapSize packingMeasure gs)) (globalSections m)
   globalOffs = scanl (+) 0 sizes
 
   procSizes = map (\p -> procedureLen p) procs
-  procOffs = scanl (+) (sum sizes) procSizes
+  procOffs  = scanl (+) (sum sizes) procSizes
 
   usedSpace = sum procSizes + sum sizes
   padding   = 1023 - usedSpace
   -- padding = 0
   (pinned, default') = partition (\(s, _) -> s /= DefaultData) (zip secs globalOffs)
   in MkLayout
-    { size = (usedSpace)
+    { size = usedSpace
     , offsets = pinned ++ map (fmap (+ padding)) (default' ++ zip (map (Text . procName) procs) procOffs)
     , padding = padding
+    , packedCells = zip secs packed
     }
   where getSection (_, s, _) = s
 
@@ -489,13 +527,33 @@ externName _ = Nothing
 layout :: ModuleAssembly Input -> ModuleAssembly LaidOut
 layout (Mod {..}) = Mod
   { procs = map segmentProcedure procs
-  , globals = sortOn (\(_, s, _) -> s) (procs >>= globalDefs)
+  , globals = sortBy sortGlobals (procs >>= globalDefs)
   , ..
   }
 
   where
 
   globalDefs proc = catMaybes . map isGlobal $ constDefs proc
+
+  {-
+    The objective of this ordering function is to put Size < Cell < Template < All the others
+
+  -}
+  sortGlobals (n, s, c) (m, t, d)
+   | s == t = case (c, d) of
+        (Size _, Size _) -> n `compare` m
+        (Size _, _) -> LT
+        (Cell, Size _) -> GT
+        (Cell, Cell) -> n `compare` m
+        (Cell, _) -> LT
+        (Template _, Size _) -> GT
+        (Template _, Cell) -> GT
+        (Template _, Template _) -> n `compare` m
+        (_, Size _) -> GT
+        (_, Cell)   -> GT
+        (_, Template _) -> GT
+        (_ , _) -> n `compare` m
+    | otherwise = s `compare` t
 
   isGlobal (Def Global nm c) = Just (nm, DefaultData, c)
   isGlobal (Def (Pinned s) nm c) = Just (nm, Data s, c)
@@ -516,14 +574,25 @@ layout (Mod {..}) = Mod
   go' map [] = map
 
 
-layoutConstants' :: [ConstantDef a] -> [ConstantDef a]
+{-
+
+  Sort the constants according to the order we want to lay them out in memory
+
+  +--------------+---------------+-----------+-------+
+  | Empty Blocks | Working Cells | Templates | Other |
+  +--------------+---------------+-----------+-------+
+
+  This allows us to also skip loading empty blocks and only load from the working cells.
+-}
+
+layoutConstants' :: Show a => [ConstantDef a] -> [ConstantDef a]
 layoutConstants' constants = let
   (_, locals)        = partition (isGlobal) constants
   (cells, rem)       = partition (isCell . def) locals
   (blocks, rem')     = partition (isSize . def) rem
   (templates, rem'') = partition (or . fmap isTemplate . def) rem'
   (_, rem''')        = partition (isExtern) rem''
-  in cells ++ blocks ++ templates ++ (sortOn constantName rem''')
+  in blocks ++ cells ++ templates ++ (sortOn constantName rem''')
 
   where
 
