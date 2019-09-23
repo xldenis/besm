@@ -365,7 +365,7 @@ pub static DS : [u64; 384] =
   , 0x0000000000000000
   , 0x00000001FFC00000 // Address besm: 1167 dec: 1383 value: first addr mask
   , 0x0000000000000000
-  , 0x0000000000000000
+  , 0x00000001FFFFFFFF // Address besm: 1169 dec: 1385 value: negative address modification constant
   , 0x0000000000000000
   , 0x0000000000000000
   , 0x0000000000000000
