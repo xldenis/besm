@@ -66,7 +66,7 @@ pp2_1 = do
   cellT <- local "t" Cell
   shiftedI <- local "i-shifted" Cell
   parameterInfo <- local "parameter-info" Cell
-  normalizeInstr <- local "norm-instruction" Cell
+  normalizeInstr <- global "norm-instruction" Cell
   incrInstr <- local "incr-instruction" Cell
 
   local "S" Cell
@@ -76,7 +76,6 @@ pp2_1 = do
   local "paren-code" Cell
   local "comp-operator" Cell
   local "built-comp" Cell
-  local "working" Cell
 
   {-
   Op. 1 clears standard cells U and V of markers on the transmission to the
@@ -168,7 +167,9 @@ pp2_1 = do
 
   let parenCode = Unknown "paren-code"
 
-  let iinShifted = Unknown "working"
+  -- important to use global memory for this value because it'll be passed to the
+  -- control instruction block
+  iinShifted <- global "iinShifted" Cell
 
   let iin = Absolute 0x001 -- cell which holds the current part of the parameter we are analyzing
 
@@ -259,6 +260,8 @@ pp2_1 = do
   {-
   Op. 12 completes the comparison instruction for the case of i_fin independent
   of higher-order parameters.
+
+  Should this transfer?
   -}
 
   operator 12 $ do

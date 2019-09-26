@@ -52,7 +52,7 @@ mp2 = do
   twentytwo <- local "22" (Val 22)
   twentyfour <- local "24" (Val 24)
 
-  seven' <- local "7'" (Raw 7)
+  seven' <- global "7'" (Raw 7)
 
   -- We need a local table of these selectors because the ones in DS are not adjacent, meaning we can't
   -- simply increment between them in a loop. Why? IDK!
@@ -269,18 +269,17 @@ mp2 = do
     ]
 
   let cellHead = Absolute 0x0001
-
-  vaSelect <- local "va-select" (Template (LogMult (var "va") (var "va-selectors") cellL))
+  let va = wm
+  vaSelect <- local "va-select" (Template (LogMult va (var "va-selectors") cellL))
   vaShift  <- local "va-shift" (Template (Shift cellL (left 24) cellL))
 
-  local "ugh-1" (Template (TN zero (var "va") UnNormalized))
+  local "ugh-1" (Template (TN zero va UnNormalized))
   local "ugh-2" (Template (LogMult zero (var "addr-selectors") cellHead))
 
   local "neg-bit" (Raw $ 1 `B.shift` 32)
 
-  local "va" Cell
 
-  local "end-loop" (Template (LogMult (var "va") (var "va-selectors" `offAddr` 2) cellL))
+  local "end-loop" (Template (LogMult va (var "va-selectors" `offAddr` 2) cellL))
 
   operator 11 $ mdo
     shift nextAddr (left 22) nextAddr
@@ -290,7 +289,7 @@ mp2 = do
     tN' vaSelect (op 12)
     tN' vaShift (op 12 `offAddr` 1)
 
-    tExp' (var "va") (cellL)
+    tExp' va (cellL)
     shift (cellL) (left 22) (cellL)
 
     sub' nextAddr (cellL) nextAddr
