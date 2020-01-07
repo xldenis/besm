@@ -67,13 +67,13 @@ pp2_1 = do
   shiftedI <- local "i-shifted" Cell
   parameterInfo <- local "parameter-info" Cell
   normalizeInstr <- global "norm-instruction" Cell
-  incrInstr <- local "incr-instruction" Cell
+  incrInstr <- global "incr-instruction" Cell
 
   local "S" Cell
 
   -- Intermediate values used to build up instructions
 
-  local "paren-code" Cell
+  global "paren-code" Cell
   local "comp-operator" Cell
   local "built-comp" Cell
 
@@ -124,6 +124,7 @@ pp2_1 = do
 
       -- Form instructions
 
+      -- these instructions seem wrong!
       ai normTemplate shiftedI normalizeInstr -- I _ 0001
       ai incrTemplate shiftedI incrInstr -- + _ 1081 _
       ai incrInstr    counterI incrInstr

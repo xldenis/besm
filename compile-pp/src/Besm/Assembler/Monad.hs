@@ -345,6 +345,9 @@ compWord a b c d = emitTerm $ CompWord a b c d
   2. \(E(x) < E(y)\) and \(|M(y)| \neq 0\)
 
   Otherwise d is carried out
+
+  Roughly |a| < |b| -> c
+          |a| ≥ |b| -> d
 -}
 
 compMod :: Address -> Address -> Address -> Address -> Builder Address

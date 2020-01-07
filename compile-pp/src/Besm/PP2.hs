@@ -47,7 +47,7 @@ mp2 = do
   pinned "header" "programme header table" (Size 15)
   pinned "prog" "programme" (Size 750)
 
-  wm <- global "working-cells" (Size 7)
+  wm <- global "working-cells" (Size 8)
 
   twentytwo <- local "22" (Val 22)
   twentyfour <- local "24" (Val 24)
