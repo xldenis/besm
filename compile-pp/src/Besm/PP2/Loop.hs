@@ -75,7 +75,7 @@ pp2_1 = do
 
   global "paren-code" Cell
   local "comp-operator" Cell
-  local "built-comp" Cell
+  global "built-comp" Cell
 
   {-
   Op. 1 clears standard cells U and V of markers on the transmission to the

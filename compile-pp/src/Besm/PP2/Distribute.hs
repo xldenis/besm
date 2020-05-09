@@ -69,7 +69,7 @@ pp2_3 = do
   local "k-trans-template-1" (Template (TN zero (var "current") UnNormalized))
   local "k-trans-template-2" (Template (TN (var "current") zero UnNormalized))
   local "first and second mask" (Raw $ 0b11111111111 `B.shift` 22 B..|. 0b11111111111 `B.shift` 11)
-  local "< current firstaddr op 37" (Template (Comp (var "current") firstAddr (op 37) zero))
+  -- local "< current firstaddr op 37" (Template (Comp (var "current") firstAddr (op 37) zero))
   -- current appears to be global because it is used in the Loop module op 14.
   -- local ",TN _ current" (Template (TN zero (var "current") UnNormalized))
   operator 1 $ do
@@ -132,15 +132,15 @@ pp2_3 = do
   operator 6 $ do
     shift betaCounter (left 22) (wm `offAddr` 4)
     ------- v op 42 is a dummy operator
-    tN' (var "< current firstaddr op 37") (op 32)
-
+    -- tN' (var "< current firstaddr op 37") (op 32)
+    tN' (op 42) (op 32)
     chain (op 7)
   {-
   Op. 7 transferring control to the sub-routine, sets the restoration
   instruction before the shifted part of the programme.
   -}
   operator 7 $ do
-    callRtc (op 29) (op 38)
+    callRtc (op 29) (op 43)
   {-
   Op. 8 forms the relative address which should stand in the third address of
   the comparison. It is equal to (K_co - (K_1 + alpha)), where K_co is the new
@@ -158,8 +158,8 @@ pp2_3 = do
     sub' temp alphaDiff temp
 
            -- v ---
-    local "temp-value" (Raw 0x3FF)
-    ai temp (var "temp value") temp -- what does this do??????
+    local "temp-value" (Raw 0x03FF) -- 10 bits set... why?
+    ai temp (var "temp-value") temp -- what does this do??????
     ai builtComp temp (var "current")
 
     chain (op 9)
@@ -187,14 +187,14 @@ pp2_3 = do
   -}
   operator 12 $ do
     sub' betaCounter  betaInitial  betaDiff
-    tN' (op 43) (op 32)
+    tN' (op 42) (op 32)
 
   {-
   Op. 13 transfers address-modification instructions to the programme, setting
   them in front of the parameter change instruction.
   -}
   operator 13 $ do
-    callRtc (op 29) (op 38)
+    callRtc (op 29) (op 43)
   {-
   Op. 14 carries out address-modification in the sub-routine for transfer from
   the programme, ensuring "erasing" of the close-parentheses of the loop.
@@ -238,7 +238,7 @@ pp2_3 = do
   functions).
   -}
   operator 20 $ do
-    compMod (var "current") ????? (op 26) (op 21)
+    compMod (var "current") (op 6) (op 26) (op 21) -- what matters is that we compare against a <- shift instruction since the opcode for ai is the following one
   {-
   Op. 21 obtains the relative address of the variable instruction. This address
   delta = K - K_AI + alpha, where K is the old address of the variable
@@ -313,7 +313,7 @@ pp2_3 = do
   exit from the sub-routine if beta_c = beta_0,
   -}
   operator 29 $ do
-    compMod betaCounter one _ (op 30)
+    compMod betaCounter one (op 43) (op 30)
   {-
   Op. 30 forms the initial form of the instruction for transfer from block beta.
   -}
@@ -346,7 +346,7 @@ pp2_3 = do
   Op. 33 tests for an instruction AI (in the contrary case op. 36 functions).
   -}
   operator 33 $ do
-    compMod (var "current") ?????? (op 36) (op 34)
+    compMod (var "current") (op 6) (op 36) (op 34) -- only thing that should matter is that we compare against a shift instruction
   {-
   Op. 34 tests for a particular instruction AI
 
@@ -359,8 +359,10 @@ pp2_3 = do
 
   ???????????
   -}
+  local "lkadjf" (Template (AI (Absolute 0x001) one (Absolute 0x01))) -- the real code uses (op 27) to do this, why?
   operator 34 $ do
-    compMod _ _ (op 36) (op 35)
+    compWord (var "lkadjf") (var "current") (op 36) (op 35)
+    -- compMod _ (var "current") (op 36) (op 35)
   {-
   Op. 35 substitutes for the address of the variable instruction in instruction
   AI its relative address. The relative address Delta = - (K_AI - (K + alpha)),
@@ -388,10 +390,11 @@ pp2_3 = do
   Op. 38 ensures reptition of operators 31 - 37 the necessary number of times.
   -}
   operator 38 $ mdo
-    compMod betaInitial betaCounter (op 31) ret
-    ret <- block $ do
-      retRTC
-    return ()
+    compMod betaInitial betaCounter (op 31) (op 43)
+
+  -- 42 is a dummy operator number
+  operator 43 $ do
+    retRTC
   {-
   Op. 39 and op. 40 constitute the sub-routine for transferring instructions
   from block K.
@@ -413,3 +416,8 @@ pp2_3 = do
     ai (op 41) negAddrModifConstant (op 41)
     sub' (wm `offAddr` 3) one (wm `offAddr` 3)
     jcc
+
+  -- dummy operator to get a terminator template variable
+  operator 42 $ do
+    comp (var "current") firstAddr (op 37) zero
+    -- Comp (var "current") firstAddr (op 37) zero)
