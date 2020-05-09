@@ -1,3 +1,5 @@
+{-# LANGUAGE BinaryLiterals #-}
+{-# LANGUAGE RecursiveDo #-}
 module Besm.PP2.Distribute where
 
 import Besm.Assembler.Monad
@@ -57,7 +59,8 @@ pp2_3 = do
   -}
 
   let temp  = Absolute 0x001
-      temp' = Absolute 0x002
+      temp2 = Absolute 0x002
+      temp3 = Absolute 0x003
       alphaDiff = wm `offAddr` 5
       betaDiff  = wm `offAddr` 6
       kTrans    = wm `offAddr` 2
@@ -65,6 +68,10 @@ pp2_3 = do
   local "current" Cell
   local "k-trans-template-1" (Template (TN zero (var "current") UnNormalized))
   local "k-trans-template-2" (Template (TN (var "current") zero UnNormalized))
+  local "first and second mask" (Raw $ 0b11111111111 `B.shift` 22 B..|. 0b11111111111 `B.shift` 11)
+  local "< current firstaddr op 37" (Template (Comp (var "current") firstAddr (op 37) zero))
+  -- current appears to be global because it is used in the Loop module op 14.
+  -- local ",TN _ current" (Template (TN zero (var "current") UnNormalized))
   operator 1 $ do
     sub' alphaCounter alphaInitial alphaDiff
     sub' betaCounter  betaInitial  betaDiff
@@ -73,13 +80,13 @@ pp2_3 = do
 
     ai temp one temp
 
-    shift kLast (left 22) temp'
+    shift kLast (left 22) temp2
 
     -- wtf is happening here?
 
     tN' kLast kTrans
 
-    ai (var "k-trans-template-1") temp' (op 39) -- stored in op 39???
+    ai (var "k-trans-template-1") temp2 (op 39) -- stored in op 39???
 
     ai kLast temp kLast
 
@@ -125,7 +132,7 @@ pp2_3 = do
   operator 6 $ do
     shift betaCounter (left 22) (wm `offAddr` 4)
     ------- v op 42 is a dummy operator
-    tN' (op 42) (op 32)
+    tN' (var "< current firstaddr op 37") (op 32)
 
     chain (op 7)
   {-
@@ -146,16 +153,14 @@ pp2_3 = do
 
   parenCode <- extern "paren-code" -- 0x3EC in source
 
-  local "transfer-cell" Cell -- Addr 0x3EE in source
-
   operator 8 $ do
     sub' unnamed parenCode temp
     sub' temp alphaDiff temp
 
            -- v ---
     local "temp-value" (Raw 0x3FF)
-    ai   temp (var "temp value") temp -- what does this do??????
-    ai  builtComp temp (var "transfer-cell")
+    ai temp (var "temp value") temp -- what does this do??????
+    ai builtComp temp (var "current")
 
     chain (op 9)
   {-
@@ -170,7 +175,7 @@ pp2_3 = do
   programme.
   -}
   operator 10 $ do
-    tN' incrInstr (var "transfer-cell")
+    tN' incrInstr (var "current")
     chain (op 11)
 
   operator 11 $ do
@@ -217,44 +222,110 @@ pp2_3 = do
   {-
   Op. 18 forms the initial form of the instruction for selection from block
   alpha.
+  -}
+  operator 18 $ do
+    shift alphaCounter (left 22) temp
+    ai (var "k-trans-template-1") temp (op 19)
 
+  {-
   Op. 19 transfers the next instruction from block alpha to the standard cell.
+  -}
 
+  operator 19 $ do
+    empty
+  {-
   Op. 20 determines the case of instruction AI (in the contrary case op. 26
   functions).
-
+  -}
+  operator 20 $ do
+    compMod (var "current") ????? (op 26) (op 21)
+  {-
   Op. 21 obtains the relative address of the variable instruction. This address
   delta = K - K_AI + alpha, where K is the old address of the variable
   instruction, K_AI is the new address of the instruction AI and alpha is the
   number of the instruction in the block alpha.
+  -}
+  operator 21 $ do
+    bitAnd (var "current") thirdAddr temp3
+    sub' temp3 (wm `offAddr` 3) temp
+    add' temp alphaDiff temp
+    shift (var "current") (right 22) temp2
 
+  {-
   Op. 22 verifies if the first the third addresses in the instruction AI are
   equal (YES -- op. 23, NO -- op. 24).
-
+  -}
+  operator 22 $ do
+    compWord temp2 temp3 (op 24) (op 23)
+  {-
   Op. 23 substitutes for the address of the variable instruction, located in the
   first and third addresses, its relative address.
+  -}
+  operator 23 $ do
+    shift temp (left 22) temp2
+    ai temp temp2 temp -- should form _  Δ _ Δ
+    bitAnd (var "current") secondAddr temp3 -- ai _ A_2 _ printout uses addr 307 why?
+    chain (op 25)
 
+  {-
   Op. 24 substitutes the third address of instruction AI by the relative address
   of the variable instruction.
+  -}
+  operator 24 $ do
+    bitAnd (var "current") (var "first and second mask") temp3
 
+    chain (op 25)
+  {-
   Op. 25 sets teh changed instruction AI in the standard cell.
+  -}
+  operator 25 $ do
+    ai temp3 temp (var "current")
 
+    chain (op 26)
+  {-
   Op. 26 transfers teh tested instruction to the programme.
-
+  -}
+  operator 26 $ do
+    clcc (op 41)
+  {-
   Op. 27 carries out modification of the address of the transfer instruction in
   op. 19
+  -}
+  operator 27 $ do
+    ai (op 19) firstAddr (op 19)
+    sub' alphaCounter one alphaCounter
+    chain (op 28)
 
+  {-
   Op. 28 ensures transfer to the programme of all instructions from block alpha.
+  -}
+  operator 28 $ mdo
+    compMod alphaInitial alphaCounter (op 19) p2
 
+    p2 <- block $ do
+      clcc (Procedure "MP-2" (op 35))
+      chain (op 29)
+    return ()
+  {-
   Operators 29 - 38 formed the sub-routine for transfers from block beta.
 
   Op. 29 verifies if there is anything in block beta, transferring control to
   exit from the sub-routine if beta_c = beta_0,
-
+  -}
+  operator 29 $ do
+    compMod betaCounter one _ (op 30)
+  {-
   Op. 30 forms the initial form of the instruction for transfer from block beta.
+  -}
+  operator 30 $ do
+    ai (var "k-trans-template-1") (wm `offAddr` 4) (op 31)
 
+  {-
   Op. 31 transfers the next instruction from block betato the standard cell.
   -}
+  operator 31 $ do
+    empty
+    chain (op 32)
 
   {-
   Op. 32 "by-passes" transfer of the instruction to the programme in the first
@@ -273,7 +344,10 @@ pp2_3 = do
   in the eleventh place of the first address (the sign place).
 
   Op. 33 tests for an instruction AI (in the contrary case op. 36 functions).
-
+  -}
+  operator 33 $ do
+    compMod (var "current") ?????? (op 36) (op 34)
+  {-
   Op. 34 tests for a particular instruction AI
 
       ┌─────┬──────┬──────┬──────┐
@@ -283,22 +357,59 @@ pp2_3 = do
   (it is not necessary to transform this instruction), transferring control to
   op. 36.
 
+  ???????????
+  -}
+  operator 34 $ do
+    compMod _ _ (op 36) (op 35)
+  {-
   Op. 35 substitutes for the address of the variable instruction in instruction
   AI its relative address. The relative address Delta = - (K_AI - (K + alpha)),
   where the same notation is employed as in op. 21.
-
+  -}
+  operator 35 $ do
+    bitAnd (var "current") thirdAddr temp
+    sub' (wm `offAddr` 3) temp temp
+    sub' temp betaDiff temp
+    shift temp (left 22) temp2
+    ai temp temp2 temp
+    bitAnd (var "current") secondAddr temp2 -- this uses cell 3A7 why?
+  {-
   Op. 36 transfers the instruction from the standard cell to the programme.
-
+  -}
+  operator 36 $ do
+    clcc (op 41)
+  {-
   Op. 37 carries out modification of the transfer instruction address in op. 31.
-
+  -}
+  operator 37 $ do
+    ai (op 31) firstAddr (op 31)
+    chain (op 38)
+  {-
   Op. 38 ensures reptition of operators 31 - 37 the necessary number of times.
-
+  -}
+  operator 38 $ mdo
+    compMod betaInitial betaCounter (op 31) ret
+    ret <- block $ do
+      retRTC
+    return ()
+  {-
   Op. 39 and op. 40 constitute the sub-routine for transferring instructions
   from block K.
+  -}
+  operator 39 $ do
+    empty -- filled by template tN' kTrans current
+    chain (op 40)
 
+  operator 40 $ do
+    ai (op 39) firstAddr (op 39)
+    sub' kTrans one kTrans
+    jcc
+  {-
   Op. 41 is the sub-routien for transferring instrucitons to block K.
 
   -}
-
-  operator 42 $ do
-    comp (var "current") firstAddr (op 37) (op 42)
+  operator 41 $ do
+    empty
+    ai (op 41) negAddrModifConstant (op 41)
+    sub' (wm `offAddr` 3) one (wm `offAddr` 3)
+    jcc

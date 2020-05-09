@@ -433,6 +433,8 @@ secondAddr =  Absolute $ unsafeFromBesmAddress "116E"
 thirdAddr :: Address
 thirdAddr = Absolute $ unsafeFromBesmAddress "116F"
 
+negAddrModifConstant :: Address
+negAddrModifConstant = Absolute $ unsafeFromBesmAddress "1169"
 
 -- | A denormalized 1, this cell only has the lowest bit set.
 one :: Address
