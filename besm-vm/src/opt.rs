@@ -106,7 +106,7 @@ pub fn is_from_file(path: &Path) -> [u64; 1023] {
     is_buf
 }
 
-pub fn read_file(path: &Path) -> Box<Iterator<Item = u64>> {
+pub fn read_file(path: &Path) -> Box<dyn Iterator<Item = u64>> {
     let file = Box::new(File::open(path).expect("file not found"));
     use std::io::BufReader;
     use std::io::BufRead;

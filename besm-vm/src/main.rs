@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 extern crate bit_field;
 #[macro_use]
 extern crate structopt;
@@ -13,8 +11,6 @@ extern crate byteorder;
 extern crate num;
 extern crate tui;
 extern crate tui_logger;
-
-use std::path::Path;
 
 use interface::*;
 use vm::*;

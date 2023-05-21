@@ -98,12 +98,12 @@ fn render_main_panel<T: Backend>(t: &mut Frame<T>, app: &Interface, vm: &VM, rec
 fn render_memory_panel<T: Backend>(t: &mut Frame<T>, tabs: &TabInfo, vm: &VM, rect: Rect) {
     use tui::widgets::Row;
 
-    let (mem_vec, addr_offset) : (Box<Iterator<Item = u64>>, usize) = match tabs.selection {
+    let (mem_vec, addr_offset) : (Box<dyn Iterator<Item = u64>>, usize) = match tabs.selection {
         1 => {
-          (Box::new(vm.memory.into_iter()) as Box<Iterator<Item = u64>>, 1)
+          (Box::new(vm.memory.into_iter()) as Box<_>, 1)
         }
         i => {
-           (Box::new(vm.mag_system.mag_drives[i - 2].into_iter()) as Box<Iterator< Item = u64>>, 0)
+           (Box::new(vm.mag_system.mag_drives[i - 2].into_iter()) as Box<_>, 0)
         }
     };
     let tab_offset = tabs.offsets[tabs.selection].saturating_sub(addr_offset);
@@ -134,7 +134,7 @@ fn render_memory_panel<T: Backend>(t: &mut Frame<T>, tabs: &TabInfo, vm: &VM, re
     });
 
     Table::new(
-            ["Addr", "Instruction", "Number", "Hex", "Raw"].into_iter(),
+            ["Addr", "Instruction", "Number", "Hex", "Raw"].iter(),
             rows
         )
         .widths(&[4, 20, 10, 10, 39])

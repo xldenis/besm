@@ -185,12 +185,12 @@ impl DriveOperation {
   pub fn from_ma(a: u16, b: u16, c: u16, b2: u16) -> Result<DriveOperation, DriveError> {
     use vm::DriveOperation::*;
     match a {
-      0x0300 ... 0x0304 => { Ok(WriteMD(drum_id_from_num(a - 0x0300), b, c, b2)) }
-      0x0100 ... 0x0104 => { Ok(ReadMD(drum_id_from_num(a - 0x0100), b, c, b2)) }
+      0x0300 ..= 0x0304 => { Ok(WriteMD(drum_id_from_num(a - 0x0300), b, c, b2)) }
+      0x0100 ..= 0x0104 => { Ok(ReadMD(drum_id_from_num(a - 0x0100), b, c, b2)) }
       0x0080            => { Ok(ReadTape(c)) }
-      0x0281 ... 0x0284 => { Ok(WriteMT(tape_id_from_num(a), b, c, b2)) }
-      0x0081 ... 0x0084 => { Ok(ReadMT(tape_id_from_num(a), b, c, b2)) }
-      0x00C1 ... 0x00C4 => { Ok(RewindMT(tape_id_from_num(a), b)) }
+      0x0281 ..= 0x0284 => { Ok(WriteMT(tape_id_from_num(a), b, c, b2)) }
+      0x0081 ..= 0x0084 => { Ok(ReadMT(tape_id_from_num(a), b, c, b2)) }
+      0x00C1 ..= 0x00C4 => { Ok(RewindMT(tape_id_from_num(a), b)) }
       _ => Err(DriveError::InvalidDriveOperation)
     }
   }
