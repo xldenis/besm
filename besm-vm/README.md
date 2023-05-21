@@ -14,11 +14,10 @@ The VM expects as input the binary representation of each input file. The `pp-be
 
 #### Example Invocation / Calling the compiler
 
-To actually run the compiler program, which is provided in MP-1 use the following command:
+To actually run the compiler use the following command:
 
 ```
-./to_binary mp1.txt file.bin
-cargo run file.bin --md2=md2.bin --start-address=864
+cargo run --release -- run --bootloader=boot.txt --md0=mp1.txt --md4=mp2.txt --start-address=1025 --md2=test_progs/variable_address.txt
 ```
 
 ### Implemented instructions:
