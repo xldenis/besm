@@ -49,11 +49,11 @@ main = hspec $ do
         Right mod -> do
           let compiled = head $ procs mod
               rendered = render mod
-              Just start = Procedure "add" (Operator 1) `M.lookup` (offsetMap mod)
+              Just start = Procedure "add" (Operator 1) `M.lookup` offsetMap mod
           -- liftIO $  (debugRender mod)
           -- liftIO $ print $ relativeMap mod
 
-          let expected = (bitVector 1 :: BV 4) <:> bv 1 <:> (b0 :: BV 9) <:> (instToCell (TN 1021 1010 UnNormalized))
+          let expected = (bitVector 1 :: BV 4) <:> bv 1 <:> (b0 :: BV 9) <:> instToCell (TN 1021 1010 UnNormalized)
           -- liftIO $ print rendered
           rendered !! (start - 1) `shouldBe` expected
 
@@ -112,13 +112,12 @@ main = hspec $ do
       case compile (simpleModule [code]) of
         Left err -> expectationFailure (show err)
         Right mod -> do
-          let Just dataStart = DefaultData `lookup` (offsets $ memoryLayout mod)
+          let Just dataStart = DefaultData `lookup` offsets (memoryLayout mod)
 
           render mod !! (dataStart - 1) `shouldBe` 15
 
   describe "disk layout" $ do
-    it "provides proper offsets to account for packed cells" $
-      pending
+    it "provides proper offsets to account for packed cells" pending
 
   describe "monad builder" $ do
     it "" $ do

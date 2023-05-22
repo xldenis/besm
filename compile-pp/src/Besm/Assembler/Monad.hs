@@ -157,7 +157,7 @@ pinned p nm c = do
   return $ Unknown nm
 
 -- | Emit an empty cell. This is used to create space to insert a template.
-empty = emitInstr $ Empty
+empty = emitInstr Empty
 
 -- ** BESM Machine Code
 
@@ -291,7 +291,7 @@ clcc addr = emitInstr $ CLCC addr
 
 -- | Jump to Control. Transfers control to the global control system.
 jcc :: Builder Address
-jcc = emitInstr $ JCC
+jcc = emitInstr JCC
 
 {- |
   @chain@ is not an actual instruction. It is a meta-linguistic addition that is
@@ -307,10 +307,10 @@ cccc :: Address -> Builder Address
 cccc addr = emitTerm $ CCCC addr
 
 stop :: Builder Address
-stop = emitTerm $ Stop
+stop = emitTerm Stop
 
 checkStop :: Builder Address
-checkStop = emitTerm $ SwitchStop
+checkStop = emitTerm SwitchStop
 
 {- |
   Call with Return-To-Control.
@@ -393,7 +393,7 @@ shift' a b c = emitInstr $ ShiftAll a b c
   those cases and make it less confusing.
 -}
 left :: Int -> Address
-left i = Absolute i
+left = Absolute
 
 right :: Int -> Address
 right i = Absolute (64 + i)
@@ -423,7 +423,7 @@ right i = Absolute (64 + i)
   0x02CN: Rewind tape drive
 -}
 readMD :: Int -> Address -> Address -> Address -> Builder Address
-readMD n n1 n2 a = (emitInstr $ Ma (Absolute $ 0x100 + n) n1 a) >> (emitInstr $ Mb n2)
+readMD n n1 n2 a = emitInstr (Ma (Absolute $ 0x100 + n) n1 a) >> emitInstr (Mb n2)
 
 ma :: Address -> Address -> Address -> Builder Address
 ma n n1 a = emitInstr $ Ma n n1 a

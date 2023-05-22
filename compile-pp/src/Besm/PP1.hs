@@ -39,7 +39,7 @@ mp1 = do
   local "144" (Raw 144)
   global "A" Cell
   global "B" Cell
-  local "0x18" (Raw $ 0x18)
+  local "0x18" (Raw 0x18)
   local "snd and third addr mask" (Raw $ 0b11111111111 `B.shift` 11 B..|. 0b11111111111)
   local "start of 144 block" (Val 0)
   local "96 shifted" (Raw $ 96 `B.shift` 11)
@@ -47,7 +47,7 @@ mp1 = do
   local "max-selected" (Raw 96)
   local "max-written" (Raw 144)
   local "-96-shifted" (Raw $ 0b11110100000 `B.shift` 22)
-  local "-144" (Raw $ 0b11101110000)
+  local "-144" (Raw 0b11101110000)
 
   {-
 
@@ -130,7 +130,7 @@ mp1 = do
   -}
   operator 5 $ do
     let pp_2 = Procedure "PP-1-2" (op 1)
-    compWord zero cellA (pp_2) (op 6)
+    compWord zero cellA pp_2 (op 6)
   {-
     Op. 6 transfers control to op. 11 if x != 018. In this case in cell A is
     found a line of information on a non-standard operator or the

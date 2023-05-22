@@ -14,7 +14,7 @@ programmeToGraph :: [BasicBlock] -> Gr Address ()
 programmeToGraph bbs =
   let
     graphInfo = map blockToGraphInfo bbs
-    nodeLabels = nub $ concatMap (\(n, edges) -> n : edges) graphInfo
+    nodeLabels = nub $ concatMap (uncurry (:)) graphInfo
     nodeDict = zip nodeLabels [1 ..]
     (nodes, edges) = unzip $ map (toNodes nodeDict) graphInfo
    in
@@ -40,6 +40,6 @@ termToAddrs (CompMod _ _ t f) = [t, f]
 termToAddrs (CCCC blk) = [blk]
 termToAddrs (CCCCSnd _ blk) = [blk]
 termToAddrs (Chain blk) = [blk]
-termToAddrs (Stop) = []
-termToAddrs (SwitchStop) = []
+termToAddrs Stop = []
+termToAddrs SwitchStop = []
 termToAddrs (RetRTC _) = []

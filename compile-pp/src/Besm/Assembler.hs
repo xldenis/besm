@@ -1,14 +1,14 @@
 {-# LANGUAGE BinaryLiterals #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveFunctor #-}
+
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE KindSignatures #-}
+
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TupleSections #-}
+
 {-# LANGUAGE TypeFamilies #-}
 
 module Besm.Assembler where
@@ -24,7 +24,6 @@ import Data.List as L
 import Data.Maybe
 
 import Control.Category ((>>>))
-import Data.Function ((&))
 
 import Data.BitVector.Sized (BV)
 import qualified Data.BitVector.Sized as BV
@@ -127,8 +126,8 @@ checkConstants proc =
   let
     templateNeeds = constDefs proc >>= templateArgs
     needed = nub $ (blocks proc >>= toList >>= unknowns) ++ templateNeeds
-    have = nub $ map (constantName) (constDefs proc)
-    globals = catMaybes (map globalName (constDefs proc))
+    have = nub $ map constantName (constDefs proc)
+    globals = mapMaybe globalName (constDefs proc)
     extra = (have \\ globals) \\ needed
     missing = needed \\ have
    in
@@ -142,8 +141,8 @@ checkConstants proc =
 checkExternsDefined :: ModuleAssembly 'Input -> Either [String] (ModuleAssembly 'Input)
 checkExternsDefined mod =
   let
-    externs = nub $ catMaybes $ map externName (procs mod >>= constDefs)
-    globals = nub $ catMaybes $ map globalName (procs mod >>= constDefs)
+    externs = nub $ mapMaybe externName (procs mod >>= constDefs)
+    globals = nub $ mapMaybe globalName (procs mod >>= constDefs)
    in
     case externs \\ globals of
       [] -> Right mod
@@ -161,14 +160,14 @@ debugRender mod =
     padding = 1023 - len
    in
     do
-      forM_ (concat pinnedS) $ \(addr, inst) -> putStrLn $ show (addr) ++ ": " ++ inst
+      forM_ (concat pinnedS) $ \(addr, inst) -> putStrLn $ show addr ++ ": " ++ inst
       forM_ (concat dataS) $ \(addr, inst) -> putStrLn $ show (addr + padding) ++ ": " ++ inst
       forM_ (concat textS) $ \(addr, inst) -> putStrLn $ show (addr + padding) ++ ": " ++ inst
  where
   showConstant :: Int -> String -> Constant (AddressType a) -> (Int, [(Int, String)])
   showConstant off str (Table cs) =
     let
-      (off', out) = mapAccumL (\off c -> showConstant off str c) off cs
+      (off', out) = mapAccumL (`showConstant` str) off cs
      in
       (off', concat out)
   showConstant off str cons = (off + constantSize cons, [(off, str ++ " " ++ show cons)])
@@ -224,7 +223,7 @@ render mod =
    in
     map snd pinned ++ padding ++ map snd def ++ textS
  where
-  renderGlobal (Size _) | (packSize mod) == True = []
+  renderGlobal (Size _) | (packSize mod) = []
   renderGlobal a = constantToCell a
 
 renderProc :: Integer -> Procedure Int -> Output
@@ -233,7 +232,7 @@ renderProc ix proc =
     procIx = bitVector ix :: BV 4
    in
     concatMap renderLocal (constDefs proc)
-      ++ (zip [1 ..] (blocks proc) >>= \(i, b) -> renderBlock procIx i b)
+      ++ (zip [1 ..] (blocks proc) >>= uncurry (renderBlock procIx))
  where
   renderLocal c = map (b0 <:>) (constantToCell $ fromDef c)
 
@@ -290,7 +289,7 @@ absolutize mod@Mod{..} =
   forgetNames segmentOffsets = map (\(n, s, c) -> (n, s, fmap (absolve segmentOffsets) c))
 
   absolve :: MemoryLayout -> RelativeAddr -> Int
-  absolve textLens (Rel sec i) = case sec `lookup` (offsets textLens) of
+  absolve textLens (Rel sec i) = case sec `lookup` offsets textLens of
     Just off -> off + i
     Nothing -> error $ show sec
   absolve _ (Abs i) = i
@@ -334,9 +333,9 @@ memoryLayout m@Mod{..} =
     -- segment will be the maximum of the sizes of all procedures inside that segment.
     segSizes = map (\(MkSeg seg) -> maximum . map snd $ filter (\p -> fst p `elem` seg) procSizes) segments
     segOffs = scanl (+) (sum sizes) segSizes
-    procOffs = concatMap (\((MkSeg seg), size) -> map (\s -> (Text s, size)) seg) (zip segments segOffs)
+    procOffs = concatMap (\(MkSeg seg, size) -> map (\s -> (Text s, size)) seg) (zip segments segOffs)
     (pinned, default') = partition (\(s, _) -> s /= DefaultData) (zip secs globalOffs)
-    usedSpace = sum segSizes + (sum sizes)
+    usedSpace = sum segSizes + sum sizes
     padding = 1023 - usedSpace + 1
    in
     MkLayout
@@ -360,7 +359,7 @@ diskLayout m@(Mod{..}) =
     (secs, sizes, packed) = unzip3 $ map (\gs -> (getSection $ head gs, globalMapSize constantMeasure gs, globalMapSize packingMeasure gs)) (globalSections m)
     globalOffs = scanl (+) 0 sizes
 
-    procSizes = map (\p -> procedureLen p) procs
+    procSizes = map procedureLen procs
     procOffs = scanl (+) (sum sizes) procSizes
 
     usedSpace = sum procSizes + sum sizes
@@ -415,7 +414,7 @@ relativize (Mod{..}) = do
   relativizeConstants dict constants =
     unzipEithers $
       map
-        ( \(key, s, val) -> (,,) <$> pure key <*> pure s <*> traverse (relativizeAddr dict) val
+        ( \(key, s, val) -> pure ((,,) key) <*> pure s <*> traverse (relativizeAddr dict) val
         )
         constants
 
@@ -460,12 +459,12 @@ dataOffsets :: GlobalMap Input -> [(Address, RelativeAddr)]
 dataOffsets globals =
   let
     globalGroups = groupBy ((==) `on` \(_, s, _) -> s) globals
-    (globalMap) = concat $ map (snd . buildOffsetMap toKey toVal) globalGroups
+    globalMap = concatMap (snd . buildOffsetMap toKey toVal) globalGroups
    in
     map (\((s, n), v) -> (n, Rel s v)) globalMap
  where
   toKey (n, s, _) = (s, Unknown n)
-  toVal (_, _, c) = (constantSize c)
+  toVal (_, _, c) = constantSize c
 
 -- | For a procedure, and a starting offset, give the relative address of every operator
 blockOffsets :: String -> Int -> [BB Address] -> [(Address, RelativeAddr)]
@@ -474,7 +473,7 @@ blockOffsets nm off (bb : blks) =
     rest = blockOffsets nm (off + blockLen bb) blks
     entry = [(baseAddress bb, Rel (Text nm) off)]
     rtcEntry = case terminator bb of
-      RetRTC _ -> [((RTC $ baseAddress bb), Rel (Text nm) (off + blockLen bb - 1))]
+      RetRTC _ -> [(RTC $ baseAddress bb, Rel (Text nm) (off + blockLen bb - 1))]
       _ -> []
    in
     entry ++ rtcEntry ++ rest
@@ -510,13 +509,11 @@ unzipEithers es = case partitionEithers es of
   (a, _) -> Left a
 
 buildOffsetMap :: (a -> nm) -> (a -> Int) -> [a] -> (Int, [(nm, Int)])
-buildOffsetMap key size elems =
-  mapAccumL
+buildOffsetMap key size = mapAccumL
     ( \off elem ->
         (off + size elem, (key elem, off))
     )
     0
-    elems
 
 redString :: String -> String
 redString str = "\27[31;1m" ++ str ++ "\27[0m"
@@ -579,7 +576,7 @@ layout (Mod{..}) =
     , ..
     }
  where
-  globalDefs proc = catMaybes . map isGlobal $ constDefs proc
+  globalDefs proc = mapMaybe isGlobal $ constDefs proc
 
   {-
     The objective of this ordering function is to put Size < Cell < Template < All the others
@@ -634,13 +631,13 @@ layout (Mod{..}) =
 layoutConstants' :: Show a => [ConstantDef a] -> [ConstantDef a]
 layoutConstants' constants =
   let
-    (_, locals) = partition (isGlobal) constants
+    (_, locals) = partition isGlobal constants
     (cells, rem) = partition (isCell . def) locals
     (blocks, rem') = partition (isSize . def) rem
     (templates, rem'') = partition (or . fmap isTemplate . def) rem'
-    (_, rem''') = partition (isExtern) rem''
+    (_, rem''') = partition isExtern rem''
    in
-    blocks ++ cells ++ templates ++ (sortOn constantName rem''')
+    blocks ++ cells ++ templates ++ sortOn constantName rem'''
  where
 
 {- | Segments are non-empty, ordered sets of basic blocks where control flow goes
@@ -649,7 +646,7 @@ layoutConstants' constants =
 -}
 data Segment = Segmented [BB Address] | Unsegmented (BB Address)
 
-toUnsegmentedMap :: [BB Address] -> Map Address (Segment)
+toUnsegmentedMap :: [BB Address] -> Map Address Segment
 toUnsegmentedMap bbs = M.fromList $ L.map (\bb -> (baseAddress bb, Unsegmented bb)) bbs
 
 {-
@@ -663,7 +660,7 @@ segment map addr = case addr `M.lookup` map of
 
     tar `M.lookup` map' >>= \case
       Segmented seg -> pure $ M.insert addr (Segmented $ bb : seg) (M.delete tar map')
-      _ -> pure $ map
+      _ -> pure map
   _ -> map
 
 {- |
@@ -695,8 +692,8 @@ directJumps (CompWord _ _ a _) = Just a
 directJumps (CompMod _ _ a _) = Just a
 directJumps (CCCC _) = Nothing
 directJumps (CCCCSnd _ a) = Just a
-directJumps (Stop) = Nothing
-directJumps (SwitchStop) = Nothing
+directJumps Stop = Nothing
+directJumps SwitchStop = Nothing
 directJumps (Chain _) = Nothing
 directJumps (RetRTC _) = Nothing
 
@@ -707,7 +704,7 @@ implicitJumps (CompWord _ _ _ a) = Just a
 implicitJumps (CompMod _ _ _ a) = Just a
 implicitJumps (CCCC a) = Just a
 implicitJumps (CCCCSnd _ _) = Nothing
-implicitJumps (Stop) = Nothing
-implicitJumps (SwitchStop) = Nothing
+implicitJumps Stop = Nothing
+implicitJumps SwitchStop = Nothing
 implicitJumps (Chain a) = Just a
 implicitJumps (RetRTC _) = Nothing

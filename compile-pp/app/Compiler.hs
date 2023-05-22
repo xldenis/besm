@@ -1,5 +1,5 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE LambdaCase #-}
+
 
 module Compiler where
 
@@ -90,13 +90,13 @@ compileCommand (oDir, smDir) = do
     Right (pp1, pp2) -> do
       case oDir of
         Just o -> do
-          writeFile (o </> "mp1.txt") . unlines $ render pp1 & (map toHexString)
-          writeFile (o </> "mp2.txt") . unlines $ render pp2 & (map toHexString)
-          writeFile (o </> "boot.txt") . unlines $ renderProc 0 (bootloader pp1 pp2) & (map toHexString)
+          writeFile (o </> "mp1.txt") . unlines $ render pp1 & map toHexString
+          writeFile (o </> "mp2.txt") . unlines $ render pp2 & map toHexString
+          writeFile (o </> "boot.txt") . unlines $ renderProc 0 (bootloader pp1 pp2) & map toHexString
         Nothing -> do
-          putStrLn . unlines $ render pp1 & (map toHexString)
+          putStrLn . unlines $ render pp1 & map toHexString
           putStrLn "\n\n PP-2 \n\n"
-          putStrLn . unlines $ render pp2 & (map toHexString)
+          putStrLn . unlines $ render pp2 & map toHexString
 
       case smDir of
         Just path -> do
@@ -109,13 +109,13 @@ compileCommand (oDir, smDir) = do
   bootloader :: ModuleAssembly 'Absolutized -> ModuleAssembly 'Absolutized -> Procedure Int
   bootloader pp1 pp2 =
     let
-      Just destAddr = DefaultData `lookup` (offsets $ memoryLayout pp2)
-      Just packingOff = DefaultData `lookup` (packedCells $ diskLayout pp2)
-      Just srcAddr = DefaultData `lookup` (offsets $ diskLayout pp2)
-      Just pp1Start = Procedure "MP-1" (Operator 1) `M.lookup` (offsetMap pp1)
+      Just destAddr = DefaultData `lookup` offsets (memoryLayout pp2)
+      Just packingOff = DefaultData `lookup` packedCells (diskLayout pp2)
+      Just srcAddr = DefaultData `lookup` offsets (diskLayout pp2)
+      Just pp1Start = Procedure "MP-1" (Operator 1) `M.lookup` offsetMap pp1
       -- incredible hack
       -- Just destAddr = Unknown "U" `M.lookup` (offsetMap pp2)
-      Just pp2Start = Procedure "MP-2" (Operator 1) `M.lookup` (offsetMap pp2)
+      Just pp2Start = Procedure "MP-2" (Operator 1) `M.lookup` offsetMap pp2
      in
       Proc
         { procName = "bootloader"
@@ -123,14 +123,14 @@ compileCommand (oDir, smDir) = do
         , blocks =
             [ BB
                 { instrs =
-                    [ Ma (0x100) 0 1
+                    [ Ma 0x100 0 1
                     , Mb 1023
                     ]
                 , terminator = CCCC pp1Start
                 }
             , BB
                 { instrs =
-                    [ Ma (0x104) srcAddr (destAddr + packingOff)
+                    [ Ma 0x104 srcAddr (destAddr + packingOff)
                     , Mb 1023
                     ]
                 , terminator = CCCC pp2Start
@@ -157,14 +157,14 @@ debugCommand _ = do
 --     cccc (-1) -- (Procedure "MP-2" (op 1))
 
 cfgCommand _ = do
-  let cfg = programmeToGraph (blocks $ runProcedure "PP-1-2" $ Arith.arithCoder)
-      cf2 = programmeToGraph (blocks $ runProcedure "MP-1" $ mp1)
-      lcfg = programmeToGraph (blocks $ runProcedure "PP-1-1" $ Logical.pp1_1)
-      ecfg = programmeToGraph (blocks $ runProcedure "PP-1-3" $ Economy.pp1_3)
+  let cfg = programmeToGraph (blocks $ runProcedure "PP-1-2" Arith.arithCoder)
+      cf2 = programmeToGraph (blocks $ runProcedure "MP-1" mp1)
+      lcfg = programmeToGraph (blocks $ runProcedure "PP-1-1" Logical.pp1_1)
+      ecfg = programmeToGraph (blocks $ runProcedure "PP-1-3" Economy.pp1_3)
 
-  runGraphviz (graphToDot params $ (nmap formatAddr cfg)) Png "cfg.png"
-  runGraphviz (graphToDot params $ (nmap formatAddr cf2)) Png "cfg-2.png"
-  runGraphviz (graphToDot params $ (nmap formatAddr lcfg)) Png "cfg-logi.png"
+  runGraphviz (graphToDot params (nmap formatAddr cfg)) Png "cfg.png"
+  runGraphviz (graphToDot params (nmap formatAddr cf2)) Png "cfg-2.png"
+  runGraphviz (graphToDot params (nmap formatAddr lcfg)) Png "cfg-logi.png"
 
   return ()
 

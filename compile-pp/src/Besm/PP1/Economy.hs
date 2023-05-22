@@ -28,7 +28,7 @@ at any point within the operator.
 pp1_3 = do
   completedOperator <- extern "arith-buffer"
   let partialProgramme = Unknown "arith-buffer" `offAddr` 208
-  let beta0 = partialProgramme `offAddr` (negate 1) -- β₀
+  let beta0 = partialProgramme `offAddr` negate 1 -- β₀
   let beta = partialProgramme -- Unknown "β₁, .., β₁₆"
   extern "K"
 

@@ -68,7 +68,7 @@ mp2 = do
   let cellJ = Absolute 0x0001
 
   local "shift-template" (Template (Shift cellJ (right 22) cellJ)) -- shift ? ? ?
-  local "select-template" (Template (LogMult (var "selected") (var "addr-selectors") (cellJ))) -- \^ ? ? ?
+  local "select-template" (Template (LogMult (var "selected") (var "addr-selectors") cellJ)) -- \^ ? ? ?
   shiftIncr <- local "shift-incr" (Raw 0)
   finalSelect <- local "final-select" (Raw 0)
 
@@ -290,10 +290,10 @@ mp2 = do
     tN' vaSelect (op 12)
     tN' vaShift (op 12 `offAddr` 1)
 
-    tExp' va (cellL)
-    shift (cellL) (left 22) (cellL)
+    tExp' va cellL
+    shift cellL (left 22) cellL
 
-    sub' nextAddr (cellL) nextAddr
+    sub' nextAddr cellL nextAddr
 
     ai (var "ugh-2") nextAddr (op 16)
     tN' shiftTemplate (op 16 `offAddr` 1)
@@ -341,7 +341,7 @@ mp2 = do
     empty -- select the value
     empty -- shift it to the rightmost position
     -- select the right most 10 bits of the word, to take magnitutde!
-    bitAnd cellHead (var "lower-10bits") (cellL)
+    bitAnd cellHead (var "lower-10bits") cellL
     empty
   {-
   Op. 17 determines the sign of the step.

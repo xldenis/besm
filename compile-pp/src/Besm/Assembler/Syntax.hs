@@ -1,10 +1,10 @@
 {-# LANGUAGE BinaryLiterals #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
+
+
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
+
+
 
 module Besm.Assembler.Syntax (
   module Besm.Assembler.Syntax,
@@ -116,14 +116,14 @@ constantToCell :: Constant Int -> [BV 39]
 constantToCell (Size i) = replicate i (bitVector 0)
 constantToCell (Val i) = [numberToBesmFloating i]
 constantToCell (Raw i) = [bitVector $ fromIntegral i]
-constantToCell (Addr pos i) = [bitVector . fromIntegral $ i `shift` (offset pos)]
+constantToCell (Addr pos i) = [bitVector . fromIntegral $ i `shift` offset pos]
  where
   offset First = 22
   offset Second = 11
   offset Third = 0
 constantToCell (Template i) = [instToCell $ fmap fromIntegral i]
 constantToCell (TemplateT i) = termToCell $ fmap fromIntegral i
-constantToCell (Cell) = [bitVector 0]
+constantToCell Cell = [bitVector 0]
 constantToCell (Table cs) = concatMap constantToCell cs
 
 -- * Constant Definitions
@@ -273,7 +273,7 @@ type RawBlock = BB Int
 
 asmToCell :: RawBlock -> [BV 39]
 asmToCell (BB is tm adx) =
-  map (instToCell . fmap fromIntegral) is ++ (termToCell $ fmap fromIntegral tm)
+  map (instToCell . fmap fromIntegral) is ++ termToCell (fmap fromIntegral tm)
 
 instToCell :: Instr Integer -> BV 39
 instToCell (Add a b c n) = buildInstruction (bitVector 0x001) (bitVector a) (bitVector b) (bitVector c)
@@ -302,9 +302,9 @@ instToCell (Ma a b c) = buildInstruction (bitVector 0x016) (bitVector a) (bitVec
 instToCell (Mb b) = buildInstruction (bitVector 0x017) (bitVector 0) (bitVector b) (bitVector 0)
 instToCell (LogMult a b c) = buildInstruction (bitVector 0x01D) (bitVector a) (bitVector b) (bitVector c)
 instToCell (CallRTC b c) = buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector b) (bitVector c)
-instToCell (JCC) = buildInstruction (bitVector 0x019) (bitVector 0) (bitVector 0) (bitVector 0)
+instToCell JCC = buildInstruction (bitVector 0x019) (bitVector 0) (bitVector 0) (bitVector 0)
 instToCell (CLCC c) = buildInstruction (bitVector 0x01A) (bitVector 0) (bitVector 0) (bitVector c)
-instToCell (Empty) = bitVector 0
+instToCell Empty = bitVector 0
 
 termToCell :: Term Integer -> [BV 39]
 termToCell (Comp a b c _) = pure $ buildInstruction (bitVector 0x014) (bitVector a) (bitVector b) (bitVector c)
@@ -312,7 +312,7 @@ termToCell (CompWord a b c _) = pure $ buildInstruction (bitVector 0x034) (bitVe
 termToCell (CompMod a b c _) = pure $ buildInstruction (bitVector 0x015) (bitVector a) (bitVector b) (bitVector c)
 termToCell (CCCC c) = pure $ buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector 0) (bitVector c)
 termToCell (CCCCSnd b c) = pure $ buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector b) (bitVector c)
-termToCell (Stop) = pure $ buildInstruction (bitVector 0x01F) (bitVector 0) (bitVector 0) (bitVector 0)
-termToCell (SwitchStop) = pure $ buildInstruction (bitVector 0x01C) (bitVector 0) (bitVector 0) (bitVector 0)
+termToCell Stop = pure $ buildInstruction (bitVector 0x01F) (bitVector 0) (bitVector 0) (bitVector 0)
+termToCell SwitchStop = pure $ buildInstruction (bitVector 0x01C) (bitVector 0) (bitVector 0) (bitVector 0)
 termToCell (RetRTC a) = [instToCell (AI 0b10100001111 (a + 1) (a + 1)), bitVector 0]
 termToCell (Chain _) = []

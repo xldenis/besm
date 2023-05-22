@@ -25,7 +25,7 @@ type Label = (String, String)
 readSourceMap :: String -> IO [(Int, Label)]
 readSourceMap mapFile = do
   raw <- readFile mapFile
-  let pairs = sortOn fst . map (\(k, v) -> (read k, v)) . map toPair $ lines raw
+  let pairs = sortOn fst . map ((\(k, v) -> (read k, v)) . toPair) $ lines raw
 
   return pairs
  where
@@ -33,13 +33,13 @@ readSourceMap mapFile = do
     let
       k : val = splitOn ' ' line
 
-      (proc, op) = (take 2 val, drop 2 val)
+      (proc, op) = splitAt 2 val
      in
       (k, (unwords proc, unwords op))
 
 sourceMapLookup :: [(Int, Label)] -> String -> Label
 sourceMapLookup map line = do
-  let addr = read $ (splitOn ' ' line) !! 2
+  let addr = read $ splitOn ' ' line !! 2
 
   findNearest addr map
  where
@@ -49,7 +49,7 @@ sourceMapLookup map line = do
     | l < i && i < u = nm
     | otherwise = findNearest i r
   findNearest _ [(u, nm)] = nm
-  findNearest _ [] = error $ "shouldn't be possible"
+  findNearest _ [] = error "shouldn't be possible"
 
 visualizeTrace :: Bool -> String -> String -> String -> IO ()
 visualizeTrace dedup inFile oFile smFile = do
@@ -62,14 +62,11 @@ visualizeTrace dedup inFile oFile smFile = do
     nodeDict = zip (nub trace) [1 ..]
     edges = bool dedupEdges constEdges dedup $ map (toEdge nodeDict) (toEdgeList trace)
     graph = mkGraph (map swap nodeDict) edges
-  runGraphviz (graphToDot params $ (graph :: Gr Label Int)) Png oFile
+  runGraphviz (graphToDot params (graph :: Gr Label Int)) Png oFile
 
   mapM_ (\(p, o) -> putStrLn $ p ++ " " ++ o) trace
-
-  return ()
  where
   constEdges :: [(Node, Node, ())] -> [(Node, Node, Int)]
-  constEdges edges = map (\(a, b, _) -> (a, b, 1)) edges
 
   dedupEdges :: [(Node, Node, ())] -> [(Node, Node, Int)]
   dedupEdges edges =
@@ -92,6 +89,7 @@ visualizeTrace dedup inFile oFile smFile = do
    where
     edgeLabel 1 = toLabel ""
     edgeLabel l = toLabel (" " ++ show l)
+  constEdges = map (\(a, b, _) -> (a, b, 1))
 eqClasses :: Eq a => [a] -> [[a]]
 eqClasses [] = []
 eqClasses (x : xs) =
@@ -103,6 +101,6 @@ splitOn c xs = go c xs []
  where
   go :: Char -> String -> String -> [String]
   go c (x : xs) [] | x == c = go c xs []
-  go c (x : xs) acc | x == c = (reverse acc) : go c xs []
+  go c (x : xs) acc | x == c = reverse acc : go c xs []
   go c (x : xs) acc = go c xs (x : acc)
   go c [] acc = [reverse acc]

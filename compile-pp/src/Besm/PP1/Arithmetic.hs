@@ -1,8 +1,8 @@
-{-# LANGUAGE DeriveFunctor #-}
+
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 {-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE TemplateHaskell #-}
+
 
 module Besm.PP1.Arithmetic where
 
@@ -149,7 +149,7 @@ arithCoder = do
   local "8" (Raw 8)
   local "4" (Raw 4)
 
-  local "trans-opcode" (Cell)
+  local "trans-opcode" Cell
 
   local "transfer cell" Cell -- this cell is typically used to build up and transfer instructions
   local "result-code" Cell
@@ -172,7 +172,7 @@ arithCoder = do
   operator 1 $ do
     sub' (Unknown "&completedOperator") one counterK
 
-    i (Unknown "initializer") (partialProgramme `offAddr` (negate 1)) symbolCounter
+    i (Unknown "initializer") (partialProgramme `offAddr` negate 1) symbolCounter
     tN' zero cellC
 
     chain (op 2)
@@ -187,7 +187,7 @@ arithCoder = do
 
   -}
 
-  let pp_3_1 = (Procedure "PP-1-3" (op 1))
+  let pp_3_1 = Procedure "PP-1-3" (op 1)
   operator 2 $ tExp' cellA cellF
   operator 3 $ compWord cellF zero pp_3_1 (op 4)
 
@@ -606,7 +606,7 @@ arithCoder = do
   -}
 
   operator 44 $ do
-    let pointerToCompletedOps = Unknown ("&completedOperator")
+    let pointerToCompletedOps = Unknown "&completedOperator"
     compWord counterK pointerToCompletedOps (op 45) (op 47)
 
   {-
@@ -932,7 +932,7 @@ arithCoder = do
 
     comp counterB1 thirtyTwo stop jcc'
 
-    stop <- block (checkStop)
+    stop <- block checkStop
 
     jcc' <- block (jcc >> chain (op 2))
 
