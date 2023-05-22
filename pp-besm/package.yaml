@@ -34,6 +34,8 @@ library:
   - digits
   - charset
   - parser-combinators
+  - parameterized-utils
+  - containers
 
   ghc-options:
   - -fwarn-incomplete-uni-patterns

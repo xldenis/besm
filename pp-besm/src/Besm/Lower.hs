@@ -95,7 +95,7 @@ data Operator
   deriving Show
 
 newtype Quantity = QA { unQ :: Text } deriving Show
-newtype OperatorSign = OS { getOperator :: BitVector 11 } deriving Show
+newtype OperatorSign = OS { getOperator :: BV 11 } deriving Show
 
 data LogicalOperator = Op
   { x         :: Quantity
@@ -120,7 +120,7 @@ data BlockV
   , loopParameters :: [LoopParameter]
   } deriving Show
 
-newtype Word11 = W { unWord11 :: BitVector 11 }
+newtype Word11 = W { unWord11 :: BV 11 }
   deriving Show
 
 data AddressBlock = MainHead
@@ -157,8 +157,8 @@ data LoopParameter = LP
   , k      :: Quantity
   } deriving Show
 
-newtype Opcode = OpC { getCode :: BitVector 6 } deriving Show
-newtype Addr = Addr { unAddr :: BitVector 11 } deriving Show
+newtype Opcode = OpC { getCode :: BV 6 } deriving Show
+newtype Addr = Addr { unAddr :: BV 11 } deriving Show
 
 data ParameterInfo
   = InFin
@@ -181,7 +181,7 @@ data Constant
   deriving Show
 
 toWord11 :: Int -> Word11
-toWord11 i = W $ bitVector (fromIntegral i)
+toWord11 i = W $ mkBV (knownNat) (fromIntegral i)
 
 lowerOpSign :: S.OperatorSign -> OperatorSign
 lowerOpSign = OS . unWord11 . toWord11 . S.fromOperatorSign

@@ -18,7 +18,8 @@ import Control.Monad
 import Control.Category ((>>>))
 import Data.Function ((&))
 
-import Data.BitVector.Sized
+import qualified Data.BitVector.Sized as BV
+import           Data.BitVector.Sized (BV)
 
 import Besm.Put
 
@@ -29,7 +30,7 @@ import Data.Function
 
 import Debug.Trace
 
-type Output = [BitVector 64]
+type Output = [BV 64]
 
 {-
 

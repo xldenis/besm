@@ -6,7 +6,7 @@ module Main where
 
 import           Control.Monad
 
-import           Data.BitVector.Sized.BitLayout
+-- import           Data.BitVector.Sized.BitLayout
 import           Data.Semigroup
 import           Data.Text.IO                   as T
 
@@ -84,8 +84,8 @@ main = do
   (_, comm) <- options
   comm
 
-prettyInstruction inst =
-  pPrint (extract opcodeLayout inst)
-    <+> pPrint (extract instAddr1 inst)
-    <+> pPrint (extract instAddr2 inst)
-    <+> pPrint (extract instAddr3 inst)
+-- prettyInstruction inst =
+--   pPrint (extract opcodeLayout inst)
+--     <+> pPrint (extract instAddr1 inst)
+--     <+> pPrint (extract instAddr2 inst)
+--     <+> pPrint (extract instAddr3 inst)

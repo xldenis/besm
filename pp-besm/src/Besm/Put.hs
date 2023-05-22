@@ -1,9 +1,12 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications, TypeOperators, ScopedTypeVariables #-}
+{-# LANGUAGE KindSignatures, GADTs #-}
+{-# LANGUAGE PatternSynonyms, StandaloneDeriving#-}
 module Besm.Put where
 
-import           Data.BitVector.Sized hiding (bitVector')
-import           Data.BitVector.Sized.BitLayout
+import qualified Data.BitVector.Sized  as BV hiding (bitVector')
+import           Data.BitVector.Sized           (BV(..), BV, pattern BV, mkBV)
 import           Data.List                      (mapAccumL)
 import           Data.Serialize.Put
 import           Data.Word
@@ -20,6 +23,16 @@ import qualified Besm.Syntax.NonStandard as NS
 import           Data.Digits (digits)
 import           Data.Bits (setBit, bit, (.|.))
 import           Text.Printf
+
+import           Data.Parameterized.Pair
+import Data.Foldable
+
+import GHC.TypeNats
+import Data.Parameterized
+import Data.Parameterized.List
+import qualified Data.Sequence as S
+import Data.Sequence (Seq)
+
 {-
   A programme has to be prepared for the PP by being coded in binary.
 
@@ -38,7 +51,7 @@ import           Text.Printf
   +--------------+
 -}
 
-encodeProgramme :: Programme -> [BitVector 39]
+encodeProgramme :: Programme -> [BV 39]
 encodeProgramme p@(PP {..}) = let
   qa = calculateQuantityAddresses p
   vCells = blockV qa variableAddresses
@@ -70,20 +83,22 @@ encodeProgramme p@(PP {..}) = let
 
 -}
 
-programmeSummaryTable :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> [BitVector 39]
+programmeSummaryTable :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> [BV 39]
 programmeSummaryTable olen vlen clen plen klen gammalen alphalen betalen =
-  [ buildInstruction 0 0 0 (bitVector' $ olen)
-  , buildInstruction 0 0 0 (bitVector' $ lastVAddr)
-  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + 1)
-  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen) -- last of C
-  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen) -- first of K - 1
-  , buildInstruction 0 0 0 (bitVector' $ lastVAddr + plen + clen + klen)
-  , buildInstruction 0 0 0 (bitVector' $ 0x2FF - (gammalen + alphalen + betalen) - 1)
-  , buildInstruction 0 0 0 (bitVector' $ 0x2FF - (alphalen + betalen) - 1)
-  , buildInstruction 0 0 0 (bitVector' $ 0x2FF - betalen - 1)
+  [ buildInstruction zero zero zero (bitVector' $ olen)
+  , buildInstruction zero zero zero (bitVector' $ lastVAddr)
+  , buildInstruction zero zero zero (bitVector' $ lastVAddr + plen + 1)
+  , buildInstruction zero zero zero (bitVector' $ lastVAddr + plen + clen) -- last of C
+  , buildInstruction zero zero zero (bitVector' $ lastVAddr + plen + clen) -- first of K - 1
+  , buildInstruction zero zero zero (bitVector' $ lastVAddr + plen + clen + klen)
+  , buildInstruction zero zero zero (bitVector' $ 0x2FF - (gammalen + alphalen + betalen) - 1)
+  , buildInstruction zero zero zero (bitVector' $ 0x2FF - (alphalen + betalen) - 1)
+  , buildInstruction zero zero zero (bitVector' $ 0x2FF - betalen - 1)
   ]
 
   where
+  zero :: KnownNat n => BV n
+  zero = BV.zero knownNat
   lastVAddr = 0x0010 + vlen - 1
 
 {-
@@ -125,7 +140,7 @@ calculateQuantityAddresses (PP {..}) = let
   where
   offsetsInV :: BlockV -> Word8 -> (Word8, [(Text, Word8)])
   offsetsInV (V {..}) offset = let
-    (off',  map1)  = concat <$> mapAccumL variableAddrMap offset variableAddrs
+    (off',  map1)  = Prelude.concat <$> mapAccumL variableAddrMap offset variableAddrs
     (off'', map2)  = mapAccumL loopParamMap off' loopParameters
     in (off'', map1 ++ map2)
 
@@ -136,7 +151,7 @@ calculateQuantityAddresses (PP {..}) = let
   offsetsInP params offset = mapAccumL (\off p -> (off + 1, (pName p, off))) offset params
 
   variableAddrMap :: Word8 -> AddressBlock -> (Word8, QuantityAddresses)
-  variableAddrMap offset (MainHead {..}) = concat <$> mapAccumL headMap (offset+1) (NonEmpty.toList heads)
+  variableAddrMap offset (MainHead {..}) = Prelude.concat <$> mapAccumL headMap (offset+1) (NonEmpty.toList heads)
 
   headMap :: Word8 -> BlockHead -> (Word8, QuantityAddresses)
   headMap offset (Head {..}) = mapAccumL varMap (offset+1) (NonEmpty.toList vars)
@@ -148,11 +163,11 @@ calculateQuantityAddresses (PP {..}) = let
   loopParamMap offset lp = (offset+2, (lpName lp, offset))
 
 {-
-  Turn a BitVector into a human readable hex representation
+  Turn a BV into a human readable hex representation
 -}
 
-toHexString :: BitVector n -> String
-toHexString = printf "%016x" . bvIntegerU
+toHexString :: BV n -> String
+toHexString = printf "%016x" . BV.asUnsigned
 
 {-
   The BESM uses 39-bit words which can be of two categories: floating point numbers or instructions.
@@ -178,6 +193,141 @@ emptyCell = empty
 
 -}
 
+
+
+data Chunk (w :: Nat) :: * where
+  Chunk :: NatRepr w -- width of range
+        -> Natural   -- index of range start
+        -> Chunk w
+
+
+deriving instance Show (Chunk w)
+
+instance ShowF Chunk where
+  showF = show
+
+chunk :: KnownNat w => Natural -> Chunk w
+chunk = Chunk knownNat
+
+data BitLayout (t :: Nat) (s :: Nat) :: * where
+  BitLayout :: NatRepr t -> NatRepr s -> Seq (Some Chunk) -> BitLayout t s
+
+deriving instance Show (BitLayout t s)
+
+
+
+-- | Construct an empty 'BitLayout'.
+empty :: KnownNat t => BitLayout t 0
+empty = BitLayout knownNat knownNat S.empty
+
+-- First, extract the appropriate bits as a BV t, where the relevant bits
+-- start at the LSB of the vector (so, mask and shiftL). Then, truncate to a
+-- BV s, and shiftinto the starting position.
+extractChunk :: (KnownNat s, 1 <= s)
+             => NatRepr s     -- ^ width of output
+             -> Natural       -- ^ where to place the chunk in the result
+             -> Some Chunk    -- ^ location/width of chunk in the input
+             -> BV t   -- ^ input vector
+             -> BV s
+extractChunk sRepr sStart (Some (Chunk chunkRepr chunkStart)) tVec =
+  BV.ashr knownNat extractedChunk sStart
+  where
+    extractedChunk =
+      case decideLeq (incNat chunkRepr) sRepr of
+        Left LeqProof -> BV.zext sRepr (BV.select' chunkStart chunkRepr tVec)
+        Right _ -> error ""
+
+
+
+extractAll :: (1 <= s, KnownNat s)
+           => NatRepr s       -- ^ determines width of output vector
+           -> Natural         -- ^ current position in output vector
+           -> [Some Chunk]    -- ^ list of remaining chunks to place in output vector
+           -> BV t     -- ^ input vector
+           -> BV s
+extractAll sRepr _ [] _ = BV.zero sRepr
+extractAll sRepr outStart (chk@(Some (Chunk chunkRepr _)) : chunks) tVec =
+  extractChunk sRepr outStart chk tVec `BV.or`
+  extractAll sRepr (outStart + chunkWidth) chunks tVec
+  where chunkWidth = fromInteger (intValue chunkRepr)
+
+-- | Use a 'BitLayout' to extract a smaller vector from a larger one.
+extract :: (1 <= s, KnownNat s)
+        => BitLayout t s -- ^ The layout
+        -> BV t   -- ^ The larger vector to extract from
+        -> BV s
+extract (BitLayout _ sRepr chunks) = extractAll sRepr 0 (toList chunks)
+
+
+-- TODO: Should this be in Maybe?
+-- | Add a 'Chunk' to a 'BitLayout'. If the 'Chunk' does not fit, either because the
+-- resulting 'BitLayout' would be too long or because it would overlap with a 'Chunk'
+-- that is already in the 'BitLayout', we throw an error.
+(<:) :: Chunk r             -- ^ chunk to add
+     -> BitLayout t s       -- ^ layout we are adding the chunk to
+     -> BitLayout t (r + s)
+chk@(Chunk rRepr _) <: bl@(BitLayout tRepr sRepr chunks) =
+  if chk `chunkFits` bl
+  then BitLayout tRepr (rRepr `addNat` sRepr) (chunks S.|> Some chk)
+  else error $
+       "chunk " ++ show chk ++ " does not fit in layout of size " ++
+       show (natValue tRepr) ++ ": " ++ show bl
+
+-- TODO: check precedence (associativity is correct)
+infixr 6 <:
+
+chunkFits :: Chunk r -> BitLayout t s -> Bool
+chunkFits chk@(Chunk rRepr start) (BitLayout tRepr sRepr chunks) =
+  (natValue rRepr + natValue sRepr <= natValue tRepr) && -- widths are ok
+  (fromIntegral start + natValue rRepr <= natValue tRepr) && -- chunk lies within the bit vector
+  (0 <= start) &&
+  noOverlaps chk (toList chunks)
+
+noOverlaps :: Chunk r -> [Some Chunk] -> Bool
+noOverlaps chk = all (chunksDontOverlap (Some chk))
+
+chunksDontOverlap :: Some Chunk -> Some Chunk -> Bool
+chunksDontOverlap (Some (Chunk chunkRepr1 start1)) (Some (Chunk chunkRepr2 start2)) =
+  if start1 <= start2
+  then start1 + chunkWidth1 <= start2
+  else start2 + chunkWidth2 <= start1
+  where chunkWidth1 = fromIntegral (natValue chunkRepr1)
+        chunkWidth2 = fromIntegral (natValue chunkRepr2)
+
+
+-- | Given a starting position, insert (via "or") a smaller 'BV' @s@ with a larger
+-- 'BV' @t@ at that position.
+bvOrAt :: forall s t . (KnownNat s, KnownNat t, 1 <= t, s + 1 <= t)
+       => Natural
+       -> BV s
+       -> BV t
+       -> BV t
+bvOrAt start sVec tVec =
+  (BV.ashr knownNat (BV.zext knownNat sVec) start) `BV.or` tVec
+
+-- | Given a list of 'Chunk's, inject each chunk from a source 'BV' @s@ into a
+-- target 'BV' @t@.
+bvOrAtAll :: (KnownNat s, KnownNat t, 1 <= s, 1 <= t, s + 1 <= t)
+          => NatRepr t
+          -> [Some Chunk]
+          -> BV s
+          -> BV t
+bvOrAtAll tRepr [] _ = BV.zero tRepr
+bvOrAtAll tRepr (Some (Chunk chunkRepr chunkStart) : chunks) sVec =
+  bvOrAt chunkStart (BV.truncBits chunkWidth sVec) (bvOrAtAll tRepr chunks (BV.ashr knownNat sVec (- chunkWidth)))
+  where chunkWidth = fromIntegral (natValue chunkRepr)
+
+-- | Use a 'BitLayout' to inject a smaller vector into a larger one.
+inject :: (KnownNat s, KnownNat t, 1 <= t, 1 <= s, s + 1 <= t) =>
+       BitLayout t s -- ^ The layout
+       -> BV t   -- ^ The larger vector to inject into
+       -> BV s   -- ^ The smaller vector to be injected
+       -> BV t
+inject (BitLayout tRepr _ chunks) tVec sVec =
+  bvOrAtAll tRepr (toList chunks) sVec `BV.or` tVec
+
+
+
 opcodeLayout :: BitLayout 39 6
 opcodeLayout = (chunk 33 :: Chunk 6) <: emptyCell
 
@@ -190,12 +340,15 @@ instAddr2 = (chunk 11 :: Chunk 11) <: emptyCell
 instAddr3 :: BitLayout 39 11
 instAddr3 = (chunk 0 :: Chunk 11) <: emptyCell
 
-buildInstruction :: BitVector 6 -> BitVector 11 -> BitVector 11 -> BitVector 11 -> BitVector 39
-buildInstruction op addr1 addr2 addr3 = (bitVector 0)
-  & \cell -> inject opcodeLayout cell op
-  & \cell -> inject instAddr1    cell addr1
-  & \cell -> inject instAddr2    cell addr2
-  & \cell -> inject instAddr3    cell addr3
+buildInstruction :: BV 6 -> BV 11 -> BV 11 -> BV 11 -> BV 39
+buildInstruction op addr1 addr2 addr3 =
+   op <:> addr1 <:> addr2 <:> addr3
+
+  -- (bitVector 0)
+  -- & \cell -> inject opcodeLayout cell op
+  -- & \cell -> inject instAddr1    cell addr1
+  -- & \cell -> inject instAddr2    cell addr2
+  -- & \cell -> inject instAddr3    cell addr3
 
 {-
   Layout of numbers:
@@ -227,49 +380,52 @@ numberSign = (chunk 32 :: Chunk 1) <: emptyCell
 mantissa :: BitLayout 39 32
 mantissa = (chunk 0 :: Chunk 32) <: emptyCell
 
-buildNumber :: BitVector 6 -> BitVector 1 -> BitVector 32 -> BitVector 39
-buildNumber exp sign mant = bitVector 0
-  & \cell -> inject exponentL   cell exp
-  & \cell -> inject numberSign  cell sign
-  & \cell -> inject mantissa    cell mant
+buildNumber :: BV 6 -> BV 1 -> BV 32 -> BV 39
+buildNumber exp sign mant =
+  exp <:> sign <:> mant
 
-operatorSign :: BitVector 6
-operatorSign = bitVector 0x018
+  -- bitVector 0
+  -- & \cell -> inject exponentL   cell exp
+  -- & \cell -> inject numberSign  cell sign
+  -- & \cell -> inject mantissa    cell mant
 
-b0 :: KnownNat k => BitVector k
-b0 = bitVector 0
+operatorSign :: BV 6
+operatorSign = mkBV knownNat 0x018
+
+b0 :: KnownNat k => BV k
+b0 = mkBV knownNat 0
 
 {-
   Block V: Variable Addresses
 
 -}
 
-blockV :: QuantityAddresses -> BlockV -> [BitVector 39]
+blockV :: QuantityAddresses -> BlockV -> [BV 39]
 blockV qa (V varAddrs loopParams) = (varAddrs >>= encodeMainHead qa) ++ (loopParams  >>= encodeLoopParams qa)
 
-encodeMainHead :: QuantityAddresses -> AddressBlock -> [BitVector 39]
+encodeMainHead :: QuantityAddresses -> AddressBlock -> [BV 39]
 encodeMainHead qa (MainHead size heads) =
-  (buildInstruction 0x01F 0x0 (unWord11 size) 0x0)
+  (buildInstruction (BV.mkBV knownNat 0x01F) (BV.zero knownNat) (unWord11 size) (BV.zero knownNat))
   : (encodeHead qa =<< (NonEmpty.toList heads))
 
-encodeHead :: QuantityAddresses -> BlockHead -> [BitVector 39]
+encodeHead :: QuantityAddresses -> BlockHead -> [BV 39]
 encodeHead qa (Head a b c vars) =
-  buildInstruction 0x0 (unWord11 a) (unWord11 b) (unWord11 c)
+  buildInstruction (BV.zero knownNat) (unWord11 a) (unWord11 b) (unWord11 c)
   : zipWith (encodeVariable qa) [1..] (NonEmpty.toList vars)
 
-encodeVariable :: QuantityAddresses -> Integer -> VariableAddress -> BitVector 39
+encodeVariable :: QuantityAddresses -> Integer -> VariableAddress -> BV 39
 encodeVariable qa ix (VaInfo _ p1 p2 p3 off dir) =
 
   buildNumber (bitVector' ix) (signBit dir)
     (packArithCodes (maybe 0 (quantityOffset qa) p1) (maybe 0 (quantityOffset qa) p2) (maybe 0 (quantityOffset qa) p3) off)
   where signBit FromStart = b0
-        signBit FromEnd   = bitVector 1
+        signBit FromEnd   = BV.one knownNat
 
 
-encodeLoopParams :: QuantityAddresses -> LoopParameter -> [BitVector 39]
+encodeLoopParams :: QuantityAddresses -> LoopParameter -> [BV 39]
 encodeLoopParams pa (LP {..}) =
-    buildInstruction 0x0 (quantityOffsetBits pa i0) (quantityOffsetBits pa lpA) (quantityOffsetBits pa lpB)
-  : [buildInstruction 0x0 0x0 (quantityOffsetBits pa j) (quantityOffsetBits pa k)]
+    buildInstruction (BV.zero knownNat) (quantityOffsetBits pa i0) (quantityOffsetBits pa lpA) (quantityOffsetBits pa lpB)
+  : [buildInstruction (BV.zero knownNat) (BV.zero knownNat) (quantityOffsetBits pa j) (quantityOffsetBits pa k)]
 
 {-
   Block P: Parameters
@@ -296,17 +452,17 @@ encodeLoopParams pa (LP {..}) =
   Here, it is assumed that the parameters are already arragned in the correct order.
 -}
 
-blockP :: QuantityAddresses -> [ParameterInfo] -> [BitVector 39]
+blockP :: QuantityAddresses -> [ParameterInfo] -> [BV 39]
 blockP qa params = map (encodeParameter qa) params
 
-encodeParameter qa (InFin {..}) = buildInstruction 0x0 (quantityOffsetBits qa inP) (quantityOffsetBits qa finP) 0
+encodeParameter qa (InFin {..}) = buildInstruction (BV.zero knownNat) (quantityOffsetBits qa inP) (quantityOffsetBits qa finP) (BV.zero knownNat)
 encodeParameter qa (CharacteristicLoop {..}) = buildInstruction (getCode theta) (quantityOffsetBits qa inP) (quantityOffsetBits qa loopA) (quantityOffsetBits qa loopB)
 
 {-
   Block C: Constants
 -}
 
-blockC :: [Constant] -> [BitVector 39]
+blockC :: [Constant] -> [BV 39]
 blockC constants = map toCell constants
   where
   toCell (Vacant{}) = b0
@@ -316,7 +472,7 @@ blockC constants = map toCell constants
   Block K: Programme
 -}
 
-blockK :: QuantityAddresses -> [Operator] -> [BitVector 39]
+blockK :: QuantityAddresses -> [Operator] -> [BV 39]
 blockK pa codes = packCells $ encodeCode pa codes
 
 {-
@@ -334,36 +490,47 @@ blockK pa codes = packCells $ encodeCode pa codes
   However, certain arithmetical operators are written as 16-bit numbers
 -}
 
-packArithCodes :: Word8 -> Word8 -> Word8 -> Word8 -> BitVector 32
-packArithCodes a b c d = bitVector 0
-  & \cell -> inject ((chunk 24 :: Chunk 8) <: empty) cell (bitVector $ fromIntegral a)
-  & \cell -> inject ((chunk 16 :: Chunk 8) <: empty) cell (bitVector $ fromIntegral b)
-  & \cell -> inject ((chunk 8  :: Chunk 8) <: empty) cell (bitVector $ fromIntegral c)
-  & \cell -> inject ((chunk 0  :: Chunk 8) <: empty) cell (bitVector $ fromIntegral d)
+-- packArithCodes :: Word8 -> Word8 -> Word8 -> Word8 -> BV 32
+-- packArithCodes a b c d = bitVector 0
+--   & \cell -> inject ((chunk 24 :: Chunk 8) <: empty) cell (bitVector $ fromIntegral a)
+--   & \cell -> inject ((chunk 16 :: Chunk 8) <: empty) cell (bitVector $ fromIntegral b)
+--   & \cell -> inject ((chunk 8  :: Chunk 8) <: empty) cell (bitVector $ fromIntegral c)
+--   & \cell -> inject ((chunk 0  :: Chunk 8) <: empty) cell (bitVector $ fromIntegral d)
 
-buildArithCodes :: BitVector 32 -> BitVector 39
-buildArithCodes codes = inject mantissa (bitVector 0) codes
+packArithCodes :: Word8 -> Word8 -> Word8 -> Word8 -> BV 32
+packArithCodes a b c d =
+  (BV.word8 a) <:> (BV.word8 b) <:> (BV.word8 c) <:> (BV.word8 d)
 
-quantityOffsetBits pa p = bitVector $ quantityOffset pa p
+
+buildArithCodes :: BV 32 -> BV 39
+buildArithCodes codes = inject mantissa (BV.zero knownNat) codes
+
+quantityOffsetBits pa p = mkBV knownNat $ quantityOffset pa p
 
 quantityOffset :: Integral a => QuantityAddresses -> Quantity -> a
 quantityOffset pa p = fromIntegral . fromJust' $ unQ p `lookup` pa
   where fromJust' (Just a) = a
         fromJust' Nothing  = error $ show p
-bitVector' :: (KnownNat k, Integral a) => a -> BitVector k
-bitVector' = bitVector . fromIntegral
 
-type BV = BitVector
+bitVector' :: (KnownNat k, Integral a) => a -> BV k
+bitVector' = mkBV knownNat . fromIntegral
+
+-- type BV = BV
 
 {-
   First we transform the input token stream into the raw codes for each token. Once that stream has been produced,
   We pass over it again to pack arithmetical operators into as few cells as possible.
 -}
 
-data IntermediateValue = Short Word8 | Long Word16 | Full (BitVector 39)
+data IntermediateValue = Short Word8 | Long Word16 | Full (BV 39)
   deriving (Show, Eq)
 
-packCells :: [IntermediateValue] -> [BitVector 39]
+infixl 6 <:>
+
+(<:>) :: (KnownNat n, KnownNat m) => BV n -> BV m -> BV (n + m)
+(<:>) = BV.concat knownNat knownNat
+
+packCells :: [IntermediateValue] -> [BV 39]
 packCells (Short a : Short b : Short c : Short d : others) = buildArithCodes (packArithCodes a b c d) : packCells others
 packCells (Short a : Short b : Short c : others) = buildArithCodes (packArithCodes a b c 0) : packCells others
 packCells (Short a : Short b : Long cd : others) = buildArithCodes ((bitVector' a  :: BV 8) <:> (bitVector' b  :: BV  8) <:> (bitVector' cd :: BV 16)) : packCells others
@@ -383,8 +550,8 @@ encodeCode pa (OperatorSign os : LogicalOperator lo : o : ops) = encodeLogicalOp
 encodeCode pa (LogicalOperator lo : o : ops)                   = encodeLogicalOp pa  Nothing  lo o ++ encodeCode pa ops
 encodeCode pa (OperatorSign os : ops) = Full (buildInstruction operatorSign (getOperator os)       b0 b0) : encodeCode pa ops
 encodeCode pa (LoopOpen p : ops)      = Full (buildInstruction operatorSign (quantityOffsetBits pa p) b0 b0) : encodeCode pa ops
-encodeCode pa (LoopClose : ops)       = Full (buildInstruction (bitVector 0x01F) b13FF b13FF b13FF)       : encodeCode pa ops
-  where b13FF = bitVector 0x13FF
+encodeCode pa (LoopClose : ops)       = Full (buildInstruction (mkBV knownNat 0x01F) b13FF b13FF b13FF)       : encodeCode pa ops
+  where b13FF = mkBV knownNat 0x13FF
 encodeCode pa (NS ns a b c : ops) = Full (buildInstruction (putOpCode ns) (bvAddr pa a) (bvAddr pa b) (bvAddr pa c)) : encodeCode pa ops
 encodeCode pa (Empty : ops) = Full b0 : encodeCode pa ops
 encodeCode pa [LogicalOperator lo] = encodeLogicalOp pa Nothing lo Empty
@@ -397,14 +564,15 @@ encodeCode pa [] = []
   quantities instead of addresses.
 -}
 
-bvAddr :: QuantityAddresses -> Address -> BitVector 11
-bvAddr qa (Abs a) = bitVector $ fromIntegral a
-bvAddr qa (VarQ v) = bitVector . fromIntegral . fromJust $ unVar v `lookup` qa
-bv :: KnownNat k => Integer -> BitVector k
-bv = bitVector
+bvAddr :: QuantityAddresses -> Address -> BV 11
+bvAddr qa (Abs a) = bitVector' a
+bvAddr qa (VarQ v) = bitVector' . fromJust $ unVar v `lookup` qa
+
+bv :: KnownNat k => Integer -> BV k
+bv = mkBV knownNat
 
 
-putOpCode :: NS.NonStandardOpcode -> BitVector 6
+putOpCode :: NS.NonStandardOpcode -> BV 6
 putOpCode (NS.Add      n) = bv 0x001
 putOpCode (NS.Sub      n) = bv $ normToBit n .|. 0x002
 putOpCode (NS.Mult     n) = bv $ normToBit n .|. 0x003
@@ -502,15 +670,15 @@ encodeLogicalOp pa opSign (Op x defaultOp branches) following = let
     let secondBound = maybe b0 (quantityOffsetBits pa) upperBound
     in Full $ buildInstruction (rangeCode rangeType) (quantityOffsetBits pa lowerBound) (secondBound) (getOperator op)
 
-rangeCode :: RangeType -> BitVector 6
-rangeCode (RightImproperSemi) = bitVector 1
-rangeCode (Segment)           = bitVector 2
-rangeCode (SemiSegment)       = bitVector 3
-rangeCode (LeftImproper)      = bitVector 4
-rangeCode (RightImproper)     = bitVector 8
-rangeCode (LeftImproperSemi)  = bitVector 13
-rangeCode (SemiInterval)      = bitVector 18
-rangeCode (Interval)          = bitVector 19
+rangeCode :: RangeType -> BV 6
+rangeCode (RightImproperSemi) = mkBV knownNat 1
+rangeCode (Segment)           = mkBV knownNat 2
+rangeCode (SemiSegment)       = mkBV knownNat 3
+rangeCode (LeftImproper)      = mkBV knownNat 4
+rangeCode (RightImproper)     = mkBV knownNat 8
+rangeCode (LeftImproperSemi)  = mkBV knownNat 13
+rangeCode (SemiInterval)      = mkBV knownNat 18
+rangeCode (Interval)          = mkBV knownNat 19
 
 arithOpcode :: ArithOperator -> IntermediateValue
 arithOpcode (NLParen n)          = Long (0x0200 + fromIntegral n)
@@ -555,21 +723,36 @@ arithOpcode (Sign)               = Short 0xFF
 
 -}
 
-numberToBesmFloating :: Int -> BitVector 39
+numberToBesmFloating :: Int -> BV 39
 numberToBesmFloating num = let
-  bits = digits 2 (abs num)
-  exp  = digits 2 (length bits) -- this is soooo wrong for negative numbers...
+  bits = (== 1) <$> digits 2 (Prelude.abs num)
+  exp  = (== 1) <$> digits 2 (length bits) -- this is soooo wrong for negative numbers...
   sBit = fromEnum $ num < 0
-  in buildNumber (bitVector (fromIntegral $ length bits)) (bitVector $ fromIntegral sBit) (toBitVector bits)
+  in buildNumber (bitVector' $ length bits) (BV.bool $ sBit == 1) (toBitVector bits)
   where
-  toBitVector bits = toBitVector' (len - 1) (bits) b0
+
+  toBitVector :: [Bool] -> BV 32
+  -- toBitVector bits =
+  toBitVector bits = case BV.bitsBE (pad ++ bits) of
+    p -> viewPair (\ prf b ->
+      case polyEqF prf (knownNat @32) of
+        Just Refl -> b
+        _ -> error "wtf man") p
+
+
+
     where
-    len = length bits
-    toBitVector' 0 (x:_:_)  _  = error "wtf man"
-    toBitVector' 0 []     bv = bv
-    toBitVector' i (1:xs) bv = toBitVector' (i - 1) xs (bv `setBit` (bvWidth bv - (len - i)))
-    toBitVector' i (_:xs) bv = toBitVector' (i - 1) xs bv
-    toBitVector' i []     bv = bv
+    pad = take (32 - length bits) (repeat False)
+
+
+    -- toBitVector' (len - 1) (bits) b0
+    -- where
+    -- len = length bits
+    -- toBitVector' 0 (x:_:_)  _  = error "wtf man"
+    -- toBitVector' 0 []     bv = bv
+    -- toBitVector' i (1:xs) bv = toBitVector' (i - 1) xs (bv `BV.setBit` (width knownNat bv - (len - i)))
+    -- toBitVector' i (_:xs) bv = toBitVector' (i - 1) xs bv
+    -- toBitVector' i []     bv = bv
 
 {-
   Converts from a BESM address format which is a mixture of binary, quaternary and hex.

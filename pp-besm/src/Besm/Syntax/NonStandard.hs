@@ -5,6 +5,11 @@ module Besm.Syntax.NonStandard where
   This module contains a definition of all non-standard operators (aka machine code)
 -}
 
+{-|
+  Since BESM only uses floating point numbers, they must be normalized after operations
+  however, it can be desirable to suppress normalization which is why those operations
+  have a bitflag that can be set to indicate that normalization should be prevented.
+-}
 data NormalizeResult
   = Normalized
   | UnNormalized

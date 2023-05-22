@@ -2,11 +2,14 @@
 module Besm.Assembler.Syntax
 ( module Besm.Assembler.Syntax
 , unsafeFromBesmAddress
+, NormalizeResult(..)
 ) where
 
-import Besm.Put (buildNumber, buildInstruction, unsafeFromBesmAddress, numberToBesmFloating)
+import Besm.Put (buildNumber, buildInstruction, unsafeFromBesmAddress, numberToBesmFloating, normToBit)
+import Besm.Syntax.NonStandard (NormalizeResult(..))
 import Data.BitVector.Sized
 import Data.Bits
+import GHC.TypeLits
 
 data Address
   = Operator Int
@@ -93,7 +96,11 @@ constantSize (Size i) = i
 constantSize (Table cs) = sum $ map constantSize cs
 constantSize _ = 1
 
-constantToCell :: Constant Int -> [BitVector 39]
+-- TODO: Remove
+bitVector :: KnownNat n => Integer -> BV n
+bitVector = mkBV knownNat
+
+constantToCell :: Constant Int -> [BV 39]
 constantToCell (Size i) = replicate i (bitVector 0)
 constantToCell (Val  i) = [numberToBesmFloating i]
 constantToCell (Raw  i) = [bitVector $ fromIntegral i]
@@ -160,10 +167,6 @@ blockLen bb = length (instrs bb) + termLen (terminator bb)
   however, it can be desirable to suppress normalization which is why those operations
   have a bitflag that can be set to indicate that normalization should be prevented.
 -}
-data NormalizeResult
-  = Normalized
-  | UnNormalized
-  deriving (Show, Eq)
 
 type Instruction = Instr Address
 type RawInstr = Instr Int
@@ -225,11 +228,11 @@ data Term a
 
 type RawBlock = BB Int
 
-asmToCell :: RawBlock -> [BitVector 39]
+asmToCell :: RawBlock -> [BV 39]
 asmToCell (BB is tm adx) =
   map (instToCell . fmap fromIntegral) is ++ (termToCell $ fmap fromIntegral tm)
 
-instToCell :: Instr Integer -> BitVector 39
+instToCell :: Instr Integer -> BV 39
 instToCell (Add       a b c n) = buildInstruction (bitVector 0x001) (bitVector a) (bitVector b) (bitVector c)
 instToCell (Sub       a b c n) = buildInstruction (bitVector $ normToBit n .|. 0x002) (bitVector a) (bitVector b) (bitVector c)
 instToCell (Mult      a b c n) = buildInstruction (bitVector $ normToBit n .|. 0x003) (bitVector a) (bitVector b) (bitVector c)
@@ -260,11 +263,7 @@ instToCell (JCC              ) = buildInstruction (bitVector 0x019) (bitVector 0
 instToCell (CLCC          c  ) = buildInstruction (bitVector 0x01A) (bitVector 0) (bitVector 0) (bitVector c)
 instToCell (Empty)             = bitVector 0
 
-normToBit :: NormalizeResult -> Integer
-normToBit Normalized   = 0
-normToBit UnNormalized = bit 5
-
-termToCell :: Term Integer -> [BitVector 39]
+termToCell :: Term Integer -> [BV 39]
 termToCell (Comp      a b c _) = pure $ buildInstruction (bitVector 0x014) (bitVector a) (bitVector b) (bitVector c)
 termToCell (CompWord  a b c _) = pure $ buildInstruction (bitVector 0x034) (bitVector a) (bitVector b) (bitVector c)
 termToCell (CompMod   a b c _) = pure $ buildInstruction (bitVector 0x015) (bitVector a) (bitVector b) (bitVector c)

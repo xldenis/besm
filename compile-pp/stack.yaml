@@ -1,11 +1,13 @@
-resolver: lts-13.10
+resolver: lts-20.21
 
 packages:
 - .
 extra-deps:
 - ../pp-besm
-- github: xldenis/bv-sized
-  commit: 9e9598976685c0a1ab54cb4729d4088edffef399
-- github: GaloisInc/parameterized-utils
-  commit: 573322c4d3ffc567b71d3fdb7c1993edb7e8a34b
-- graphviz-2999.20.0.3@sha256:cde383c356bc41136ed53cd27e0800f46dbd2185600dd0de18d66d5c49739d94
+- bv-sized-1.0.5
+- panic-0.4.0.1
+- bitwise-1.0.0.1
+- parameterized-utils-2.1.6.0
+# - github: GaloisInc/parameterized-utils
+#   commit: 573322c4d3ffc567b71d3fdb7c1993edb7e8a34b
+# - graphviz-2999.20.0.3@sha256:cde383c356bc41136ed53cd27e0800f46dbd2185600dd0de18d66d5c49739d94

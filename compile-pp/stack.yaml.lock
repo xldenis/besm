@@ -5,43 +5,36 @@
 
 packages:
 - completed:
-    size: 13119
-    url: https://github.com/xldenis/bv-sized/archive/9e9598976685c0a1ab54cb4729d4088edffef399.tar.gz
-    cabal-file:
-      size: 1765
-      sha256: 44e534a0fd9107237eeff3ba185b12f6c14563a6dddbfb6272081b50d36e200e
-    name: bv-sized
-    version: 0.6.0
-    sha256: d9dabb0b070b747a5df0afaa8dd1131474c8b2b61bfc5c496e25db08ae5274fc
+    hackage: bv-sized-1.0.5@sha256:7f8d87497711de73ee087915e3f05f66060c9b875f3deec85edc8ff7cdd6e2a0,2095
     pantry-tree:
-      size: 710
-      sha256: 25887ec954ab6d240336ad268714ab1fbfa3bb43b934606e827c7a22f6316b19
+      sha256: 878632b918435eb8bbb70b2975eebf4f402ba999be06d5136cf5da38da613683
+      size: 709
   original:
-    url: https://github.com/xldenis/bv-sized/archive/9e9598976685c0a1ab54cb4729d4088edffef399.tar.gz
+    hackage: bv-sized-1.0.5
 - completed:
-    size: 69407
-    url: https://github.com/GaloisInc/parameterized-utils/archive/573322c4d3ffc567b71d3fdb7c1993edb7e8a34b.tar.gz
-    cabal-file:
-      size: 3007
-      sha256: 13caaa7f9cb60460d979ea33bd6143ea1b1a5be83320a5066a6e3e5f3ff72387
-    name: parameterized-utils
-    version: 1.0.8
-    sha256: f4c1da4767c453cb7d4959a3e6519a02b56e40f494c52e628910d8378d7b9e2a
+    hackage: panic-0.4.0.1@sha256:fb46577c9e0ca38c37960572f958a8469f2b577e963ed4f3ea1904d8400d828b,702
     pantry-tree:
-      size: 2774
-      sha256: 7a147d2f3b75606589bf283991b3b01817455d0fa1da137932b4f551dac7dc78
+      sha256: 2f4a32588a5935a4d58ee50ae2b83cd5be25b1a1b814dbd2c6a9451248c32b4a
+      size: 252
   original:
-    url: https://github.com/GaloisInc/parameterized-utils/archive/573322c4d3ffc567b71d3fdb7c1993edb7e8a34b.tar.gz
+    hackage: panic-0.4.0.1
 - completed:
-    hackage: graphviz-2999.20.0.3@sha256:cde383c356bc41136ed53cd27e0800f46dbd2185600dd0de18d66d5c49739d94,7677
+    hackage: bitwise-1.0.0.1@sha256:6ee22ada4e0b605fa433bec6a340703033e3cfe15edcf8f9feef7d446be49a54,3110
     pantry-tree:
-      size: 4322
-      sha256: f7d9f7e161d68a5783d915358c28a95a2b8c94f3e302325fa604b91e8d2295c8
+      sha256: edd0d34ddb2516526df8260b80d571b33dfbeba588fad5bad5fcb5897b5d26fe
+      size: 760
   original:
-    hackage: graphviz-2999.20.0.3@sha256:cde383c356bc41136ed53cd27e0800f46dbd2185600dd0de18d66d5c49739d94
+    hackage: bitwise-1.0.0.1
+- completed:
+    hackage: parameterized-utils-2.1.6.0@sha256:30bb1eb10ea9a54a9e1e9f1a8ed6dcd30f44b3cd2b0379f1a71cabcc882bd788,4818
+    pantry-tree:
+      sha256: 4e90defd6fd1611d3c71909e5ce72524cdc17be05feb9eb298566ff9d382df2c
+      size: 3642
+  original:
+    hackage: parameterized-utils-2.1.6.0
 snapshots:
 - completed:
-    size: 496698
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/13/10.yaml
-    sha256: cccd8a6de18d13cd00f751b25684b3ca1e548648ea41874de78904fec1b9cb36
-  original: lts-13.10
+    sha256: 401a0e813162ba62f04517f60c7d25e93a0f867f94a902421ebf07d1fb5a8c46
+    size: 650044
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/21.yaml
+  original: lts-20.21
