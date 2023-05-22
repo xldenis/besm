@@ -1,22 +1,25 @@
-{-# LANGUAGE TemplateHaskell, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Spec where
-import           Hedgehog
+
+import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
-import Data.Text (pack, Text)
-import Besm.Syntax as S
 import Besm.Parser
-import Data.Text.Prettyprint.Doc.Render.Text
-import Data.Text.Prettyprint.Doc
+import Besm.Syntax as S
 import Data.Char
 import Data.Foldable
+import Data.Text (Text, pack)
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.Text
 
 import Data.Either
 
-import Data.Bifunctor (first)
 import Control.Applicative
-import Control.Monad (when, forM)
+import Control.Monad (forM, when)
+import Data.Bifunctor (first)
 
 main :: IO Bool
 main = checkSequential $$(discover)
@@ -35,19 +38,18 @@ parse_and_pretty propGen parser pretty =
     gened <- propGen
 
     tripping gened (render . pretty) (parse' parser)
-
-    where render = renderStrict . layoutPretty defaultLayoutOptions
-          parse' p = first parseErrorPretty . (parse p "")
+ where
+  render = renderStrict . layoutPretty defaultLayoutOptions
+  parse' p = first parseErrorPretty . (parse p "")
 
 genParameter :: MonadGen m => m Parameter
-genParameter = Gen.choice
-  [ InFin <$> genVariable <*> Gen.int range <*> Gen.int range
-  , Characteristic <$> genVariable <*> genComp <*> Gen.int range <*> genVariable <*> genVariable
-  ]
-
-  where
-
-  genComp = Gen.choice [ pure Comparison, pure WordComparison, pure ModuliComparison ]
+genParameter =
+  Gen.choice
+    [ InFin <$> genVariable <*> Gen.int range <*> Gen.int range
+    , Characteristic <$> genVariable <*> genComp <*> Gen.int range <*> genVariable <*> genVariable
+    ]
+ where
+  genComp = Gen.choice [pure Comparison, pure WordComparison, pure ModuliComparison]
 
   range = Range.linear 0 maxBound
 
@@ -59,7 +61,6 @@ genVariable = S.Var <$> letterChar <*> pure []
 
 genBlock :: (Alternative m, MonadGen m) => [Char] -> m Block
 genBlock subscripts = do
-
   numCells <- Gen.int (Range.linear 0 300)
 
   blockVar <- Gen.alpha
@@ -73,9 +74,7 @@ genEquation var subscripts = do
 
   let usedSubs = toList expr <|> constantSub expr
   return $ (pack (var : '_' : usedSubs), expr)
-
-  where
-
+ where
   constantSub (SConstant i) = show i
   constantSub _ = []
 
@@ -83,15 +82,20 @@ genExpr :: (Applicative m, MonadGen m) => [Char] -> m (SimpleExpr Char)
 genExpr vars = do
   usedVars <- take <$> Gen.int (Range.linear 0 3) <*> Gen.shuffle vars
 
-  elems <- forM usedVars (\var -> Gen.choice
-    [ pure $ SExpVar var
-    , STimes  <$> (genSimpleConstant) <*> (pure $ SExpVar var)
-    ])
+  elems <-
+    forM
+      usedVars
+      ( \var ->
+          Gen.choice
+            [ pure $ SExpVar var
+            , STimes <$> (genSimpleConstant) <*> (pure $ SExpVar var)
+            ]
+      )
 
-
-  constant <- if length elems == 0
-    then pure <$> genSimpleConstant
-    else Gen.list (Range.linear 0 1) genSimpleConstant
+  constant <-
+    if length elems == 0
+      then pure <$> genSimpleConstant
+      else Gen.list (Range.linear 0 1) genSimpleConstant
   pure $ foldl1 SAdd (elems ++ constant)
 
 genSimpleConstant :: MonadGen m => m (SimpleExpr a)
@@ -108,13 +112,13 @@ genProgramme = do
   let (cvals, vars) = partitionEithers $ map splitConstants constants
 
   prog <- genSchemeElem vars cvals
-  return $ P
-    va
-    parameters
-    constants
-    (Seq [JCC])
-
-  where
+  return $
+    P
+      va
+      parameters
+      constants
+      (Seq [JCC])
+ where
   splitConstants (SConstant i) = Left i
   splitConstants (SExpVar c) = Right (S.Var c [])
 
@@ -128,7 +132,8 @@ genSchemeElem vars constants = do
 genSchemeExpr :: MonadGen m => [Variable] -> [Int] -> m SchemaExpr
 genSchemeExpr vars constants = do
   let qtities = map V vars ++ map C constants
-  Gen.recursive Gen.choice
+  Gen.recursive
+    Gen.choice
     [ Primitive <$> Gen.element qtities
     , Form <$> Gen.element qtities
     ]

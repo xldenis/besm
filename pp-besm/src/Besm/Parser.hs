@@ -1,37 +1,37 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase                 #-}
-{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
-module Besm.Parser
-( module Besm.Parser
-, parse
--- , parseTest'
--- , parseErrorPretty'
--- , parseErrorPretty
-, errorBundlePretty
+module Besm.Parser (
+  module Besm.Parser,
+  parse,
+  -- , parseTest'
+  -- , parseErrorPretty'
+  -- , parseErrorPretty
+  errorBundlePretty,
 ) where
 
-import           Control.Monad
+import Control.Monad
 
-import qualified Data.List.NonEmpty         as NL
-import           Data.Semigroup
-import           Data.String                (IsString)
-import           Data.Text                  (Text)
-import qualified Data.Text                  as T
-import           Data.Void
+import qualified Data.List.NonEmpty as NL
+import Data.Semigroup
+import Data.String (IsString)
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Void
 
-import           Besm.Syntax
+import Besm.Syntax
 import qualified Besm.Syntax.NonStandard as NS
 
-import           Text.Megaparsec
-import           Text.Megaparsec.Char
+import Control.Monad.Combinators.Expr
+import Text.Megaparsec
+import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import           Control.Monad.Combinators.Expr
 
-import           Data.CharSet (CharSet)
+import Data.Char (isLetter)
+import Data.CharSet (CharSet)
 import qualified Data.CharSet as CharSet
-import           Data.CharSet.Unicode.Block (basicLatin, greekAndCoptic, cyrillic)
-import           Data.Char (isLetter)
+import Data.CharSet.Unicode.Block (basicLatin, cyrillic, greekAndCoptic)
 
 {-
 
@@ -67,17 +67,19 @@ binary op f = InfixL $ do
   return f
 
 prefix :: Parser Text -> (a -> a) -> Operator Parser a
-prefix op f = Prefix $
-  op >> return f
+prefix op f =
+  Prefix $
+    op >> return f
 
 suffix :: Parser Text -> (a -> a) -> Operator Parser a
-suffix op f = Postfix $
-  op >> return f
+suffix op f =
+  Postfix $
+    op >> return f
 
 semicolon = lexeme (char ';') >> scn
 
 isBesmLetter c = CharSet.member c (CharSet.filter isLetter allLetters)
-  where
+ where
   allLetters = basicLatin `CharSet.union` greekAndCoptic `CharSet.union` cyrillic
 
 -- | Top Level Parser for a PP program
@@ -89,7 +91,7 @@ pp = do
 -- | Parses the header to a section
 section :: Text -> Parser a -> Parser a
 section sectionName sectionParser = do
-    --       v--- enforce sequential section numbers?
+  --       v--- enforce sequential section numbers?
   lexeme $ L.decimal <* (char '.')
   forM (T.words sectionName) $ \word -> (symbol word)
   scn
@@ -130,18 +132,19 @@ simpleExpr :: Parser Char -> Parser (SimpleExpr Char)
 simpleExpr vars = makeExprParser (constant <|> expVar vars) opTable
 
 constant :: Parser (SimpleExpr Char)
-constant = lexeme $
-  SConstant . negate <$> (char '-' *> integer) <|>
-  SConstant <$> integer
-
+constant =
+  lexeme $
+    SConstant . negate <$> (char '-' *> integer)
+      <|> SConstant <$> integer
 
 expVar :: Parser Char -> Parser (SimpleExpr Char)
 expVar vars = lexeme $ SExpVar <$> vars
 
 opTable :: [[Operator Parser (SimpleExpr Char)]]
 opTable =
-  [ [ binary (symbol ".") STimes]
-  , [ binary (symbol "+") SAdd
+  [ [binary (symbol ".") STimes]
+  ,
+    [ binary (symbol "+") SAdd
     ]
   ]
 
@@ -159,7 +162,7 @@ inFin = try $ do
 
   init <- (lexeme $ string (unVar var) <* string "_in") *> symbol "=" *> integer
   symbol ","
-  fin  <- (lexeme $ string (unVar var) <* string "_fin") *> symbol "=" *> integer
+  fin <- (lexeme $ string (unVar var) <* string "_fin") *> symbol "=" *> integer
   scn
 
   return $ InFin var init fin
@@ -175,11 +178,12 @@ characteristic = do
   symbol ","
 
   a <- variable
-  op <- choice
-    [ symbol "<"   >> return Comparison
-    , symbol "|<|" >> return ModuliComparison
-    , symbol ",<"  >> return WordComparison
-    ]
+  op <-
+    choice
+      [ symbol "<" >> return Comparison
+      , symbol "|<|" >> return ModuliComparison
+      , symbol ",<" >> return WordComparison
+      ]
   b <- variable
 
   scn
@@ -196,20 +200,18 @@ constantSection = do
 
   Block K is the 'actual' program.
 
-
 -}
 schemaSection :: Parser LogicalSchema
-schemaSection = section "Logical Scheme"  $ do
+schemaSection = section "Logical Scheme" $ do
   schemaParser
-
 
 -- | Parse a list of schematic statements
 schemaParser :: Parser LogicalSchema
 schemaParser = (Seq . concatTuples) <$> some ((,) <$> schemaTerm <*> optional (semicolon >> pure Semicolon) <* scn)
-  where
-  concatTuples ((term, Just s ) : ls) = term : s : concatTuples ls
+ where
+  concatTuples ((term, Just s) : ls) = term : s : concatTuples ls
   concatTuples ((term, Nothing) : ls) = term : concatTuples ls
-  concatTuples []                     = []
+  concatTuples [] = []
 
 -- | Parse one schema statement
 schemaTerm :: Parser LogicalSchema
@@ -247,9 +249,9 @@ complexVar = lexeme $ do
 
 printExpr :: Parser LogicalSchema
 printExpr = do
-   exp <- try $ schemaExpr <* (mapM_ symbol [",", "=>", "0"])
+  exp <- try $ schemaExpr <* (mapM_ symbol [",", "=>", "0"])
 
-   return $ Print exp
+  return $ Print exp
 
 logicalOperator :: Parser LogicalSchema
 logicalOperator = lexeme $ (*>) (char 'P') $ parens $ do
@@ -261,7 +263,7 @@ logicalOperator = lexeme $ (*>) (char 'P') $ parens $ do
 
   branches <- some logicalBranch
   return $ LogicalOperator var opSign branches
-  where
+ where
   logicalBranch = do
     opSign <- operatorNumber
     symbol "/"
@@ -276,16 +278,16 @@ logicalOperator = lexeme $ (*>) (char 'P') $ parens $ do
     close <- symbol ")" <|> symbol "]"
 
     case (open, a, b, close) of
-      ("[", Left "-∞",       _ ,  _ ) -> fail "Can't have an left-inclusive interval with -∞"
-      ("(", Left "-∞", Right a , ")") -> return $ LeftImproperInterval a
-      ("(", Left "-∞", Right a , "]") -> return $ LeftImproperSemiInterval a
-      ( _ ,       _  , Left "∞", "]") -> fail "Can't have an left-inclusive interval with -∞"
-      ("[", Right a  , Left "∞", ")") -> return $ RightImproperInterval a
-      ("(", Right a  , Left "∞", ")") -> return $ RightImproperSemiInterval a
-      ("[", Right a  , Right b , "]") -> return $ Segment a b
-      ("[", Right a  , Right b , ")") -> return $ SemiInterval a b
-      ("(", Right a  , Right b , "]") -> return $ SemiSegment a b
-      ("(", Right a  , Right b , ")") -> return $ Interval a b
+      ("[", Left "-∞", _, _) -> fail "Can't have an left-inclusive interval with -∞"
+      ("(", Left "-∞", Right a, ")") -> return $ LeftImproperInterval a
+      ("(", Left "-∞", Right a, "]") -> return $ LeftImproperSemiInterval a
+      (_, _, Left "∞", "]") -> fail "Can't have an left-inclusive interval with -∞"
+      ("[", Right a, Left "∞", ")") -> return $ RightImproperInterval a
+      ("(", Right a, Left "∞", ")") -> return $ RightImproperSemiInterval a
+      ("[", Right a, Right b, "]") -> return $ Segment a b
+      ("[", Right a, Right b, ")") -> return $ SemiInterval a b
+      ("(", Right a, Right b, "]") -> return $ SemiSegment a b
+      ("(", Right a, Right b, ")") -> return $ Interval a b
 
 operatorNumber :: Parser OperatorSign
 operatorNumber = lexeme $ OpSign <$> L.hexadecimal
@@ -298,37 +300,67 @@ stop = symbol "stop" *> return (NS NS.Stop (Abs 0) (Abs 0) (Abs 0))
 
 goto :: Parser LogicalSchema
 goto = cccc2 <|> cccc <|> rtc <|> clcc <|> jcc
-  where
-  cccc  = char '/'    *> (CCCC <$> operatorNumber)
+ where
+  cccc = char '/' *> (CCCC <$> operatorNumber)
   cccc2 = try $ do
     a <- operatorNumber
     string "/="
     b <- operatorNumber
     return $ CCCC2 a b
   rtc = try $ (RTC <$> operatorNumber) <* string "\\="
-  clcc = string "/-"  *> (CLCC <$> operatorNumber)
-  jcc = string "\\-"  *> (pure JCC)
+  clcc = string "/-" *> (CLCC <$> operatorNumber)
+  jcc = string "\\-" *> (pure JCC)
 
 nonStandard :: Parser LogicalSchema
 nonStandard =
-  ma <|> mb <|> pn <|> clcc <|> jcc <|> comp <|>
-  compword <|> compmod <|> cccc <|> ccccsnd <|> i <|>
-  logmult <|> ai <|> aicarry <|> shift <|>
-  shiftall <|>
-
-  add  NS.Normalized <|> sub  NS.Normalized <|> mult  NS.Normalized <|>
-  div  NS.Normalized <|> adde NS.Normalized <|> sube  NS.Normalized <|>
-  ce   NS.Normalized <|> xa   NS.Normalized <|> xb    NS.Normalized <|>
-  diva NS.Normalized <|> divb NS.Normalized <|> tn    NS.Normalized <|>
-  tmin NS.Normalized <|> tmod NS.Normalized <|> tsign NS.Normalized <|>
-  texp NS.Normalized <|>
-
-  add  NS.UnNormalized <|> sub  NS.UnNormalized <|> mult  NS.UnNormalized <|>
-  div  NS.UnNormalized <|> adde NS.UnNormalized <|> sube  NS.UnNormalized <|>
-  ce   NS.UnNormalized <|> xa   NS.UnNormalized <|> xb    NS.UnNormalized <|>
-  diva NS.UnNormalized <|> divb NS.UnNormalized <|> tn    NS.UnNormalized <|>
-  tmin NS.UnNormalized <|> tmod NS.UnNormalized <|> tsign NS.UnNormalized <|>
-  texp NS.UnNormalized
+  ma
+    <|> mb
+    <|> pn
+    <|> clcc
+    <|> jcc
+    <|> comp
+    <|> compword
+    <|> compmod
+    <|> cccc
+    <|> ccccsnd
+    <|> i
+    <|> logmult
+    <|> ai
+    <|> aicarry
+    <|> shift
+    <|> shiftall
+    <|> add NS.Normalized
+    <|> sub NS.Normalized
+    <|> mult NS.Normalized
+    <|> div NS.Normalized
+    <|> adde NS.Normalized
+    <|> sube NS.Normalized
+    <|> ce NS.Normalized
+    <|> xa NS.Normalized
+    <|> xb NS.Normalized
+    <|> diva NS.Normalized
+    <|> divb NS.Normalized
+    <|> tn NS.Normalized
+    <|> tmin NS.Normalized
+    <|> tmod NS.Normalized
+    <|> tsign NS.Normalized
+    <|> texp NS.Normalized
+    <|> add NS.UnNormalized
+    <|> sub NS.UnNormalized
+    <|> mult NS.UnNormalized
+    <|> div NS.UnNormalized
+    <|> adde NS.UnNormalized
+    <|> sube NS.UnNormalized
+    <|> ce NS.UnNormalized
+    <|> xa NS.UnNormalized
+    <|> xb NS.UnNormalized
+    <|> diva NS.UnNormalized
+    <|> divb NS.UnNormalized
+    <|> tn NS.UnNormalized
+    <|> tmin NS.UnNormalized
+    <|> tmod NS.UnNormalized
+    <|> tsign NS.UnNormalized
+    <|> texp NS.UnNormalized
  where
   nonStandard str sym = do
     try $ do
@@ -407,28 +439,29 @@ nonStandard =
 
   ccccsnd = nonStandard "CCCCSnd" NS.CCCCSnd
 
-
-
 schemaExpr :: Parser SchemaExpr
 schemaExpr = makeExprParser baseTerm schemaOpTable
-  where
+ where
   baseTerm = Primitive . C <$> integer <|> (symbol "Form" *> (Form <$> quantity)) <|> Primitive . V <$> variable
 
 schemaOpTable :: [[Operator Parser SchemaExpr]]
 schemaOpTable =
-  [ [ prefix (symbol "mod") Mod
+  [
+    [ prefix (symbol "mod") Mod
     ]
-  , [ prefix (symbol "sqrt") Sqrt
+  ,
+    [ prefix (symbol "sqrt") Sqrt
     , suffix (symbol "^3") Cube
     ]
-  , [ binary (symbol "*") Times
+  ,
+    [ binary (symbol "*") Times
     , binary (symbol ":") Div
     ]
-  , [ binary (symbol "+") Add
+  ,
+    [ binary (symbol "+") Add
     , binary (symbol "-") Minus
     ]
   ]
 
 list :: Parser a -> Parser [a]
 list a = a `sepBy` symbol ","
-

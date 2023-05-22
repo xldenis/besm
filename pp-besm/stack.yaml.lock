@@ -5,16 +5,33 @@
 
 packages:
 - completed:
-    name: bv-sized
+    hackage: bv-sized-1.0.5@sha256:7f8d87497711de73ee087915e3f05f66060c9b875f3deec85edc8ff7cdd6e2a0,2095
     pantry-tree:
-      sha256: 25887ec954ab6d240336ad268714ab1fbfa3bb43b934606e827c7a22f6316b19
-      size: 710
-    sha256: d9dabb0b070b747a5df0afaa8dd1131474c8b2b61bfc5c496e25db08ae5274fc
-    size: 13119
-    url: https://github.com/xldenis/bv-sized/archive/9e9598976685c0a1ab54cb4729d4088edffef399.tar.gz
-    version: 0.6.0
+      sha256: 878632b918435eb8bbb70b2975eebf4f402ba999be06d5136cf5da38da613683
+      size: 709
   original:
-    url: https://github.com/xldenis/bv-sized/archive/9e9598976685c0a1ab54cb4729d4088edffef399.tar.gz
+    hackage: bv-sized-1.0.5
+- completed:
+    hackage: panic-0.4.0.1@sha256:fb46577c9e0ca38c37960572f958a8469f2b577e963ed4f3ea1904d8400d828b,702
+    pantry-tree:
+      sha256: 2f4a32588a5935a4d58ee50ae2b83cd5be25b1a1b814dbd2c6a9451248c32b4a
+      size: 252
+  original:
+    hackage: panic-0.4.0.1
+- completed:
+    hackage: bitwise-1.0.0.1@sha256:6ee22ada4e0b605fa433bec6a340703033e3cfe15edcf8f9feef7d446be49a54,3110
+    pantry-tree:
+      sha256: edd0d34ddb2516526df8260b80d571b33dfbeba588fad5bad5fcb5897b5d26fe
+      size: 760
+  original:
+    hackage: bitwise-1.0.0.1
+- completed:
+    hackage: parameterized-utils-2.1.6.0@sha256:30bb1eb10ea9a54a9e1e9f1a8ed6dcd30f44b3cd2b0379f1a71cabcc882bd788,4818
+    pantry-tree:
+      sha256: 4e90defd6fd1611d3c71909e5ce72524cdc17be05feb9eb298566ff9d382df2c
+      size: 3642
+  original:
+    hackage: parameterized-utils-2.1.6.0
 snapshots:
 - completed:
     sha256: 401a0e813162ba62f04517f60c7d25e93a0f867f94a902421ebf07d1fb5a8c46
