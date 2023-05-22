@@ -3,7 +3,7 @@
 For a while now I've been doing research into the manner in which the lineage of modern languages influences the ways we think about what is possible or even desirable in a programming language. This led me to look at early Soviet languages which evolved in relative isolation from American and British languages. To better understand the choices they made and their impact on the design of languages, I've decided to revive the first full soviet compiler.
 
 The compiler and language didn't really have a name then, instead compilers were called 'programming programmes' (programming referred to the act of writing the actual machine code out).
-Because this program was created for the very first soviet computer, the [BESM](#BESM), I've retro-named it PP-BESM.
+Because this program was created for the very first soviet computer, the [BESM](#besm), I've retro-named it PP-BESM.
 
 This language is quite interesting, it predates FORTRAN by a year and features quite a few interesting developments: it included several optimizations like dead-store elimination, common sub-expression elimination and bouds-check elimination (all limited of course). It featured several different kinds of loop statements, and an interesting notion of auto-indexing variables (called variable addresses).
 
@@ -12,7 +12,7 @@ These features are all the fallout of the Lyuponovian Operator Schemas that were
 ## What is included in this project?
 
 - [a VM implementation of the BESM](/besm-vm), it is not cycle accurate (obviously) but recreates the semantics of various operations as closely as possible, and more importantly, I've attempted to retro-engineer the values of various constant addresses in the Diode Store, which are critical to writing programs.
--[ A 'Literal BESM' re-implemtation of the PP-BESM compiler](/compile-pp) working from various primary and secondary sources. The code is written in a Haskell BESM Assembler DSL.
+- [A 'Literal BESM' re-implemtation of the PP-BESM compiler](/compile-pp) working from various primary and secondary sources. The code is written in a Haskell BESM Assembler DSL.
 - [A PP-BESM parser and encoder](/pp-besm) which allows users to prepare text files for input into the compiler (as the computer didn't have text input!).
 - [Examples from original sources](/examples) from the various articles and books I've scoured. To better understand the syntax I recommend looking at [this](examples/chapter1-annotated.pp).
 
@@ -33,9 +33,9 @@ PP-1 must also handle 'logical operators' (switches in modern parlance).
 
 At the time of writing:
 
-[X] PP-1. As far as I can tell PP-1 is complete and correct.
-[ ] PP-2. PP-2 is complete but there are doubtlessly several bugs still lurking.
-[ ] PP-3. Not started.
+- [X] PP-1. As far as I can tell PP-1 is complete and correct.
+- [ ] PP-2. PP-2 is complete but there are doubtlessly several bugs still lurking.
+- [ ] PP-3. Not started.
 
 
 # BESM
