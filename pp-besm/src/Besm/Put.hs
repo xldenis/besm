@@ -4,7 +4,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
+
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -20,7 +20,6 @@ import Data.Word
 import Data.Function
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Maybe (fromJust)
-import GHC.TypeNats (KnownNat)
 
 import Besm.Lower
 import qualified Besm.Syntax.NonStandard as NS
@@ -101,8 +100,8 @@ encodeProgramme p@(PP{..}) =
 
 programmeSummaryTable :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> [BV 39]
 programmeSummaryTable olen vlen clen plen klen gammalen alphalen betalen =
-  [ buildInstruction zero zero zero (bitVector' $ olen)
-  , buildInstruction zero zero zero (bitVector' $ lastVAddr)
+  [ buildInstruction zero zero zero (bitVector' olen)
+  , buildInstruction zero zero zero (bitVector' lastVAddr)
   , buildInstruction zero zero zero (bitVector' $ lastVAddr + plen + 1)
   , buildInstruction zero zero zero (bitVector' $ lastVAddr + plen + clen) -- last of C
   , buildInstruction zero zero zero (bitVector' $ lastVAddr + plen + clen) -- first of K - 1
@@ -285,8 +284,8 @@ blockV qa (V varAddrs loopParams) = (varAddrs >>= encodeMainHead qa) ++ (loopPar
 
 encodeMainHead :: QuantityAddresses -> AddressBlock -> [BV 39]
 encodeMainHead qa (MainHead size heads) =
-  (buildInstruction (BV.mkBV knownNat 0x01F) (BV.zero knownNat) (unWord11 size) (BV.zero knownNat))
-    : (encodeHead qa =<< (NonEmpty.toList heads))
+  buildInstruction (BV.mkBV knownNat 0x01F) (BV.zero knownNat) (unWord11 size) (BV.zero knownNat)
+    : (encodeHead qa =<< NonEmpty.toList heads)
 
 encodeHead :: QuantityAddresses -> BlockHead -> [BV 39]
 encodeHead qa (Head a b c vars) =
@@ -334,7 +333,7 @@ encodeLoopParams pa (LP{..}) =
 -}
 
 blockP :: QuantityAddresses -> [ParameterInfo] -> [BV 39]
-blockP qa params = map (encodeParameter qa) params
+blockP qa = map (encodeParameter qa)
 
 encodeParameter qa (InFin{..}) = buildInstruction (BV.zero knownNat) (quantityOffsetBits qa inP) (quantityOffsetBits qa finP) (BV.zero knownNat)
 encodeParameter qa (CharacteristicLoop{..}) = buildInstruction (getCode theta) (quantityOffsetBits qa inP) (quantityOffsetBits qa loopA) (quantityOffsetBits qa loopB)
@@ -344,7 +343,7 @@ encodeParameter qa (CharacteristicLoop{..}) = buildInstruction (getCode theta) (
 -}
 
 blockC :: [Constant] -> [BV 39]
-blockC constants = map toCell constants
+blockC = map toCell
  where
   toCell (Vacant{}) = b0
   toCell (Cell _ v) = numberToBesmFloating v
@@ -380,10 +379,10 @@ blockK pa codes = packCells $ encodeCode pa codes
 
 packArithCodes :: Word8 -> Word8 -> Word8 -> Word8 -> BV 32
 packArithCodes a b c d =
-  (BV.word8 a) <:> (BV.word8 b) <:> (BV.word8 c) <:> (BV.word8 d)
+  BV.word8 a <:> BV.word8 b <:> BV.word8 c <:> BV.word8 d
 
 buildArithCodes :: BV 32 -> BV 39
-buildArithCodes codes = inject mantissa (BV.zero knownNat) codes
+buildArithCodes = inject mantissa (BV.zero knownNat)
 
 quantityOffsetBits pa p = mkBV knownNat $ quantityOffset pa p
 
@@ -426,7 +425,7 @@ packCells [] = []
 
 encodeCode :: QuantityAddresses -> [Operator] -> [IntermediateValue]
 encodeCode pa (Arith op : ops) = arithOpcode op : encodeCode pa ops
-encodeCode pa (Parameter p : ops) = Short (fromJust $ (unQ p) `lookup` pa) : encodeCode pa ops
+encodeCode pa (Parameter p : ops) = Short (fromJust $ unQ p `lookup` pa) : encodeCode pa ops
 encodeCode pa (OperatorSign os : LogicalOperator lo : o : ops) = encodeLogicalOp pa (Just os) lo o ++ encodeCode pa ops
 encodeCode pa (LogicalOperator lo : o : ops) = encodeLogicalOp pa Nothing lo o ++ encodeCode pa ops
 encodeCode pa (OperatorSign os : ops) = Full (buildInstruction operatorSign (getOperator os) b0 b0) : encodeCode pa ops
@@ -466,28 +465,28 @@ putOpCode (NS.Xb n) = bv $ normToBit n .|. 0x009
 putOpCode (NS.DivA n) = bv $ normToBit n .|. 0x00A
 putOpCode (NS.DivB n) = bv $ normToBit n .|. 0x00B
 putOpCode (NS.TN n) = bv $ normToBit n .|. 0x00C
-putOpCode (NS.PN) = bv 0x02C
+putOpCode NS.PN = bv 0x02C
 putOpCode (NS.TMin n) = bv $ normToBit n .|. 0x00D
 putOpCode (NS.TMod n) = bv $ normToBit n .|. 0x00E
 putOpCode (NS.TSign n) = bv $ normToBit n .|. 0x00F
 putOpCode (NS.TExp n) = bv $ normToBit n .|. 0x010
-putOpCode (NS.Shift) = bv 0x011
-putOpCode (NS.ShiftAll) = bv 0x031
-putOpCode (NS.AI) = bv 0x012
-putOpCode (NS.AICarry) = bv 0x032
-putOpCode (NS.I) = bv 0x013
-putOpCode (NS.Ma) = bv 0x016
-putOpCode (NS.Mb) = bv 0x017
-putOpCode (NS.LogMult) = bv 0x01D
-putOpCode (NS.JCC) = bv 0x019
-putOpCode (NS.CLCC) = bv 0x01A
-putOpCode (NS.Comp) = bv 0x014
-putOpCode (NS.CompWord) = bv 0x034
-putOpCode (NS.CompMod) = bv 0x015
-putOpCode (NS.CCCC) = bv 0x01B
-putOpCode (NS.CCCCSnd) = bv 0x01B
-putOpCode (NS.Stop) = bv 0x01F
-putOpCode (NS.SwitchStop) = bv 0x01C
+putOpCode NS.Shift = bv 0x011
+putOpCode NS.ShiftAll = bv 0x031
+putOpCode NS.AI = bv 0x012
+putOpCode NS.AICarry = bv 0x032
+putOpCode NS.I = bv 0x013
+putOpCode NS.Ma = bv 0x016
+putOpCode NS.Mb = bv 0x017
+putOpCode NS.LogMult = bv 0x01D
+putOpCode NS.JCC = bv 0x019
+putOpCode NS.CLCC = bv 0x01A
+putOpCode NS.Comp = bv 0x014
+putOpCode NS.CompWord = bv 0x034
+putOpCode NS.CompMod = bv 0x015
+putOpCode NS.CCCC = bv 0x01B
+putOpCode NS.CCCCSnd = bv 0x01B
+putOpCode NS.Stop = bv 0x01F
+putOpCode NS.SwitchStop = bv 0x01C
 
 normToBit :: NS.NormalizeResult -> Integer
 normToBit NS.Normalized = 0
@@ -534,7 +533,7 @@ encodeLogicalOp pa opSign (Op x defaultOp branches) following =
   let
     followingOperator = encodeCode pa [following]
     thirdAddress = extract instAddr3 (head $ packCells followingOperator)
-    padding = if thirdAddress == b0 then [] else [Full b0]
+    padding = ([Full b0 | not (thirdAddress == b0)])
     operatorHead = Full $ buildInstruction operatorSign (maybe b0 getOperator opSign) (quantityOffsetBits pa x) (getOperator defaultOp)
    in
     operatorHead : map encodeBranch branches ++ padding ++ followingOperator
@@ -548,48 +547,48 @@ encodeLogicalOp pa opSign (Op x defaultOp branches) following =
   -}
   encodeBranch (op, rangeType, lowerBound, upperBound) =
     let secondBound = maybe b0 (quantityOffsetBits pa) upperBound
-     in Full $ buildInstruction (rangeCode rangeType) (quantityOffsetBits pa lowerBound) (secondBound) (getOperator op)
+     in Full $ buildInstruction (rangeCode rangeType) (quantityOffsetBits pa lowerBound) secondBound (getOperator op)
 
 rangeCode :: RangeType -> BV 6
-rangeCode (RightImproperSemi) = mkBV knownNat 1
-rangeCode (Segment) = mkBV knownNat 2
-rangeCode (SemiSegment) = mkBV knownNat 3
-rangeCode (LeftImproper) = mkBV knownNat 4
-rangeCode (RightImproper) = mkBV knownNat 8
-rangeCode (LeftImproperSemi) = mkBV knownNat 13
-rangeCode (SemiInterval) = mkBV knownNat 18
-rangeCode (Interval) = mkBV knownNat 19
+rangeCode RightImproperSemi = mkBV knownNat 1
+rangeCode Segment = mkBV knownNat 2
+rangeCode SemiSegment = mkBV knownNat 3
+rangeCode LeftImproper = mkBV knownNat 4
+rangeCode RightImproper = mkBV knownNat 8
+rangeCode LeftImproperSemi = mkBV knownNat 13
+rangeCode SemiInterval = mkBV knownNat 18
+rangeCode Interval = mkBV knownNat 19
 
 arithOpcode :: ArithOperator -> IntermediateValue
 arithOpcode (NLParen n) = Long (0x0200 + fromIntegral n)
 arithOpcode (NRParen n) = Long (0x0600 + fromIntegral n)
 arithOpcode (ChangeExponent n) = Long (0xFD00 + fromIntegral n)
 arithOpcode (ShiftMantissa n) = Long (0xFE00 + fromIntegral n)
-arithOpcode (Print) = Long 0x0700
-arithOpcode (LParen) = Short 0x01
-arithOpcode (Plus) = Short 0x03
-arithOpcode (Minus) = Short 0x04
-arithOpcode (RParen) = Short 0x05
-arithOpcode (AssignNoNormalize) = Short 0x07
-arithOpcode (Assign) = Short 0x08
-arithOpcode (Times) = Short 0x09
-arithOpcode (Colon) = Short 0x0A
-arithOpcode (Square) = Short 0x0B
-arithOpcode (Cube) = Short 0x0C
-arithOpcode (Cotan) = Short 0xF0
-arithOpcode (Tan) = Short 0xF1
-arithOpcode (Ln) = Short 0xF2
-arithOpcode (SquareRoot) = Short 0xF3
-arithOpcode (TransformToDecimal) = Short 0xF4
-arithOpcode (Exp) = Short 0xF5
-arithOpcode (ArcSin) = Short 0xF6
-arithOpcode (ArcTan) = Short 0xF7
-arithOpcode (Sin) = Short 0xF8
-arithOpcode (Cos) = Short 0xF9
-arithOpcode (E) = Short 0xFA
-arithOpcode (ExtractExponenent) = Short 0xFB
-arithOpcode (Mod) = Short 0xFC
-arithOpcode (Sign) = Short 0xFF
+arithOpcode Print = Long 0x0700
+arithOpcode LParen = Short 0x01
+arithOpcode Plus = Short 0x03
+arithOpcode Minus = Short 0x04
+arithOpcode RParen = Short 0x05
+arithOpcode AssignNoNormalize = Short 0x07
+arithOpcode Assign = Short 0x08
+arithOpcode Times = Short 0x09
+arithOpcode Colon = Short 0x0A
+arithOpcode Square = Short 0x0B
+arithOpcode Cube = Short 0x0C
+arithOpcode Cotan = Short 0xF0
+arithOpcode Tan = Short 0xF1
+arithOpcode Ln = Short 0xF2
+arithOpcode SquareRoot = Short 0xF3
+arithOpcode TransformToDecimal = Short 0xF4
+arithOpcode Exp = Short 0xF5
+arithOpcode ArcSin = Short 0xF6
+arithOpcode ArcTan = Short 0xF7
+arithOpcode Sin = Short 0xF8
+arithOpcode Cos = Short 0xF9
+arithOpcode E = Short 0xFA
+arithOpcode ExtractExponenent = Short 0xFB
+arithOpcode Mod = Short 0xFC
+arithOpcode Sign = Short 0xFF
 
 {-
   Converts numbers to BESM floating point
@@ -624,7 +623,7 @@ numberToBesmFloating num =
         )
         p
    where
-    pad = take (32 - length bits) (repeat False)
+    pad = replicate (32 - length bits) False
 
 -- toBitVector' (len - 1) (bits) b0
 -- where
@@ -643,13 +642,11 @@ fromBesmAddress :: String -> Maybe Int
 fromBesmAddress inp =
   let
     str = replicate (4 - length inp) '0' ++ inp
-    (b : q : h1 : h2 : []) = str
+    [b, q, h1, h2] = str
     bin = digitToInt b
     quat = digitToInt q
    in
-    case bin < 2 && quat < 4 of
-      True -> Just $ digitToInt h2 + digitToInt h1 * 2 ^ 4 + quat * 2 ^ 8 + bin * 2 ^ 10
-      False -> Nothing
+    (if bin < 2 && quat < 4 then Just $ digitToInt h2 + digitToInt h1 * 2 ^ 4 + quat * 2 ^ 8 + bin * 2 ^ 10 else Nothing)
 
 unsafeFromBesmAddress :: String -> Int
 unsafeFromBesmAddress = fromJust . fromBesmAddress

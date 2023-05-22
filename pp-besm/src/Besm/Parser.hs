@@ -1,5 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
+
+
 {-# LANGUAGE OverloadedStrings #-}
 
 module Besm.Parser (
@@ -92,8 +92,8 @@ pp = do
 section :: Text -> Parser a -> Parser a
 section sectionName sectionParser = do
   --       v--- enforce sequential section numbers?
-  lexeme $ L.decimal <* (char '.')
-  forM (T.words sectionName) $ \word -> (symbol word)
+  lexeme $ L.decimal <* char '.'
+  forM_ (T.words sectionName) $ \word -> symbol word
   scn
   sectionParser
 
@@ -117,14 +117,14 @@ variableAddressBlock = do
   numCells <- parens (integer <* symbol "cells")
   scn
 
-  (Block numCells . NL.fromList) <$> some variableAddress
+  Block numCells . NL.fromList <$> some variableAddress
 
 variableAddress :: Parser (Text, SimpleExpr Char)
 variableAddress = do
   var <- lexeme . angles $ complexVar
 
   symbol "="
-  exp <- simpleExpr (oneOf $ (subscripts var))
+  exp <- simpleExpr (oneOf (subscripts var))
   scn
   return (unVar var, exp)
 
@@ -160,9 +160,9 @@ inFin = try $ do
   var <- simpleVar
   symbol ":"
 
-  init <- (lexeme $ string (unVar var) <* string "_in") *> symbol "=" *> integer
+  init <- lexeme (string (unVar var) <* string "_in") *> symbol "=" *> integer
   symbol ","
-  fin <- (lexeme $ string (unVar var) <* string "_fin") *> symbol "=" *> integer
+  fin <- lexeme (string (unVar var) <* string "_fin") *> symbol "=" *> integer
   scn
 
   return $ InFin var init fin
@@ -174,7 +174,7 @@ characteristic :: Parser Parameter
 characteristic = do
   var <- simpleVar
   symbol ":"
-  init <- (lexeme $ string (unVar var) <* string "_in") *> symbol "=" *> integer
+  init <- lexeme (string (unVar var) <* string "_in") *> symbol "=" *> integer
   symbol ","
 
   a <- variable
@@ -207,7 +207,7 @@ schemaSection = section "Logical Scheme" $ do
 
 -- | Parse a list of schematic statements
 schemaParser :: Parser LogicalSchema
-schemaParser = (Seq . concatTuples) <$> some ((,) <$> schemaTerm <*> optional (semicolon >> pure Semicolon) <* scn)
+schemaParser = Seq . concatTuples <$> some ((,) <$> schemaTerm <*> optional (semicolon >> pure Semicolon) <* scn)
  where
   concatTuples ((term, Just s) : ls) = term : s : concatTuples ls
   concatTuples ((term, Nothing) : ls) = term : concatTuples ls
@@ -220,16 +220,12 @@ schemaTerm = loop <|> printExpr <|> assign <|> logicalOperator <|> opSign <|> st
 loop :: Parser LogicalSchema
 loop = between (char '[') (char ']') $ do
   var <- lexeme letterChar <* scn
-  schema <- schemaParser
-
-  return $ Loop var schema
+  Loop var <$> schemaParser
 
 assign :: Parser LogicalSchema
 assign = do
   exp <- try $ schemaExpr <* symbol "=>"
-  var <- variable
-
-  return $ Assign exp var
+  Assign exp <$> variable
 
 quantity :: Parser Quantity
 quantity = V <$> variable <|> C <$> integer
@@ -238,7 +234,7 @@ variable :: Parser Variable
 variable = complexVar <|> simpleVar
 
 simpleVar :: Parser Variable
-simpleVar = lexeme $ Var <$> (letterChar) <*> pure []
+simpleVar = lexeme $ Var <$> letterChar <*> pure []
 
 complexVar :: Parser Variable
 complexVar = lexeme $ do
@@ -249,7 +245,7 @@ complexVar = lexeme $ do
 
 printExpr :: Parser LogicalSchema
 printExpr = do
-  exp <- try $ schemaExpr <* (mapM_ symbol [",", "=>", "0"])
+  exp <- try $ schemaExpr <* mapM_ symbol [",", "=>", "0"]
 
   return $ Print exp
 
@@ -268,7 +264,7 @@ logicalOperator = lexeme $ (*>) (char 'P') $ parens $ do
     opSign <- operatorNumber
     symbol "/"
 
-    (,) <$> pure opSign <*> range
+    pure ((,) opSign) <*> range
 
   range = do
     open <- symbol "(" <|> symbol "["
@@ -296,7 +292,7 @@ opSign :: Parser LogicalSchema
 opSign = char 'L' *> (OpLabel <$> operatorNumber)
 
 stop :: Parser LogicalSchema
-stop = symbol "stop" *> return (NS NS.Stop (Abs 0) (Abs 0) (Abs 0))
+stop = symbol "stop" Data.Functor.$> NS NS.Stop (Abs 0) (Abs 0) (Abs 0)
 
 goto :: Parser LogicalSchema
 goto = cccc2 <|> cccc <|> rtc <|> clcc <|> jcc
@@ -305,11 +301,10 @@ goto = cccc2 <|> cccc <|> rtc <|> clcc <|> jcc
   cccc2 = try $ do
     a <- operatorNumber
     string "/="
-    b <- operatorNumber
-    return $ CCCC2 a b
+    CCCC2 a <$> operatorNumber
   rtc = try $ (RTC <$> operatorNumber) <* string "\\="
   clcc = string "/-" *> (CLCC <$> operatorNumber)
-  jcc = string "\\-" *> (pure JCC)
+  jcc = string "\\-" Data.Functor.$> JCC
 
 nonStandard :: Parser LogicalSchema
 nonStandard =

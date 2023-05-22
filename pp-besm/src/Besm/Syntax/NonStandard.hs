@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor #-}
+
 
 module Besm.Syntax.NonStandard where
 

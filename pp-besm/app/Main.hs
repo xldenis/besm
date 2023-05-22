@@ -54,8 +54,8 @@ codeCommand :: String -> IO ()
 codeCommand f = do
   pp <- parseFromFile f
   let qa = calculateQuantityAddresses lowered
-      lowered = (lowerProgramme pp)
-      prettyPrint = Prelude.putStrLn . show . vcat . map (pPrint . toHexString)
+      lowered = lowerProgramme pp
+      prettyPrint = print . vcat . map (pPrint . toHexString)
 
   print "Block V"
   prettyPrint $ blockV qa (variableAddresses lowered)
@@ -67,7 +67,7 @@ codeCommand f = do
   prettyPrint $ blockC (constants lowered)
 
   print "Block K"
-  prettyPrint $ blockK qa (programme $ lowered)
+  prettyPrint $ blockK qa (programme lowered)
 
 printCommand :: String -> IO ()
 printCommand f = do

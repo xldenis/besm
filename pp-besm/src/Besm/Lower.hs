@@ -187,7 +187,7 @@ data Constant
   deriving (Show)
 
 toWord11 :: Int -> Word11
-toWord11 i = W $ mkBV (knownNat) (fromIntegral i)
+toWord11 i = W $ mkBV knownNat (fromIntegral i)
 
 lowerOpSign :: S.OperatorSign -> OperatorSign
 lowerOpSign = OS . unWord11 . toWord11 . S.fromOperatorSign
@@ -287,7 +287,7 @@ lowerVariableAddresses (S.VA blocks) =
     unwrapVA (S.SAdd l r) = unwrapVA l ++ unwrapVA r
     unwrapVA l = [l]
 
-lowerParameters ps = map lowerParameter ps
+lowerParameters = map lowerParameter
  where
   lowerParameter (S.InFin var init fin) = InFin (S.unVar var) (QA . T.pack $ show init) (QA . T.pack $ show fin)
   lowerParameter (S.Characteristic var op init a b) = undefined
@@ -301,7 +301,7 @@ lowerSchema (S.OpLabel op) = [OperatorSign (lowerOpSign op)]
 lowerSchema (S.Print exp) = lowerExp exp ++ [Arith Print]
 lowerSchema (S.NS op a b c) = [NS op a b c]
 -- ; is a purely syntactic construct that is parsed solely for prettyprinting purposes
-lowerSchema (S.Semicolon) = []
+lowerSchema S.Semicolon = []
 lowerSchema (S.CCCC v) = [NS NS.CCCC (S.Abs 0) (S.Abs 0) (S.Abs $ S.fromOperatorSign v)]
 lowerSchema (S.CCCC2 w v) = [NS NS.CCCC (S.Abs 0) (S.Abs $ S.fromOperatorSign v) (S.Abs $ S.fromOperatorSign v)]
 lowerSchema (S.RTC v) = [NS NS.AI (S.Abs 0x110F) (S.Abs 0) (S.Abs $ S.fromOperatorSign v), Empty]
@@ -316,7 +316,7 @@ lowerQuantity (S.V v) = lowerVariable v
 lowerLogicalOperator :: S.Quantity -> S.OperatorSign -> [(S.OperatorSign, S.Range)] -> LogicalOperator
 lowerLogicalOperator var op ranges =
   Op
-    { x = (lowerQuantity var)
+    { x = lowerQuantity var
     , defaultOp = lowerOpSign op
     , choices = map lowerRange ranges
     }
@@ -337,9 +337,9 @@ lowerExp (S.Minus l r) = lowerExp l ++ [Arith Minus] ++ lowerExp r
 lowerExp (S.Div l r) = lowerExp l ++ [Arith Colon] ++ lowerExp r
 lowerExp (S.Primitive var) = [Parameter $ lowerQuantity var]
 lowerExp (S.Form v) = [Arith TransformToDecimal, Parameter (lowerQuantity v)]
-lowerExp (S.Mod v) = [Arith Mod] ++ lowerExp v
-lowerExp (S.Sqrt v) = [Arith SquareRoot] ++ lowerExp v
-lowerExp (S.Cube v) = [Arith Cube] ++ lowerExp v
+lowerExp (S.Mod v) = Arith Mod : lowerExp v
+lowerExp (S.Sqrt v) = Arith SquareRoot : lowerExp v
+lowerExp (S.Cube v) = Arith Cube : lowerExp v
 
 lowerConstants = map lowerConstant
  where

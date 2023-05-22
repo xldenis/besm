@@ -4,7 +4,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeApplications #-}
+
 {-# LANGUAGE TypeOperators #-}
 
 module BitLayout where
@@ -147,7 +147,7 @@ bvOrAt ::
   BV t ->
   BV t
 bvOrAt start sVec tVec =
-  (BV.ashr knownNat (BV.zext knownNat sVec) start) `BV.or` tVec
+  BV.ashr knownNat (BV.zext knownNat sVec) start `BV.or` tVec
 
 {- | Given a list of 'Chunk's, inject each chunk from a source 'BV' @s@ into a
  target 'BV' @t@.

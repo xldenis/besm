@@ -30,7 +30,7 @@ prop_block = withTests 1000 $ do
   parse_and_pretty (forAll $ genBlock "abc") variableAddressBlock (prettyVABlock 'a')
 
 prop_prog = withTests 1000 $ do
-  parse_and_pretty (forAll $ genProgramme) pp (prettyProgramme)
+  parse_and_pretty (forAll genProgramme) pp prettyProgramme
 
 parse_and_pretty :: (Show a, Eq a) => PropertyT IO a -> Parser a -> (a -> Doc a) -> Property
 parse_and_pretty propGen parser pretty =
@@ -40,7 +40,7 @@ parse_and_pretty propGen parser pretty =
     tripping gened (render . pretty) (parse' parser)
  where
   render = renderStrict . layoutPretty defaultLayoutOptions
-  parse' p = first parseErrorPretty . (parse p "")
+  parse' p = first parseErrorPretty . parse p ""
 
 genParameter :: MonadGen m => m Parameter
 genParameter =
@@ -73,7 +73,7 @@ genEquation var subscripts = do
   expr <- genExpr subscripts
 
   let usedSubs = toList expr <|> constantSub expr
-  return $ (pack (var : '_' : usedSubs), expr)
+  return (pack (var : '_' : usedSubs), expr)
  where
   constantSub (SConstant i) = show i
   constantSub _ = []
@@ -88,12 +88,12 @@ genExpr vars = do
       ( \var ->
           Gen.choice
             [ pure $ SExpVar var
-            , STimes <$> (genSimpleConstant) <*> (pure $ SExpVar var)
+            , STimes <$> genSimpleConstant <*> pure (SExpVar var)
             ]
       )
 
   constant <-
-    if length elems == 0
+    if null elems
       then pure <$> genSimpleConstant
       else Gen.list (Range.linear 0 1) genSimpleConstant
   pure $ foldl1 SAdd (elems ++ constant)
