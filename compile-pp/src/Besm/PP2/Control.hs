@@ -1,4 +1,5 @@
 {-# LANGUAGE RecursiveDo #-}
+
 module Besm.PP2.Control where
 
 import Besm.Assembler.Monad
@@ -27,9 +28,9 @@ alpha the instruction for dispatching or forming variable instructions.
 
 pp2_2 = mdo
   let gammaTransfer = Procedure "MP-2" (op 39)
-      betaTransfer  = Procedure "MP-2" (op 36)
+      betaTransfer = Procedure "MP-2" (op 36)
       header = Unknown "programme header table" `offAddr` 6 -- This should be cell 7
-      gammaInitial  = header `offAddr` 6
+      gammaInitial = header `offAddr` 6
       alphaTransfer = Procedure "MP-2" (op 33)
 
   pht <- extern "programme header table"
@@ -38,7 +39,6 @@ pp2_2 = mdo
 
   wm <- extern "working-cells"
   extern "selected"
-
 
   normInstr <- extern "norm-instruction"
   let cellP = wm `offAddr` 2
@@ -53,7 +53,6 @@ pp2_2 = mdo
 
   local "xa-template" (Template (Xa (Absolute 0x001) zero zero UnNormalized))
   local "xb-template" (Template (Xb (Absolute 0x002) UnNormalized))
-
 
   seven' <- extern "7'"
 
@@ -144,8 +143,7 @@ pp2_2 = mdo
     ai counterK shiftedS cellB
     shift counterK (left 22) shiftedK
     ai cellB shiftedK cellB
-    tSign' cellB  (Absolute 0) cellB -- change the sign bit to make it an unnormalized instr
-
+    tSign' cellB (Absolute 0) cellB -- change the sign bit to make it an unnormalized instr
     ce' cellB (Absolute 0x12) gammaBuilder
 
   {-
@@ -230,7 +228,6 @@ pp2_2 = mdo
 
   does this matter? is this a reflection in changes between the source and book?
 
-
   -}
   operator 21 $ do
     ai (var "xa-template") shiftedS gammaBuilder
@@ -313,7 +310,6 @@ pp2_2 = mdo
 
   operator 33 $ do
     clcc betaTransfer
-
 
   local "add-template" (Template (Add (Absolute 0x1169) (Absolute 1) (Absolute 1) UnNormalized))
   operator 34 $ do

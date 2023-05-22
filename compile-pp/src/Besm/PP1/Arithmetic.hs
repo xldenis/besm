@@ -1,10 +1,16 @@
-{-# LANGUAGE TemplateHaskell, FlexibleContexts, DeriveFunctor, GeneralizedNewtypeDeriving, RecursiveDo #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Besm.PP1.Arithmetic where
 
 import Besm.Assembler.Monad
 import Besm.Assembler.Syntax
 
 import Data.Bits (shiftL, shiftR)
+
 {-
   PP-1
 
@@ -44,12 +50,11 @@ import Data.Bits (shiftL, shiftR)
   Symbol Counter is used in successive extraction of the codes of symbols from lines of information.
 -}
 
-
 pp12 = Procedure "PP-1-2" . op
 
 arithCoder :: Builder Address
 arithCoder = do
-   -- The completed operators block is 208 words in size
+  -- The completed operators block is 208 words in size
   completedOperator <- global "arith-buffer" (Size 240)
 
   -- The partial programme is apparently only 32 words in size
@@ -57,18 +62,17 @@ arithCoder = do
 
   cellA <- extern "A"
   cellB <- extern "B"
-  cellC <- global "C"  Cell
-  cellD <- global "D"  Cell
-  cellE <- local "E"  Cell
-  cellF <- local "F"  Cell
+  cellC <- global "C" Cell
+  cellD <- global "D" Cell
+  cellE <- local "E" Cell
+  cellF <- local "F" Cell
 
   -- Counters
-  counterK <- global "K"  (Addr Third completedOperator)
+  counterK <- global "K" (Addr Third completedOperator)
   counterB1 <- local "B1" (Addr First (partialProgramme `offAddr` (-1)))
   counterB2 <- local "B2" Cell
   counterB3 <- local "B3" Cell
   symbolCounter <- local "symbol counter" (Raw 0)
-
 
   -- Apparently the first addresses of the DS store some constants
 
@@ -90,55 +94,56 @@ arithCoder = do
   local "CLCC" (Raw 0)
   local "initializer" (Raw $ 2 ^ 34 - 1)
 
-  local "template-table" $ Table
-    [ Template (CLCC . Absolute $ fromAddr "10E0")
-    , Template (CLCC . Absolute $ fromAddr "10E0")
-    , Template (CLCC . Absolute $ fromAddr "1090")
-    , Template (CLCC . Absolute $ fromAddr "1140")
-    , Template (CLCC . Absolute $ fromAddr "10A2")
-    , Template (CLCC . Absolute $ fromAddr "1150")
-    , Template (CLCC . Absolute $ fromAddr "10D5")
-    , Template (CLCC . Absolute $ fromAddr "10F1")
-    , Template (CLCC . Absolute $ fromAddr "10C0")
-    , Template (CLCC . Absolute $ fromAddr "10C0")
-    , Template (I zero zero zero)
-    , Template (TExp zero zero UnNormalized)
-    , Raw 0
-    , Template (Ce zero zero zero UnNormalized)
-    , Template (Shift zero zero zero)
-    , Template (TSign (Absolute $ fromAddr "1081") zero zero UnNormalized)
-    ]
+  local "template-table" $
+    Table
+      [ Template (CLCC . Absolute $ fromAddr "10E0")
+      , Template (CLCC . Absolute $ fromAddr "10E0")
+      , Template (CLCC . Absolute $ fromAddr "1090")
+      , Template (CLCC . Absolute $ fromAddr "1140")
+      , Template (CLCC . Absolute $ fromAddr "10A2")
+      , Template (CLCC . Absolute $ fromAddr "1150")
+      , Template (CLCC . Absolute $ fromAddr "10D5")
+      , Template (CLCC . Absolute $ fromAddr "10F1")
+      , Template (CLCC . Absolute $ fromAddr "10C0")
+      , Template (CLCC . Absolute $ fromAddr "10C0")
+      , Template (I zero zero zero)
+      , Template (TExp zero zero UnNormalized)
+      , Raw 0
+      , Template (Ce zero zero zero UnNormalized)
+      , Template (Shift zero zero zero)
+      , Template (TSign (Absolute $ fromAddr "1081") zero zero UnNormalized)
+      ]
 
-  local "0200 0000" (   Raw $ 0x200 `shiftL` 11)
+  local "0200 0000" (Raw $ 0x200 `shiftL` 11)
 
-   -- Template values
+  -- Template values
   local "templateDispatch" (Template (AI (Unknown "template-table") cellD builder)) -- this is used to find the template for trig operations
-  local "first-k-cell"      (TemplateT (CompWord completedOperator (Unknown "scratch-cell-1") (pp12 112) (pp12 116)))
+  local "first-k-cell" (TemplateT (CompWord completedOperator (Unknown "scratch-cell-1") (pp12 112) (pp12 116)))
   local ",< 0001 builder 112" (TemplateT (CompWord (Absolute 1) builder (pp12 112) (pp12 116))) -- ,< 0001 builder 112
-  local "AI _ _ 0001"       (Template (AI  zero zero (Absolute 1)))
-  local "TN 0002 _ _"       (Template (TN  (Absolute 2) zero Normalized))
-  local "- 1101 _ 0001"     (Template (Sub (Absolute $ unsafeFromBesmAddress "1101") zero (Absolute 1) Normalized))
-  local "transfer template" (Template (TN  (Unknown "transfer cell") zero UnNormalized))
-  local "pp-template"       (Template (TN cellD (Absolute 1) UnNormalized))
-  local ",TN _ cellE"       (Template (TN (Absolute $ 2 ^ 12 - 1) cellE UnNormalized)) -- used in first subroutine for selection (op 71)
-  local ",TN _ cellD"       (Template (TN (Absolute            1) cellD UnNormalized)) -- used in the second subroutine for selection (op 72)
-  local ",CE _ -2 _"        (Template (Ce (Unknown "transfer cell") (Absolute $ 2 ^ 9 - 2) (Unknown "transfer cell") UnNormalized))
+  local "AI _ _ 0001" (Template (AI zero zero (Absolute 1)))
+  local "TN 0002 _ _" (Template (TN (Absolute 2) zero Normalized))
+  local "- 1101 _ 0001" (Template (Sub (Absolute $ unsafeFromBesmAddress "1101") zero (Absolute 1) Normalized))
+  local "transfer template" (Template (TN (Unknown "transfer cell") zero UnNormalized))
+  local "pp-template" (Template (TN cellD (Absolute 1) UnNormalized))
+  local ",TN _ cellE" (Template (TN (Absolute $ 2 ^ 12 - 1) cellE UnNormalized)) -- used in first subroutine for selection (op 71)
+  local ",TN _ cellD" (Template (TN (Absolute 1) cellD UnNormalized)) -- used in the second subroutine for selection (op 72)
+  local ",CE _ -2 _" (Template (Ce (Unknown "transfer cell") (Absolute $ 2 ^ 9 - 2) (Unknown "transfer cell") UnNormalized))
 
   -- Constant numerical values
-  local "0xd"       (Raw 0x0d)
-  local "0xf0"      (Raw 0xf0)
-  local "0xb"       (Raw 0x0b)
-  local "0x1C"      (Raw 0x1C)
-  local "0xfd"      (Raw 0xfd)
-  local "0xff"      (Raw 0xff)
-  local "0x800000"  (Raw 0)
+  local "0xd" (Raw 0x0d)
+  local "0xf0" (Raw 0xf0)
+  local "0xb" (Raw 0x0b)
+  local "0x1C" (Raw 0x1C)
+  local "0xfd" (Raw 0xfd)
+  local "0xff" (Raw 0xff)
+  local "0x800000" (Raw 0)
 
-  local "5"         (Raw 5)
-  local "6"         (Raw 6)
-  local "7"         (Raw 7)
-  local "9"         (Raw 9)
-  local "15"        (Raw 15)
-  local "32"        (Raw 32)
+  local "5" (Raw 5)
+  local "6" (Raw 6)
+  local "7" (Raw 7)
+  local "9" (Raw 9)
+  local "15" (Raw 15)
+  local "32" (Raw 32)
   local "2" (Raw 2)
   local "3" (Raw 3)
   local "8" (Raw 8)
@@ -147,8 +152,8 @@ arithCoder = do
   local "trans-opcode" (Cell)
 
   local "transfer cell" Cell -- this cell is typically used to build up and transfer instructions
-  local "result-code"   Cell
-  local "fixed K"       Cell
+  local "result-code" Cell
+  local "fixed K" Cell
 
   let two = Unknown "2"
   let six = Unknown "6"
@@ -164,7 +169,6 @@ arithCoder = do
     symbol a single-place operation.
     """
   -}
-
   operator 1 $ do
     sub' (Unknown "&completedOperator") one counterK
 
@@ -220,15 +224,14 @@ arithCoder = do
       chain (op 7)
 
     operator 7 $ do
-       tN' zero symbolCounter
-       chain joinP
+      tN' zero symbolCounter
+      chain joinP
 
     joinP <- block $ do
       jcc
       chain (op 8)
 
     return ()
-
 
   {-
     Op. 8 transfers the code of the extracted symbol to cell B.
@@ -252,9 +255,8 @@ arithCoder = do
 
   operator 10 $ mdo
     let xf0 = Unknown "0xf0"
-        xd  = Unknown "0xd" -- should be 0xd?
-
-    _   <- comp cellB xd  (op 12) alt
+        xd = Unknown "0xd" -- should be 0xd?
+    _ <- comp cellB xd (op 12) alt
     alt <- comp cellB xf0 (op 11) (op 19)
     return ()
   {-
@@ -289,8 +291,8 @@ arithCoder = do
   operator 13 $ do
     shift cellC (left 11) cellC
     shift cellC (left 11) cellD
-    ai    cellC cellD     cellD
-    ce'   cellD (Absolute 3) cellC
+    ai cellC cellD cellD
+    ce' cellD (Absolute 3) cellC
 
     chain (op 14)
   -- insert the quantity from c into both args
@@ -344,14 +346,13 @@ arithCoder = do
         xfd = Unknown "0xfd"
 
     operator 21 $ mdo
-      _   <- comp     cellB xfd (op 24) alt
+      _ <- comp cellB xfd (op 24) alt
       alt <- compWord cellB xff (op 24) op22
       return ()
 
     op22 <- operator 22 $ do
       shift cellB (left 11) cellB
       clcc (op 2) -- woo subroutines!
-
       chain (op 24)
 
     return ()
@@ -379,7 +380,7 @@ arithCoder = do
     let singOParenCode = Unknown "2"
         multOParenCode = Unknown "3"
 
-    _    <- operator 25 $ comp cellB singOParenCode (op 30) op26
+    _ <- operator 25 $ comp cellB singOParenCode (op 30) op26
     op26 <- operator 26 $ comp cellB multOParenCode (op 27) (op 28)
 
     return ()
@@ -543,7 +544,6 @@ arithCoder = do
     clcc (op 69) -- is this enough? op69 expects the conditional code in cellD
     chain (op 40)
 
-
   {-
 
   Op. 40 carries out further testing of the symbol, the code of which is in cell
@@ -593,7 +593,6 @@ arithCoder = do
 
     chain (op 44)
 
-
   {-
 
   Op. 44 verifies if anything has been transferred to the block of the completed
@@ -622,7 +621,6 @@ arithCoder = do
   -}
 
   let completedInstr = Unknown "transfer cell" -- cell that's used to transfer to block 106
-
   operator 45 $ mdo
     bitAnd completedInstr thirdAddr completedInstr
 
@@ -724,7 +722,6 @@ arithCoder = do
 
   operator 54 $ do
     clcc (op 106) -- CLCC or callRtc?
-
     chain (op 2)
 
   {-
@@ -820,7 +817,6 @@ arithCoder = do
   -}
 
   let aiConstant = Absolute (unsafeFromBesmAddress "110F") -- address of cell holding 0x1FFFFF800
-
   operator 61 $ do
     ai cellE aiConstant cellE
     chain (op 62)
@@ -851,7 +847,6 @@ arithCoder = do
     clcc (op 69)
     chain (op 64)
 
-
   {-
   Op. 64 determines the case of n-multiple close-parentheses, transferring
   control to op. 65
@@ -879,11 +874,10 @@ arithCoder = do
 
   -}
 
-  operator 66 $ do -- currently believe this value is unneeded
+  operator 66 $ do
+    -- currently believe this value is unneeded
     let compVal = Unknown "comparison value" --  0x1800000
-
     compWord cellE compVal (op 68) (op 67)
-
 
   {-
 
@@ -1201,13 +1195,11 @@ arithCoder = do
   let outCell = completedInstr
   let builder = Unknown "scratch-cell-1"
   let templateDispatch = Unknown "templateDispatch" -- holds AI template-table cellD builder
-
   operator 94 $ mdo
     shift cellE (left 22) jumpCell
 
     ai templateDispatch jumpCell jumpCell
     jumpCell <- empty -- this instruction gets replaced with a tN of the correct instruction into the builder cell
-
     tN' builder outCell
     chain (op 95)
 
@@ -1257,7 +1249,6 @@ arithCoder = do
     ai temp cellD outCell
 
     chain (op 99)
-
 
   {-
   Op 99. transfers the completed instruction for dispatch of the argument to the
@@ -1418,7 +1409,6 @@ arithCoder = do
   mdo
     operator 111 $ do
       let kComp = Unknown ",< 0001 builder 112" -- ,< 0001 builder 112
-
       shift fixedCounter (left 22) cmp
 
       ai kComp cmp cmp
@@ -1455,10 +1445,9 @@ arithCoder = do
     HMMMMMMMMMM????????????
     -}
 
-
     operator 114 $ mdo
       let lastTested = Unknown "scratch-cell-2"
-      let scratch    = Unknown "scratch-cell-1"
+      let scratch = Unknown "scratch-cell-1"
       let testedCell = Unknown "scratch-cell-3"
 
       shift (op 115) (right 22) testedCell
@@ -1485,7 +1474,6 @@ arithCoder = do
 
     cmp <- operator 115 $ do
       comp zero zero (op 112) (op 116) -- put a dummy comparison to make sure assembler lays this out properly!
-
     return ()
 
   {-
@@ -1505,7 +1493,7 @@ arithCoder = do
   the sub-routine in DS, transferring conrtol to op. 118.
   -}
 
-  let opCode   = Unknown "trans-opcode"
+  let opCode = Unknown "trans-opcode"
 
   operator 117 $ do
     let clccCode = Unknown "CLCC"
@@ -1568,4 +1556,3 @@ arithCoder = do
   operator 122 $ do
     tN' counterK cellD
     retRTC
-

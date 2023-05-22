@@ -1,4 +1,6 @@
-{-# LANGUAGE RecursiveDo, BinaryLiterals #-}
+{-# LANGUAGE BinaryLiterals #-}
+{-# LANGUAGE RecursiveDo #-}
+
 module Besm.PP1.Logical where
 
 {-
@@ -85,7 +87,7 @@ pp1_1 = do
 
   let purge = callRtc (op 35) (op 45)
 
-  let firstArg  = Unknown "C"
+  let firstArg = Unknown "C"
   let secondArg = Unknown "D"
   {-
 
@@ -107,7 +109,7 @@ pp1_1 = do
 
   operator 1 $ do
     bitAnd cellA secondAddr constantX
-    bitAnd cellA thirdAddr  constantN
+    bitAnd cellA thirdAddr constantN
 
     chain (op 2)
 
@@ -158,7 +160,6 @@ pp1_1 = do
       │ < │    │    │ 0202 │
       └───┴────┴────┴──────┘
 
-
     for the internal comparison and
 
       ┌───┬─────┬─────┬──────┐
@@ -170,7 +171,6 @@ pp1_1 = do
   -}
 
   operator 12 $ mdo
-
     {-
 
       Holds the value:
@@ -219,7 +219,6 @@ pp1_1 = do
 
   operator 14 $ mdo
     comp cellY four (op 15) template -- if Y < 4 then next else apply template
-
     template <- block $ do
       ce' cellB (Absolute 0x14) alpha1
 
@@ -229,7 +228,6 @@ pp1_1 = do
   {-
   Op. 15 for y = 8 transfers control to op. 19, forming for this case the
   output inverse comparison.
-
 
   Notes
   =====
@@ -340,7 +338,6 @@ pp1_1 = do
   operator 24 $ do
     bitAnd cellA four cellY' -- four == 2^3 * 0.5 this means that the two lowest bits of the exp are 1
     tExp cellY' cellY' -- objective is that cellY' holds a normalized version of those bits.
-
     chain (op 25)
 
   {-
@@ -378,7 +375,7 @@ pp1_1 = do
     ce' cellB (Absolute 0x14) alpha1
 
     shift constantX (left 11) xVal
-    bitAnd cellA secondAddr   bVal
+    bitAnd cellA secondAddr bVal
 
     chain (op 28)
   {-
@@ -407,10 +404,9 @@ pp1_1 = do
     ce' template (Absolute 0x14) alpha1
 
     shift xVal (right 11) xVal
-    shift bVal (left  11) bVal
+    shift bVal (left 11) bVal
 
     chain (op 30)
-
 
   {-
   Op. 30 forms the second comparison and transfers control to the sub-routine
@@ -496,7 +492,6 @@ pp1_1 = do
   operator 37 $ do
     compWord temp1 temp2 (op 39) (op 41)
 
-
   {-
   In the case of non-coincidence
 
@@ -528,7 +523,6 @@ pp1_1 = do
   operator 41 $ do
     tN' zero cellK1
 
-
   {-
   Op. 42 compares the contents of cell α+4 with the constant c, having the
   form
@@ -554,7 +548,6 @@ pp1_1 = do
   The book says it calls MP(2) but that seems wrong.. the correct subroutine is at MP(21).
   What does op 44 do then though?
 
-
   -}
 
   operator 43 $ do
@@ -578,7 +571,7 @@ pp1_1 = do
     tN' alpha3 alpha4
     tN' alpha2 alpha3
     tN' alpha1 alpha2
-    tN' zero   alpha1
+    tN' zero alpha1
 
     retRTC
   {-
@@ -650,17 +643,17 @@ pp1_1 = do
     add' unity counterTransfer counterTransfer
 
   {-
-  Op. 11, using the counter of concluding transfers, ensures repitition of
-  operators 42-45 and 10 three times. Transfer of control from op. 45 to op.
-  10 is realized by the instruction of RTc, formed during the sub-routine
-  "purging" after op. 9. In fulfilling these operators the remaining
-  instructions in cells α+4, α+3 and α+2 are transferred to the block of
-  completed instructions while α+1, ..., α+4 themselves are cleared.
+    Op. 11, using the counter of concluding transfers, ensures repitition of
+    operators 42-45 and 10 three times. Transfer of control from op. 45 to op.
+    10 is realized by the instruction of RTc, formed during the sub-routine
+    "purging" after op. 9. In fulfilling these operators the remaining
+    instructions in cells α+4, α+3 and α+2 are transferred to the block of
+    completed instructions while α+1, ..., α+4 themselves are cleared.
 
-  After termiantion of the functioning of the block of logical operators
-  control is transferred to op. 3 of MP-1 for examining the selected line, no
-  longer constituting information on the given logical operators.
--}
+    After termiantion of the functioning of the block of logical operators
+    control is transferred to op. 3 of MP-1 for examining the selected line, no
+    longer constituting information on the given logical operators.
+  -}
   operator 11 $ mdo
     let _mp1_3 = Procedure "MP-1" (op 3)
     comp counterTransfer four b11 _mp1_3

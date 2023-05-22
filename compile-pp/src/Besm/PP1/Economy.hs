@@ -1,4 +1,5 @@
 {-# LANGUAGE RecursiveDo #-}
+
 module Besm.PP1.Economy where
 
 import Besm.Assembler.Monad
@@ -28,26 +29,22 @@ pp1_3 = do
   completedOperator <- extern "arith-buffer"
   let partialProgramme = Unknown "arith-buffer" `offAddr` 208
   let beta0 = partialProgramme `offAddr` (negate 1) -- β₀
-
   let beta = partialProgramme -- Unknown "β₁, .., β₁₆"
-
   extern "K"
 
   cellA1 <- extern "A + 1"
   let working = cellA1 -- Unknown "econ-current-cell"
-
   cellS <- local "S" Cell
   lowerBound <- extern "&completedOperator"
   upperBound <- local "upperBound" (Raw 0x3FF)
 
-  local ",TN 116F _"   (Template (TN thirdAddr          zero            UnNormalized))
-  local ",TN buffer _" (Template (TN completedOperator  zero            UnNormalized))
-  local ",TN β₀ βᵢ"    (Template (TN beta0              (Unknown "βᵢ")  UnNormalized))
-  local "tn"           (Template (TN zero               working         UnNormalized)) -- ,TN _  working
-  local "ai _ cellS _" (Template (AI   zero  cellS   zero             ))
+  local ",TN 116F _" (Template (TN thirdAddr zero UnNormalized))
+  local ",TN buffer _" (Template (TN completedOperator zero UnNormalized))
+  local ",TN β₀ βᵢ" (Template (TN beta0 (Unknown "βᵢ") UnNormalized))
+  local "tn" (Template (TN zero working UnNormalized)) -- ,TN _  working
+  local "ai _ cellS _" (Template (AI zero cellS zero))
   local "and-template" (Template (LogMult zero thirdAddr cellS)) -- '^ _ thirdAddr cellS'
-  local "final-store"  (Template (AddE cellS working zero UnNormalized)) -- ,+Exp cellS currInst _
-
+  local "final-store" (Template (AddE cellS working zero UnNormalized)) -- ,+Exp cellS currInst _
   local "copy of working" (Raw 0)
   local "end-of-arith-op" (Raw 0)
   let endOfOperator = Unknown "end-of-arith-op"
@@ -79,7 +76,7 @@ pp1_3 = do
     -}
 
     select <- operator 2 $ mdo
-      let minusOne      = firstAddr
+      let minusOne = firstAddr
       ai select minusOne select
       select <- empty
       chain (op 3)
@@ -121,7 +118,6 @@ pp1_3 = do
   operator 5 $ mdo
     compMod workingCode lowerBound (op 9) c -- this actually tests if we have a quantity
     c <- block $ compMod upperBound workingCode (op 9) (op 6) -- tests if we are in the range of betas
-
     return ()
   {-
   Op. 6 clears the corresponding cell βᵢ
@@ -221,8 +217,7 @@ pp1_3 = do
     -}
     operator 16 $ mdo
       let storeTemplate = Unknown "ai _ cellS _" -- this is used to store βᵢ in the third (blank addr) of k'
-      let markTemplate  = Unknown ",TN 116F _" -- used to mark βᵢ (116F is a builtin cell full of 1).
-
+      let markTemplate = Unknown ",TN 116F _" -- used to mark βᵢ (116F is a builtin cell full of 1).
       shift selector (right 22) cellS
       ai storeTemplate k' storeK'
       storeK' <- empty

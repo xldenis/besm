@@ -1,25 +1,25 @@
-{-# LANGUAGE RecursiveDo, BinaryLiterals #-}
-module Besm.PP1 where
+{-# LANGUAGE BinaryLiterals #-}
+{-# LANGUAGE RecursiveDo #-}
 
+module Besm.PP1 where
 
 import Besm.Assembler.Monad
 import Besm.Assembler.Syntax
 import qualified Data.Bits as B
 
-informationBlock      = Unknown "buffer" `offAddr` 0
+informationBlock = Unknown "buffer" `offAddr` 0
 completedInstructions = Unknown "buffer" `offAddr` 96
 
-selectionCounter   = Unknown "selection counter"
-ninetysix          = Unknown "96"
-header             = Unknown "programme header table" `offAddr` 6 -- This should be cell 7
-cellKlast          = header `offAddr` 5
+selectionCounter = Unknown "selection counter"
+ninetysix = Unknown "96"
+header = Unknown "programme header table" `offAddr` 6 -- This should be cell 7
+cellKlast = header `offAddr` 5
 arrangementCounter = Unknown "arrangement counter"
-hundredfourtyfour  = Unknown "144"
-maxSelected        = Unknown "max-selected"
-maxWritten         = Unknown "max-written"
+hundredfourtyfour = Unknown "144"
+maxSelected = Unknown "max-selected"
+maxWritten = Unknown "max-written"
 
-
-end = Proc "MP-2" [BB { baseAddress = Operator 1, instrs = [], terminator = Stop}] []
+end = Proc "MP-2" [BB{baseAddress = Operator 1, instrs = [], terminator = Stop}] []
 
 {-
   Known Bugs
@@ -33,9 +33,9 @@ mp1 = do
   global "A + 1" Cell
   local "buffer" (Size 240)
   pinned "header" "programme header table" (Size 15)
-  local "selection counter" (  Val 0)
+  local "selection counter" (Val 0)
   local "arrangement counter" (Val 0)
-  local "96" ( Raw 96)
+  local "96" (Raw 96)
   local "144" (Raw 144)
   global "A" Cell
   global "B" Cell
@@ -46,7 +46,7 @@ mp1 = do
   local "144 shifted 2nd addr" (Raw $ 144 `B.shift` 11)
   local "max-selected" (Raw 96)
   local "max-written" (Raw 144)
-  local "-96-shifted" ( Raw $ 0b11110100000 `B.shift` 22)
+  local "-96-shifted" (Raw $ 0b11110100000 `B.shift` 22)
   local "-144" (Raw $ 0b11101110000)
 
   {-
@@ -174,7 +174,6 @@ mp1 = do
     operators. If (A) = 0 control is transferred to op. 2 for selection of the
     following line of information.
 
-
   -}
   operator 10 $ do
     compWord zero cellA (Procedure "PP-1-1" (op 1)) (op 2)
@@ -226,7 +225,6 @@ mp1 = do
     tN' (op 22) a
     tN' (op 22 `offAddr` 1) b
 
-
     a <- ma (Absolute $ 0x0300 + 1) _startMDKMinus144 completedInstructions
     b <- mb (Absolute 0)
 
@@ -240,7 +238,7 @@ mp1 = do
     shift arrangementCounter (left 11) cellB
     ai addr cellB addr
 
-    let buffer = Unknown "buffer"-- Address above the executable, at most we need 256 bytes. (less since we have no constants)
+    let buffer = Unknown "buffer" -- Address above the executable, at most we need 256 bytes. (less since we have no constants)
     ma (Absolute $ 0x0100 + 1) (Absolute 0x10) (Absolute 0x10)
     addr <- mb (Absolute 0x10)
 
@@ -280,7 +278,7 @@ mp1 = do
     -}
     operator 19 $ do
       let startOfK = Absolute 1
-      let kPlus96  = startOfK `offAddr` 95
+      let kPlus96 = startOfK `offAddr` 95
       a <- ma (Absolute $ 0x0100 + 2) startOfK informationBlock
       b <- mb kPlus96
 
@@ -326,7 +324,6 @@ mp1 = do
       ai b hundredfourtyfourSndAddr b
 
       ai maxWritten hundredfourtyfour maxWritten -- reset selection counter comp
-
       ai ta (Unknown "-144") ta -- reset index op
       chain (op 23)
 
@@ -340,7 +337,3 @@ mp1 = do
       retRTC
       return ot
     return ()
-
-
-
-

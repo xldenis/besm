@@ -1,4 +1,6 @@
-{-# LANGUAGE RecursiveDo, BinaryLiterals #-}
+{-# LANGUAGE BinaryLiterals #-}
+{-# LANGUAGE RecursiveDo #-}
+
 module Besm.PP2 where
 
 import Besm.Assembler.Monad
@@ -31,13 +33,13 @@ import qualified Data.Bits as B
   Let us consider the functioning of the introductory programme.
 
 -}
-gammaBuilder   = Unknown "builder"
-gammaCounter   = Unknown "ɣ-counter"
-gammaTransfer  = Procedure "MP-2" (op 39)
+gammaBuilder = Unknown "builder"
+gammaCounter = Unknown "ɣ-counter"
+gammaTransfer = Procedure "MP-2" (op 39)
 
 header = Unknown "programme header table" `offAddr` 6 -- This should be cell 7
 
-gammaInitial   = header `offAddr` 6
+gammaInitial = header `offAddr` 6
 gammaTransInit = Unknown "ɣ-trans-initial"
 
 initialI = header `offAddr` 1
@@ -56,17 +58,17 @@ mp2 = do
 
   -- We need a local table of these selectors because the ones in DS are not adjacent, meaning we can't
   -- simply increment between them in a loop. Why? IDK!
-  local "addr-selectors" $ Table
-    [ Raw $ 0b111_1111_1111 `B.shift` 22
-    , Raw $ 0b111_1111_1111 `B.shift` 11
-    , Raw $ 0b111_1111_1111 `B.shift` 00
-    ]
+  local "addr-selectors" $
+    Table
+      [ Raw $ 0b111_1111_1111 `B.shift` 22
+      , Raw $ 0b111_1111_1111 `B.shift` 11
+      , Raw $ 0b111_1111_1111 `B.shift` 00
+      ]
 
   let cellJ = Absolute 0x0001
 
   local "shift-template" (Template (Shift cellJ (right 22) cellJ)) -- shift ? ? ?
-  local "select-template" (Template (LogMult (var "selected") (var "addr-selectors") (cellJ))) -- ^ ? ? ?
-
+  local "select-template" (Template (LogMult (var "selected") (var "addr-selectors") (cellJ))) -- \^ ? ? ?
   shiftIncr <- local "shift-incr" (Raw 0)
   finalSelect <- local "final-select" (Raw 0)
 
@@ -88,7 +90,7 @@ mp2 = do
 
   gammaCounter <- global "ɣ-counter" (Raw 0)
   alphaCounter <- global "α-counter" (Raw 0)
-  betaCounter  <- global "β-counter" (Raw 0)
+  betaCounter <- global "β-counter" (Raw 0)
 
   k <- global "k" Cell
 
@@ -102,7 +104,7 @@ mp2 = do
   -}
   operator 1 $ do
     tN' gammaTransInit gammaTransfer
-    tN' gammaInitial  gammaCounter
+    tN' gammaInitial gammaCounter
 
     ai initialI one counterI
 
@@ -134,7 +136,6 @@ mp2 = do
 
     exit <- block $ do
       tN' gammaCounter (header `offAddr` (-1)) -- TO BE FIXED: The header block should probably occupy the first 16 cells like in the book
-
       cccc (Absolute $ 1025 + 6)
 
     return ()
@@ -248,7 +249,7 @@ mp2 = do
   -}
   let nextAddr = cellJ
   operator 10 $ mdo
-    comp nextAddr seven' (op 22) omgg  -- check if standard cell < 7
+    comp nextAddr seven' (op 22) omgg -- check if standard cell < 7
     omgg <- comp (addr 8) nextAddr (op 11) (op 22) -- check if va addr < Vmax
     return ()
 
@@ -262,22 +263,22 @@ mp2 = do
     └───┴─────┴─────┴─────┴─────┘
   -}
 
-  local "va-selectors" $ Table
-    [ Raw $ 0b1111_1111 `B.shift` 24
-    , Raw $ 0b1111_1111 `B.shift` 16
-    , Raw $ 0b1111_1111 `B.shift` 08
-    ]
+  local "va-selectors" $
+    Table
+      [ Raw $ 0b1111_1111 `B.shift` 24
+      , Raw $ 0b1111_1111 `B.shift` 16
+      , Raw $ 0b1111_1111 `B.shift` 08
+      ]
 
   let cellHead = Absolute 0x0001
   let va = wm
   vaSelect <- local "va-select" (Template (LogMult va (var "va-selectors") cellL))
-  vaShift  <- local "va-shift" (Template (Shift cellL (left 24) cellL))
+  vaShift <- local "va-shift" (Template (Shift cellL (left 24) cellL))
 
   local "ugh-1" (Template (TN zero va UnNormalized))
   local "ugh-2" (Template (LogMult zero (var "addr-selectors") cellHead))
 
   local "neg-bit" (Raw $ 1 `B.shift` 32)
-
 
   local "end-loop" (Template (LogMult va (var "va-selectors" `offAddr` 2) cellL))
 
@@ -308,7 +309,6 @@ mp2 = do
   operator 12 $ mdo
     empty -- bitAnd _ firstAddr l selector shifts each iter...
     empty -- shift it all the way to the right
-
     chain (op 13)
 
   {-
@@ -457,19 +457,19 @@ mp2 = do
   operator 28 $ do
     readMD 4 (ProcStart "III-PP-2") (ProcEnd "III-PP-2") (ProcStart "III-PP-2")
   {-
-  Op. 29 transfers control to block III-PP-2. This block transfers all
-  constructed control instructions from the standard cells and from blocks
-  alpha and beta to the programme, changing the addresses of variable
-  instructions to their relative addresses.
--}
+    Op. 29 transfers control to block III-PP-2. This block transfers all
+    constructed control instructions from the standard cells and from blocks
+    alpha and beta to the programme, changing the addresses of variable
+    instructions to their relative addresses.
+  -}
   operator 29 $ do
     cccc (Procedure "III-PP-2" (op 1))
 
     chain (op 30)
-{-
-  Op. 30 adding unity to counter i, obtains the code of the following
-  parameter.
--}
+  {-
+    Op. 30 adding unity to counter i, obtains the code of the following
+    parameter.
+  -}
   operator 30 $ do
     ai counterI one counterI
 

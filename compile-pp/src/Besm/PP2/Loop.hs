@@ -1,8 +1,9 @@
 {-# LANGUAGE RecursiveDo #-}
+
 module Besm.PP2.Loop where
 
-import           Besm.Assembler.Monad
-import           Besm.Assembler.Syntax
+import Besm.Assembler.Monad
+import Besm.Assembler.Syntax
 
 {-
   The block I-PP-2 for loop formation processes information on the parameter,
@@ -16,14 +17,14 @@ cellS = Unknown "S"
 gammaBuilder = Unknown "builder"
 gammaCounter = Unknown "ɣ-counter"
 
-kTransfer     = Procedure "MP-2" (op 32)
+kTransfer = Procedure "MP-2" (op 32)
 alphaTransfer = Procedure "MP-2" (op 33) -- address where the transfer to alpha instruction is
-betaTransfer  = Procedure "MP-2" (op 36)
+betaTransfer = Procedure "MP-2" (op 36)
 gammaTransfer = Procedure "MP-2" (op 39)
 
-header       = Unknown "programme header table" `offAddr` 6
+header = Unknown "programme header table" `offAddr` 6
 
-betaInitial  = header `offAddr` 8
+betaInitial = header `offAddr` 8
 alphaInitial = header `offAddr` 7
 gammaInitial = header `offAddr` 6
 
@@ -51,16 +52,15 @@ pp2_1 = do
   kInitial <- extern "k-trans-initial"
   extern "selected"
 
-
   parameterSelect <- local ",TN _ parameter-info" $ Template (TN zero (var "parameter-info") UnNormalized)
   normTemplate <- local "I _ 0001" (Template (I zero zero zero))
   incrTemplate <- local "+ _ 1081 _" (Template (Add zero zero zero UnNormalized))
 
-  local "+ _ 0001 _"  $ Template (Add zero (addr 1) zero UnNormalized)
+  local "+ _ 0001 _" $ Template (Add zero (addr 1) zero UnNormalized)
   local "+ 0001 0002" $ Template (Add (addr 1) (addr 2) zero UnNormalized)
-  local "x _ _ 0002"  $ Template (Mult zero zero (addr 2) UnNormalized)
-  local "+ 0001 _ _"  $ Template (Add (addr 1) zero zero UnNormalized)
-  local "x _ _ 0001"  $ Template (Mult zero zero (addr 1) UnNormalized)
+  local "x _ _ 0002" $ Template (Mult zero zero (addr 2) UnNormalized)
+  local "+ 0001 _ _" $ Template (Add (addr 1) zero zero UnNormalized)
+  local "x _ _ 0001" $ Template (Mult zero zero (addr 1) UnNormalized)
   local ",TN _ firstHalf" $ Template (TN zero (wm `offAddr` 0) UnNormalized)
 
   cellT <- local "t" Cell
@@ -127,7 +127,7 @@ pp2_1 = do
       -- these instructions seem wrong!
       ai normTemplate shiftedI normalizeInstr -- I _ 0001
       ai incrTemplate shiftedI incrInstr -- + _ 1081 _
-      ai incrInstr    counterI incrInstr
+      ai incrInstr counterI incrInstr
 
       let k0 = Absolute 0x0001
       --
@@ -173,7 +173,6 @@ pp2_1 = do
   iinShifted <- global "iinShifted" Cell
 
   let iin = Absolute 0x001 -- cell which holds the current part of the parameter we are analyzing
-
   operator 4 $ mdo
     bitAnd parameterInfo firstAddr iin
     shift iin (right 22) iinShifted
@@ -222,7 +221,6 @@ pp2_1 = do
     callRtc (op 15) (op 32)
 
     chain (op 9)
-
 
   {-
   Op. 9 determines the case of a characteristic loop, for which op. 14
@@ -291,7 +289,7 @@ pp2_1 = do
 
   operator 14 $ do
     shift parameterInfo (left 11) builtComp
-    addE  builtComp parameterInfo builtComp
+    addE builtComp parameterInfo builtComp
     cccc (Procedure "MP-2" (op 4))
 
   {-
@@ -306,7 +304,6 @@ pp2_1 = do
   corresponding insturctions for calculating i_sigma are constructed.
 
   Op. 15 according to information  on i_sigma, forms the following constants:
-
 
     ┌─────┬──────┬──────┬──────┐
     │     │"i_0" │      │      │
@@ -329,10 +326,10 @@ pp2_1 = do
     └─────┴──────┴──────┴──────┘
   -}
   let i0 = wm `offAddr` 2
-  let k  = wm `offAddr` 3
+  let k = wm `offAddr` 3
   let j' = wm `offAddr` 4
-  let j  = wm `offAddr` 5
-  let a  = wm `offAddr` 6
+  let j = wm `offAddr` 5
+  let a = wm `offAddr` 6
 
   let iSigma = Absolute 0x0001
 
@@ -497,7 +494,7 @@ pp2_1 = do
   {-
   Op. 28 refers to op. 29 if "B" = 0, and to op. 30 if "B" != 0.
   -}
-  operator 28 $do
+  operator 28 $ do
     compMod oneFirstAddr b (op 30) (op 29)
 
   {-
@@ -518,11 +515,9 @@ pp2_1 = do
   operator 29 $ do
     ai a j alphaBuilder
     ai template1 alphaBuilder alphaBuilder -- x _ _ 0001
-
     clcc alphaTransfer
 
     ai template2 a cellS -- + 0001 _ _
-
     chain (op 22)
 
   {-
@@ -549,16 +544,13 @@ pp2_1 = do
   operator 30 $ do
     ai b k alphaBuilder
     ai template3 alphaBuilder alphaBuilder -- x _ _ 0002
-
     clcc alphaTransfer
 
     ai a j alphaBuilder
     ai template1 alphaBuilder alphaBuilder -- x _ _ 0001
-
     clcc alphaTransfer
 
     tN' template4 cellS -- + 0001 0002 _
-
     chain (op 22)
   {-
   Op. 31 adds 0001 to the third address of the instruction standing in cell S,
@@ -580,7 +572,6 @@ pp2_1 = do
     clcc alphaTransfer
 
     ai template5 i0 cellS -- + _ 0001 _
-
     chain (op 32)
 
   {-

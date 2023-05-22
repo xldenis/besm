@@ -1,5 +1,6 @@
 {-# LANGUAGE BinaryLiterals #-}
 {-# LANGUAGE RecursiveDo #-}
+
 module Besm.PP2.Distribute where
 
 import Besm.Assembler.Monad
@@ -31,10 +32,9 @@ which realizes all transfers of control instructions and "shifted" programme
 instructions to block K, also beginning with the last instruction.
 -}
 
-
 pp2_3 = do
   alphaCounter <- extern "α-counter"
-  betaCounter  <- extern "β-counter"
+  betaCounter <- extern "β-counter"
 
   wm <- extern "working-cells"
   pht <- extern "programme header table"
@@ -46,11 +46,9 @@ pp2_3 = do
 
   let
     header = Unknown "programme header table" `offAddr` 6 -- This should be cell 7
-
-    betaInitial  = header `offAddr` 8
+    betaInitial = header `offAddr` 8
     alphaInitial = header `offAddr` 7
-    kLast        = header `offAddr` 5
-
+    kLast = header `offAddr` 5
 
   {-
   Op. 1 determines by how many instructions the programme is increased in
@@ -58,12 +56,12 @@ pp2_3 = do
   new value of K_f.
   -}
 
-  let temp  = Absolute 0x001
+  let temp = Absolute 0x001
       temp2 = Absolute 0x002
       temp3 = Absolute 0x003
       alphaDiff = wm `offAddr` 5
-      betaDiff  = wm `offAddr` 6
-      kTrans    = wm `offAddr` 2
+      betaDiff = wm `offAddr` 6
+      kTrans = wm `offAddr` 2
 
   local "current" Cell
   local "k-trans-template-1" (Template (TN zero (var "current") UnNormalized))
@@ -74,7 +72,7 @@ pp2_3 = do
   -- local ",TN _ current" (Template (TN zero (var "current") UnNormalized))
   operator 1 $ do
     sub' alphaCounter alphaInitial alphaDiff
-    sub' betaCounter  betaInitial  betaDiff
+    sub' betaCounter betaInitial betaDiff
 
     add' alphaDiff betaDiff temp
 
@@ -87,13 +85,11 @@ pp2_3 = do
     tN' kLast kTrans
 
     ai (var "k-trans-template-1") temp2 (op 39) -- stored in op 39???
-
     ai kLast temp kLast
 
     ai (var "k-trans-template-2") kLast (op 41)
 
     tN' kLast (wm `offAddr` 3)
-
 
   {-
   Op. 2 compares the new value of K_f with K_cr, equal to gamma_0. When K_f >=
@@ -152,12 +148,11 @@ pp2_3 = do
   let unnamed = wm `offAddr` 3
 
   parenCode <- extern "paren-code" -- 0x3EC in source
-
   operator 8 $ do
     sub' unnamed parenCode temp
     sub' temp alphaDiff temp
 
-           -- v ---
+    -- v ---
     local "temp-value" (Raw 0x03FF) -- 10 bits set... why?
     ai temp (var "temp-value") temp -- what does this do??????
     ai builtComp temp (var "current")
@@ -186,7 +181,7 @@ pp2_3 = do
   block beta for transfer to address-modification instructions.
   -}
   operator 12 $ do
-    sub' betaCounter  betaInitial  betaDiff
+    sub' betaCounter betaInitial betaDiff
     tN' (op 42) (op 32)
 
   {-
@@ -211,7 +206,6 @@ pp2_3 = do
 
   operator 16 $ do
     clcc (op 41)
-
 
   {-
   Op. 17 ensures shift of all instructions of the working part of the loop.
@@ -239,12 +233,12 @@ pp2_3 = do
   -}
   operator 20 $ do
     compMod (var "current") (op 6) (op 26) (op 21) -- what matters is that we compare against a <- shift instruction since the opcode for ai is the following one
-  {-
-  Op. 21 obtains the relative address of the variable instruction. This address
-  delta = K - K_AI + alpha, where K is the old address of the variable
-  instruction, K_AI is the new address of the instruction AI and alpha is the
-  number of the instruction in the block alpha.
-  -}
+    {-
+    Op. 21 obtains the relative address of the variable instruction. This address
+    delta = K - K_AI + alpha, where K is the old address of the variable
+    instruction, K_AI is the new address of the instruction AI and alpha is the
+    number of the instruction in the block alpha.
+    -}
   operator 21 $ do
     bitAnd (var "current") thirdAddr temp3
     sub' temp3 (wm `offAddr` 3) temp
@@ -347,22 +341,22 @@ pp2_3 = do
   -}
   operator 33 $ do
     compMod (var "current") (op 6) (op 36) (op 34) -- only thing that should matter is that we compare against a shift instruction
-  {-
-  Op. 34 tests for a particular instruction AI
+    {-
+    Op. 34 tests for a particular instruction AI
 
-      ┌─────┬──────┬──────┬──────┐
-      │ AI  │ 0001 │ 10B9 │ 0001 │
-      └─────┴──────┴──────┴──────┘
+        ┌─────┬──────┬──────┬──────┐
+        │ AI  │ 0001 │ 10B9 │ 0001 │
+        └─────┴──────┴──────┴──────┘
 
-  (it is not necessary to transform this instruction), transferring control to
-  op. 36.
+    (it is not necessary to transform this instruction), transferring control to
+    op. 36.
 
-  ???????????
-  -}
+    ???????????
+    -}
   local "lkadjf" (Template (AI (Absolute 0x001) one (Absolute 0x01))) -- the real code uses (op 27) to do this, why?
   operator 34 $ do
     compWord (var "lkadjf") (var "current") (op 36) (op 35)
-    -- compMod _ (var "current") (op 36) (op 35)
+  -- compMod _ (var "current") (op 36) (op 35)
   {-
   Op. 35 substitutes for the address of the variable instruction in instruction
   AI its relative address. The relative address Delta = - (K_AI - (K + alpha)),
@@ -375,9 +369,9 @@ pp2_3 = do
     shift temp (left 22) temp2
     ai temp temp2 temp
     bitAnd (var "current") secondAddr temp2 -- this uses cell 3A7 why?
-  {-
-  Op. 36 transfers the instruction from the standard cell to the programme.
-  -}
+    {-
+    Op. 36 transfers the instruction from the standard cell to the programme.
+    -}
   operator 36 $ do
     clcc (op 41)
   {-
@@ -420,4 +414,5 @@ pp2_3 = do
   -- dummy operator to get a terminator template variable
   operator 42 $ do
     comp (var "current") firstAddr (op 37) zero
-    -- Comp (var "current") firstAddr (op 37) zero)
+
+-- Comp (var "current") firstAddr (op 37) zero)
