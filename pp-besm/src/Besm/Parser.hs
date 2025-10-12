@@ -32,6 +32,7 @@ import Data.Char (isLetter)
 import Data.CharSet (CharSet)
 import qualified Data.CharSet as CharSet
 import Data.CharSet.Unicode.Block (basicLatin, cyrillic, greekAndCoptic)
+import Data.Functor
 
 {-
 

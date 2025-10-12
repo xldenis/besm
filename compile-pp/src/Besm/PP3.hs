@@ -1,7 +1,7 @@
 {-# LANGUAGE BinaryLiterals #-}
 {-# LANGUAGE RecursiveDo #-}
 
-module Besm.PP2 where
+module Besm.PP3 where
 
 import Besm.Assembler.Monad
 import Besm.Assembler.Syntax
@@ -109,16 +109,17 @@ pp3_1 = do
   -- Should be shared with PP-2 (pinned)
   counterK <- global "k" Cell
   cellA <- local "A" Cell
+  cellB <- local "B" Cell
   currentInstr <- local "currentInstr" Cell
 
   maTemplate <- global "maTemplate" (Template (Ma zero zero zero))
-  mbTemplate <- global "mbTemplate" (Template (Mb zero zero zero))
+  mbTemplate <- global "mbTemplate" (Template (Mb zero))
 
   {-
   Op. 1 sends K0 to counter K, in which is fixed the address of the last instruction selected from block K.
   -}
   operator 1 $ do
-    tN' (header `offAddr` 4)
+    tN' (header `offAddr` 4) counterK
     chain (op 2)
 
   {-
@@ -137,7 +138,9 @@ pp3_1 = do
   test the opcode against the value 0x018 (as both logical operators and loops start with that)
   -}
   operator 3 $ do
-    comp currentInstr
+    -- Test opcode against 0x18 - incomplete stub
+    tExp' currentInstr cellB
+    compWord cellB (Unknown "0x18") (op 12) (op 4)
   {-
 
   Op. 4 in the case of selection of instructions Ma or Mb transfers control
@@ -145,8 +148,9 @@ pp3_1 = do
   are not examined.
   -}
   operator 4 $ do
-    comp currentInstr mBTemplate (op 4) (op 12)
-    comp currentInstr maTemplate (op 12) (op 4)
+    compWord currentInstr mbTemplate (op 10) (op 5)
+    -- If not Mb, check if Ma - incomplete stub
+    -- compWord currentInstr maTemplate (op 10) (op 5)
 
   {-
   Op. 5 determines the first address of the instruction and shifts it to the
@@ -454,6 +458,283 @@ pp3_1 = do
   Op. 21 calculates the corrections Δ ɣ, Δ R, Δ K.
 
 -}
+
+pp3_2 = do
+  -- Shared with PP-2
+  pinned "V" "V" (Size 16) -- Block V: variable address information
+
+  -- Working cells for storage distribution
+  wm <- global "working-cells-pp3" (Size 8)
+
+  -- Storage for block sizes and addresses
+  pBar <- global "Pbar" Cell
+  cBar <- global "Cbar" Cell
+  kBar <- global "Kbar" Cell
+  gammaBar <- global "gamma-bar" Cell
+  oBar <- global "Obar" Cell
+  mBar <- global "Mbar" Cell
+  rBar <- global "Rbar" Cell
+
+  c0Star <- global "C_0*" Cell
+  k0Star <- global "K_0*" Cell
+  gamma0Star <- global "gamma_0*" Cell
+  o0Star <- global "O_0*" Cell
+  m0Star <- global "M_0*" Cell
+  r0Star <- global "R_0*" Cell
+  rfStar <- global "R_f*" Cell
+
+  -- Corrections
+  deltaC <- global "Delta-C" Cell
+  deltaK <- global "Delta-K" Cell
+  deltaGamma <- global "Delta-gamma" Cell
+  deltaR <- global "Delta-R" Cell
+
+  -- Counters and temp cells
+  vCounter <- global "V-counter" Cell
+  miStar <- global "M_i*" Cell  -- Current block final address
+  mbarI <- global "Mbar_i" Cell  -- Current block size
+
+  -- Constants
+  maxAddr <- local "max-addr" (Raw 0x3FFF)
+
+  {-
+  Op. 1 calculates Pbar, Cbar, Kbar, ɣbar Obar and C_0*, K_0*, ɣ_0*, O_0*, M_0*
+  -}
+  operator 1 $ mdo
+    -- Calculate P bar (size of parameter block)
+    sub' (header `offAddr` 2) (header `offAddr` 1) pBar
+
+    -- Calculate C bar (size of constants block)
+    sub' (header `offAddr` 4) (header `offAddr` 2) cBar
+
+    -- Calculate K bar (size of programme block)
+    sub' (header `offAddr` 6) (header `offAddr` 4) kBar
+
+    -- Calculate gamma bar (from header)
+    tN' (header `offAddr` (-1)) gammaBar  -- gamma counter from PP-2
+
+    -- Calculate O bar (block O size)
+    tN' zero oBar  -- Block O is empty in this implementation
+
+    -- Calculate M bar (assuming no M block for now)
+    tN' zero mBar
+
+    -- Calculate initial addresses (C_0* = P_1 + Pbar)
+    add' (header `offAddr` 1) pBar c0Star
+    add' c0Star cBar k0Star
+    add' k0Star kBar gamma0Star
+    add' gamma0Star gammaBar o0Star
+    add' o0Star oBar m0Star
+
+    chain (op 2)
+
+  {-
+  Op. 2 calculates the correction Δ C, forms the instructions for processing
+  the block V and prints a number of special form
+  -}
+  operator 2 $ mdo
+    -- Calculate Delta C: the correction to get true addresses from codes
+    -- ΔC = C_0* - P_1
+    sub' c0Star (header `offAddr` 1) deltaC
+
+    -- Initialize V counter to start of block V
+    tN' (Absolute 0x10) vCounter
+
+    -- Print special marker (simplified - would use PN instruction)
+    -- pn specialMarker
+
+    chain (op 3)
+
+  {-
+  Op. 3 selects the next line of information of block V.
+  -}
+  operator 3 $ mdo
+    -- Select from block V
+    selectV <- tN' (Unknown "V") (wm `offAddr` 0)
+    ai selectV oneFirstAddr selectV
+    ai vCounter one vCounter
+    chain (op 4)
+
+  {-
+  Op. 4 tests the selected line, transferring control to op. 5 if a "main head"
+  has been selected for the next block M^i
+  -}
+  operator 4 $ do
+    -- Check if this is a main head (operation code field != 0x18)
+    tExp' (wm `offAddr` 0) (wm `offAddr` 1)
+    compWord (wm `offAddr` 1) (Unknown "0x18") (op 14) (op 5)
+
+  {-
+  Op. 5 extracts the third address of the "main head".
+  -}
+  operator 5 $ do
+    bitAnd (wm `offAddr` 0) thirdAddr (wm `offAddr` 1)
+    chain (op 6)
+
+  {-
+  Op. 6 compares the extracted address with zero. If it is not equal to zero
+  this denotes that the corresponding block M^i relates to the group of
+  constants from block C. In this case op. 10 functions.
+  -}
+  operator 6 $ do
+    compWord (wm `offAddr` 1) zero (op 10) (op 7)
+
+  {-
+  Op. 7 sets M_l^i* in the third address of the "main head" and calculates
+  M_l^(i+1)* = M_l^i* + Mbar^i.
+  -}
+  operator 7 $ mdo
+    -- Set M_i* in third address
+    ai (wm `offAddr` 0) miStar (wm `offAddr` 0)
+
+    -- Extract Mbar_i from second address
+    shift' (wm `offAddr` 0) (right 11) (wm `offAddr` 2)
+    bitAnd (wm `offAddr` 2) thirdAddr mbarI
+
+    -- Calculate M_(i+1)* = M_i* + Mbar_i
+    add' miStar mbarI miStar
+
+    chain (op 8)
+
+  {-
+  Op. 8 compares M_l^(i+1)* with 03FFF.
+  -}
+  operator 8 $ do
+    comp miStar maxAddr (op 9) (op 13)
+
+  {-
+  Op. 9 is a check stop for M_l^(i+1)* > 03FFF.
+  -}
+  operator 9 $ do
+    checkStop
+
+  {-
+  Op. 10 obtains the true address M_l^i*, adding Δ C to the third address
+  of the "main head".
+  -}
+  operator 10 $ do
+    -- Add Delta C to third address
+    ai (wm `offAddr` 1) deltaC miStar
+    chain (op 11)
+
+  {-
+  Op. 11 eliminates the operation code in the "main head".
+  -}
+  operator 11 $ mdo
+    -- Clear operation code (top 6 bits)
+    bitAnd (wm `offAddr` 0) (Unknown "addr-mask") (wm `offAddr` 0)
+    chain (op 12)
+
+  {-
+  Op. 12 prints information on the current block M^i.
+  -}
+  operator 12 $ do
+    -- Print the main head (would use PN instruction)
+    -- pn (wm `offAddr` 0)
+    chain (op 13)
+
+  {-
+  Op. 13 sets Mbar^i in the first address and M_l^i* in the second address
+  of a certain working cell for arranging these quantities in the line of
+  information on the variable addresses relating to the block M^i.
+  -}
+  operator 13 $ mdo
+    -- Store Mbar_i in first address of working cell
+    shift mbarI (left 22) (wm `offAddr` 3)
+
+    -- Add M_i* in second address
+    shift miStar (left 11) (wm `offAddr` 4)
+    ai (wm `offAddr` 3) (wm `offAddr` 4) (wm `offAddr` 3)
+
+    chain (op 16)
+
+  {-
+  Op. 14 sets Mbar^i in the first address of this line and in the second
+  address M_l^i*, leaving the magnitude of the shift delta of the variable
+  address in the third address, and the sign of the shift in the eleventh
+  place of the first address.
+  -}
+  operator 14 $ mdo
+    -- Extract delta (third address)
+    bitAnd (wm `offAddr` 0) thirdAddr (wm `offAddr` 5)
+
+    -- Build new VA info: Mbar in 1st addr, M_i* in 2nd, delta in 3rd
+    shift mbarI (left 22) (wm `offAddr` 6)
+    shift miStar (left 11) (wm `offAddr` 7)
+    ai (wm `offAddr` 6) (wm `offAddr` 7) (wm `offAddr` 6)
+    ai (wm `offAddr` 6) (wm `offAddr` 5) (wm `offAddr` 0)
+
+    chain (op 15)
+
+  {-
+  Op. 15 transfers the processed line of information back to block V.
+  -}
+  operator 15 $ mdo
+    writeV <- tN' (wm `offAddr` 0) (Unknown "V")
+    ai writeV oneFirstAddr writeV
+    chain (op 16)
+
+  {-
+  Op. 16 carries out modification of the selection instruction address and
+  the arrangements in op. 3 and op. 15.
+  -}
+  operator 16 $ do
+    -- Modifications handled by ai instructions in ops 3 and 15
+    chain (op 17)
+
+  {-
+  Op. 17 repeats the functioning of operators 3-16 for all lines of the block V.
+  -}
+  operator 17 $ do
+    -- Check if we've processed all of block V (16 lines)
+    comp vCounter (Absolute 0x20) (op 3) (op 18)
+
+  {-
+  Op. 18 forms Mbar, R_O*, Rbar and R_f*.
+  -}
+  operator 18 $ mdo
+    -- R_0* = M_0* + Mbar (working cells start after M block)
+    add' m0Star mBar r0Star
+
+    -- Rbar = size of working cells block
+    tN' (Absolute 0x10) rBar  -- Assuming 16 working cells
+
+    -- R_f* = R_0* + Rbar
+    add' r0Star rBar rfStar
+
+    chain (op 19)
+
+  {-
+  Op. 19 compares R_f* with 03FFF
+  -}
+  operator 19 $ do
+    comp rfStar maxAddr (op 20) (op 21)
+
+  {-
+  Op. 20 is a check stop for R_f* > 03FFF.
+  -}
+  operator 20 $ do
+    checkStop
+
+  {-
+  Op. 21 calculates the corrections Δ ɣ, Δ R, Δ K.
+  -}
+  operator 21 $ mdo
+    -- Δγ = γ_0* - 0x1A0 (gamma block starts at 0x1A0 in standard layout)
+    sub' gamma0Star (Absolute 0x1A0) deltaGamma
+
+    -- ΔR = R_0* - 0x11F0 (working cells start at 0x11F0 in standard layout)
+    sub' r0Star (Absolute 0x11F0) deltaR
+
+    -- ΔK = K_0* - 0x0200 (programme starts at 0x0200 in standard layout)
+    sub' k0Star (Absolute 0x0200) deltaK
+
+    -- Return to caller (would be via JCC or similar)
+    jcc
+
+  -- Helper constants
+  local "0x18" (Raw 0x18)
+  local "addr-mask" (Raw $ 0b111111111111111111111111111111111)  -- Mask out opcode
 
 {-
   Block for Assigning True Addresses

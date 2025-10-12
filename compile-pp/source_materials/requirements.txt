@@ -1,0 +1,17 @@
+# OCR Processing Dependencies
+
+# Core OCR library (supports Russian)
+easyocr>=1.7.0
+
+# Image processing
+Pillow>=10.0.0
+
+# Alternative OCR engine (optional)
+# pytesseract>=0.3.10
+
+# Additional utilities
+numpy>=1.24.0
+opencv-python-headless>=4.8.0
+
+# For progress bars (optional enhancement)
+tqdm>=4.66.0
