@@ -1,0 +1,21 @@
+# OCR Processing Dependencies
+#
+# NOTE: This file is OPTIONAL when using uv!
+#
+# The script uses PEP 723 inline script metadata, so you can run it with:
+#   uv run ocr_processor.py
+#
+# This file is provided for traditional pip/venv installations:
+#   pip install -r requirements.txt
+#   python ocr_processor.py
+
+# Core OCR library (PaddleOCR supports Russian via Cyrillic model)
+paddlepaddle>=2.6.0
+paddleocr>=2.7.0
+
+# Image processing
+Pillow>=10.0.0
+
+# Additional utilities
+numpy>=1.24.0
+opencv-python-headless>=4.8.0

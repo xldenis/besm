@@ -1,0 +1,116 @@
+2025-10-12 18:05:04,466 - INFO - Initializing PaddleOCR with language: cyrillic
+2025-10-12 18:05:04,466 - ERROR - Failed to initialize PaddleOCR: No models are available for the language 'cyrillic' and OCR version None.
+2025-10-12 18:05:04,466 - ERROR - Fatal error: No models are available for the language 'cyrillic' and OCR version None.
+Traceback (most recent call last):
+  File "/Users/xavier/Desktop/source_materials/ocr_processor.py", line 469, in main
+    processor = OCRProcessor(
+        use_gpu=args.gpu,
+        languages=args.languages,
+        preprocess=not args.no_preprocess
+    )
+  File "/Users/xavier/Desktop/source_materials/ocr_processor.py", line 119, in __init__
+    self.reader = PaddleOCR(
+                  ~~~~~~~~~^
+        use_angle_cls=True,  # Enable text angle classification
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        show_log=False
+        ^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/xavier/.cache/uv/environments-v2/ocr-processor-1c67ab8394b80ff5/lib/python3.13/site-packages/paddleocr/_pipelines/ocr.py", line 107, in __init__
+    raise ValueError(
+        f"No models are available for the language {repr(lang)} and OCR version {repr(ocr_version)}."
+    )
+ValueError: No models are available for the language 'cyrillic' and OCR version None.
+2025-10-12 18:11:26,893 - INFO - Initializing PaddleOCR with language: cyrillic
+2025-10-12 18:11:26,893 - ERROR - Failed to initialize PaddleOCR: No models are available for the language 'cyrillic' and OCR version None.
+2025-10-12 18:11:26,893 - ERROR - Fatal error: No models are available for the language 'cyrillic' and OCR version None.
+Traceback (most recent call last):
+  File "/Users/xavier/Desktop/source_materials/ocr_processor.py", line 469, in main
+    processor = OCRProcessor(
+        use_gpu=args.gpu,
+        languages=args.languages,
+        preprocess=not args.no_preprocess
+    )
+  File "/Users/xavier/Desktop/source_materials/ocr_processor.py", line 119, in __init__
+    self.reader = PaddleOCR(
+                  ~~~~~~~~~^
+        use_angle_cls=True,  # Enable text angle classification
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        show_log=False
+        ^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/xavier/.cache/uv/environments-v2/ocr-processor-1c67ab8394b80ff5/lib/python3.13/site-packages/paddleocr/_pipelines/ocr.py", line 107, in __init__
+    raise ValueError(
+        f"No models are available for the language {repr(lang)} and OCR version {repr(ocr_version)}."
+    )
+ValueError: No models are available for the language 'cyrillic' and OCR version None.
+2025-10-12 18:15:43,570 - INFO - Initializing PaddleOCR with language: ru
+2025-10-12 18:15:43,571 - ERROR - Failed to initialize PaddleOCR: Unknown argument: use_gpu
+2025-10-12 18:15:43,571 - ERROR - Fatal error: Unknown argument: use_gpu
+Traceback (most recent call last):
+  File "/Users/xavier/Desktop/source_materials/ocr_processor.py", line 471, in main
+    processor = OCRProcessor(
+        use_gpu=args.gpu,
+        languages=args.languages,
+        preprocess=not args.no_preprocess
+    )
+  File "/Users/xavier/Desktop/source_materials/ocr_processor.py", line 121, in __init__
+    self.reader = PaddleOCR(
+                  ~~~~~~~~~^
+        use_angle_cls=True,  # Enable text angle classification
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        show_log=False
+        ^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/xavier/.cache/uv/environments-v2/ocr-processor-1c67ab8394b80ff5/lib/python3.13/site-packages/paddleocr/_pipelines/ocr.py", line 163, in __init__
+    super().__init__(**base_params)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/Users/xavier/.cache/uv/environments-v2/ocr-processor-1c67ab8394b80ff5/lib/python3.13/site-packages/paddleocr/_pipelines/base.py", line 63, in __init__
+    self._common_args = parse_common_args(
+                        ~~~~~~~~~~~~~~~~~^
+        common_args, default_enable_hpi=_DEFAULT_ENABLE_HPI
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/xavier/.cache/uv/environments-v2/ocr-processor-1c67ab8394b80ff5/lib/python3.13/site-packages/paddleocr/_common_args.py", line 43, in parse_common_args
+    raise ValueError(f"Unknown argument: {name}")
+ValueError: Unknown argument: use_gpu
+2025-10-12 18:17:13,479 - INFO - Initializing PaddleOCR with language: ru
+2025-10-12 18:17:13,479 - ERROR - Failed to initialize PaddleOCR: Unknown argument: use_gpu
+2025-10-12 18:17:13,479 - ERROR - Fatal error: Unknown argument: use_gpu
+Traceback (most recent call last):
+  File "/Users/xavier/Desktop/source_materials/ocr_processor.py", line 471, in main
+    processor = OCRProcessor(
+        use_gpu=args.gpu,
+        languages=args.languages,
+        preprocess=not args.no_preprocess
+    )
+  File "/Users/xavier/Desktop/source_materials/ocr_processor.py", line 121, in __init__
+    self.reader = PaddleOCR(
+                  ~~~~~~~~~^
+        use_angle_cls=True,  # Enable text angle classification
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        show_log=False
+        ^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/xavier/.cache/uv/environments-v2/ocr-processor-1c67ab8394b80ff5/lib/python3.13/site-packages/paddleocr/_pipelines/ocr.py", line 163, in __init__
+    super().__init__(**base_params)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/Users/xavier/.cache/uv/environments-v2/ocr-processor-1c67ab8394b80ff5/lib/python3.13/site-packages/paddleocr/_pipelines/base.py", line 63, in __init__
+    self._common_args = parse_common_args(
+                        ~~~~~~~~~~~~~~~~~^
+        common_args, default_enable_hpi=_DEFAULT_ENABLE_HPI
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/xavier/.cache/uv/environments-v2/ocr-processor-1c67ab8394b80ff5/lib/python3.13/site-packages/paddleocr/_common_args.py", line 43, in parse_common_args
+    raise ValueError(f"Unknown argument: {name}")
+ValueError: Unknown argument: use_gpu

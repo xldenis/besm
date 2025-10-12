@@ -104,302 +104,460 @@ mp3 = do
   forming relative addresses.
 -}
 
--- Probably a shared counter?
 pp3_1 = do
-  -- Should be shared with PP-2 (pinned)
+  -- Shared with PP-2 (pinned)
   counterK <- global "k" Cell
+  counterKPrime <- global "k'" Cell  -- Counter for subroutines
   cellA <- local "A" Cell
   cellB <- local "B" Cell
   currentInstr <- local "currentInstr" Cell
 
-  maTemplate <- global "maTemplate" (Template (Ma zero zero zero))
-  mbTemplate <- global "mbTemplate" (Template (Mb zero))
+  -- Templates for instruction matching
+  maTemplate <- local "maTemplate" (Template (Ma zero zero zero))
+  mbTemplate <- local "mbTemplate" (Template (Mb zero))
+  opcodeTemplate <- local "0x18-template" (Raw 0x18)
+
+  -- Counter for true addresses (ops 26-33)
+  trueAddrCounter <- global "true-addr-counter" Cell
+
+  -- Delta - magnitude of relative address
+  delta <- local "delta" Cell
+
+  -- Count of eliminated items
+  eliminatedCount <- local "eliminated-count" Cell
 
   {-
   Op. 1 sends K0 to counter K, in which is fixed the address of the last instruction selected from block K.
   -}
   operator 1 $ do
+    -- todo: missing instructions here
     tN' (header `offAddr` 4) counterK
     chain (op 2)
 
   {-
-
   Op. 2 selects the next instruction in block K and adds unity to counter K.
   -}
-  operator 2 $ do
-    empty -- selection for the next instruction
+  operator 2 $ mdo
+    -- Address left blank
+    empty
+    -- Select instruction from K using subroutine
     ai counterK one counterK
-    -- pseudo code does some sort of masking
+    empty -- bitwise and of something
     chain (op 3)
+
   {-
   Op. 3 determines the case where open-parentheses of the loop or the sign of
   an operator number have been selected, transferring control to op. 12.
-
-  test the opcode against the value 0x018 (as both logical operators and loops start with that)
   -}
   operator 3 $ do
-    -- Test opcode against 0x18 - incomplete stub
     tExp' currentInstr cellB
-    compWord cellB (Unknown "0x18") (op 12) (op 4)
-  {-
+    compWord cellB opcodeTemplate (op 12) (op 4)
 
+  {-
   Op. 4 in the case of selection of instructions Ma or Mb transfers control
-  immediately to op. 10 since in theses instructions the first two addresses
+  immediately to op. 10 since in these instructions the first two addresses
   are not examined.
   -}
   operator 4 $ do
-    compWord currentInstr mbTemplate (op 10) (op 5)
-    -- If not Mb, check if Ma - incomplete stub
-    -- compWord currentInstr maTemplate (op 10) (op 5)
+    tExp' currentInstr cellB
+    compWord cellB (Absolute 22) (op 10) (op 5)  -- Ma opcode = 22
+    compWord cellB (Absolute 23) (op 10) (op 5)  -- Mb opcode = 23
 
   {-
   Op. 5 determines the first address of the instruction and shifts it to the
   third address of the standard cell A.
   -}
   operator 5 $ do
-    shift currentInstr (right 22) cellA -- original code uses a shiftall? but that seems unnecessary / wrong?
+    shift' currentInstr (right 22) cellA
     chain (op 6)
-  {-
 
-  Op. 6 examines the extracted address.
-  ----
-  what??
+  {-
+  Op. 6 examines the extracted address by calling the relative address subroutine.
   -}
   operator 6 $ do
     clcc (op 34)
     chain (op 7)
 
   {-
-
-  Op. 7 sets the tested first address in the instruction and extracts the second address from the latter, shifting it to the third address of cell A.
-
+  Op. 7 sets the tested first address in the instruction and extracts the second
+  address from the latter, shifting it to the third address of cell A.
   -}
+  operator 7 $ mdo
+    -- Reconstruct instruction with new first address
+    shift cellA (left 22) cellB
+    bitAnd currentInstr (Unknown "not-first-addr") currentInstr
+    ai currentInstr cellB currentInstr
+
+    -- Extract second address
+    shift' currentInstr (right 11) cellA
+    bitAnd cellA thirdAddr cellA
+    chain (op 8)
+
   {-
-
   Op. 8 tests the selected address.
-
   -}
   operator 8 $ do
     clcc (op 34)
     chain (op 9)
 
   {-
-
-  Op. 9 tests the selected second address in the instruction.
-
+  Op. 9 sets the tested second address in the instruction.
   -}
-  {-
+  operator 9 $ mdo
+    -- Reconstruct instruction with new second address
+    shift cellA (left 11) cellB
+    bitAnd currentInstr (Unknown "not-second-addr") currentInstr
+    ai currentInstr cellB currentInstr
+    chain (op 10)
 
+  {-
   Op. 10 extracts the third address of the instruction and sets it in cell A.
-
   -}
-  {-
+  operator 10 $ do
+    bitAnd currentInstr thirdAddr cellA
+    chain (op 11)
 
+  {-
   Op. 11 tests the selected address and then sets it in the instruction.
-
   -}
-  operator 11 $ do
+  operator 11 $ mdo
     clcc (op 34)
-    chain (op 9)
-  {-
 
+    -- Reconstruct instruction with new third address
+    bitAnd currentInstr (Unknown "not-third-addr") currentInstr
+    ai currentInstr cellA currentInstr
+    chain (op 12)
+
+  {-
   Op. 12 transfers the instruction back to block K.
-
   -}
-  {-
+  operator 12 $ do
+    clcc (op 47)
+    chain (op 13)
 
+  {-
   Op. 13 transfers control to op. 2 if all instructions from block K have not been examined.
-
   -}
+  operator 13 $ do
+    comp counterK (header `offAddr` 6) (op 2) (op 14)
   {-
-
-  Operators 14-25 realize change in relative address, connected with elimination from the programmme of open-parentheses and signs of operator numbers. For this a special sub-routine  (operators 39-45) examines the addresses of instructions and for each relative address Δ calculates the number n of the open-parentheses of loops and signs of operator numbers located in the programme between the instruction having the given relative address Δ and the instruction in which this address is encountered. The number n obtained is the n subtracted from the absolute magnitude of Δ.
-
+  Operators 14-25 realize change in relative address, connected with elimination
+  from the programme of open-parentheses and signs of operator numbers.
   -}
-  {-
 
+  {-
   Op. 14 sends K0 to counter K.
-
   -}
-  {-
+  operator 14 $ do
+    tN' (header `offAddr` 4) counterK
+    chain (op 15)
 
+  {-
   Op. 15 selects the next instruction from the block K and adds unity to counter K.
-
   -}
+  operator 15 $ do
+    clcc (op 46)
+    ai counterK one counterK
+    chain (op 16)
+
   {-
-
-  Op. 16, in the case of selection of instructions Ma and Mb transfers control to op. 22 since in these instructions the relative addresses may be located only in the third address.
-
+  Op. 16, in the case of selection of instructions Ma and Mb transfers control to
+  op. 22 since in these instructions the relative addresses may be located only
+  in the third address.
   -}
+  operator 16 $ do
+    tExp' currentInstr cellB
+    compWord cellB (Absolute 22) (op 22) (op 17)
+    compWord cellB (Absolute 23) (op 22) (op 17)
+
   {-
-
-  Op. 17 extracts the first address of the instruction and sends it o the third address of the standard cell A.
-
+  Op. 17 extracts the first address of the instruction and sends it to the third
+  address of the standard cell A.
   -}
+  operator 17 $ do
+    shift' currentInstr (right 22) cellA
+    chain (op 18)
+
   {-
-
-  Op. 18 examines the extracted address.
-
+  Op. 18 examines the extracted address using the relative address change subroutine.
   -}
+  operator 18 $ do
+    clcc (op 39)
+    chain (op 19)
+
   {-
-
-  Op. 19 sets the tested address in the instruction, extracts the second address and sends it to the third address of cell A.
-
+  Op. 19 sets the tested address in the instruction, extracts the second address
+  and sends it to the third address of cell A.
   -}
-  {-
+  operator 19 $ mdo
+    -- Reconstruct with modified first address
+    shift cellA (left 22) cellB
+    bitAnd currentInstr (Unknown "not-first-addr") currentInstr
+    ai currentInstr cellB currentInstr
 
+    -- Extract second address
+    shift' currentInstr (right 11) cellA
+    bitAnd cellA thirdAddr cellA
+    chain (op 20)
+
+  {-
   Op. 20 tests the extracted address.
-
   -}
-  {-
+  operator 20 $ do
+    clcc (op 39)
+    chain (op 21)
 
+  {-
   Op. 21 sends the tested address to the instruction.
-
   -}
-  {-
+  operator 21 $ mdo
+    shift cellA (left 11) cellB
+    bitAnd currentInstr (Unknown "not-second-addr") currentInstr
+    ai currentInstr cellB currentInstr
+    chain (op 22)
 
+  {-
   Op. 22 extracts the third address of the instruction, sending it to cell A.
-
   -}
-  {-
+  operator 22 $ do
+    bitAnd currentInstr thirdAddr cellA
+    chain (op 23)
 
+  {-
   Op. 23 tests the extracted address.
-
   -}
+  operator 23 $ do
+    clcc (op 39)
+    chain (op 24)
+
   {-
-
-  Op. 24 sends the tested address to the instruction and transfers the instruction back to block K.
-
+  Op. 24 sends the tested address to the instruction and transfers the
+  instruction back to block K.
   -}
-  {-
+  operator 24 $ mdo
+    bitAnd currentInstr (Unknown "not-third-addr") currentInstr
+    ai currentInstr cellA currentInstr
+    clcc (op 47)
+    chain (op 25)
 
+  {-
   Op. 25 transfers control to op. 15 if all instructions in block K have not been examined.
-
   -}
+  operator 25 $ do
+    comp counterK (header `offAddr` 6) (op 15) (op 26)
   {-
-
-  Operators 26 - 33 remove open-parentheses of loops and the signs of operator numbers from the assembled programme. Printing of information on the constructed programme takes place this time. The open-parentheses of loops are printed and the signs of operator numbers, in the third addresses of which is first place d the true address of the first instruction of the loop (for open-parentheses) or the true address of the first instruction of the operator (for signs of operator numbers).
-
+  Operators 26-33: Remove open-parentheses and operator signs
+  Source: 9_261.gif, 9_262.gif
   -}
+
   {-
-
-  Op. 26 calculates the true initial K_1* of the programme and sets it in a special counter in which, at the moment of selection from the programme of the open-parentheses of a loop or the sign of an operator number, will be the true address of the following instruction.
-
+  Op. 26 calculates the true initial K_1* of the programme and sets it in a special
+  counter for true instruction addresses.
   -}
-  {-
+  operator 26 $ do
+    -- Calculate K_1* (true starting address of programme)
+    add' (header `offAddr` 4) (Unknown "Delta-K-pp3") trueAddrCounter
+    tN' (header `offAddr` 4) counterK
+    chain (op 27)
 
+  {-
   Op. 27 selects the next instruction of the programme from block K.
-
   -}
+  operator 27 $ do
+    clcc (op 46)
+    ai counterK one counterK
+    chain (op 28)
+
   {-
-
-  Op. 28 transfers control to op. 29 if an instruction has been selected to op. 30 if the open-parentheses of a loop or the sign of an operator number has been selected.
-
+  Op. 28 transfers control to op. 29 if an instruction has been selected,
+  to op. 30 if the open-parentheses of a loop or the sign of an operator number has been selected.
   -}
+  operator 28 $ do
+    tExp' currentInstr cellB
+    compWord cellB opcodeTemplate (op 30) (op 29)
+
   {-
-
-  Op. 29 sends the instruction back to the programme and adds unity to the special counter of true instruction addresses.
-
+  Op. 29 sends the instruction back to the programme and adds unity to the true address counter.
   -}
+  operator 29 $ do
+    clcc (op 47)
+    ai trueAddrCounter one trueAddrCounter
+    chain (op 32)
+
   {-
-
-  Op. 30 sets in the third address of the open-parentheses of the loop or the sign of the operator number the true addresses of the following instruction.
-
+  Op. 30 sets in the third address of the open-parentheses of the loop or the sign
+  of the operator number the true address of the following instruction.
   -}
-  {-
+  operator 30 $ mdo
+    -- Place true address of next instruction in third address
+    bitAnd currentInstr (Unknown "not-third-addr") currentInstr
+    ai currentInstr trueAddrCounter currentInstr
+    chain (op 31)
 
+  {-
   Op. 31 prints the open-parentheses of the loop or the operator number sign.
-
   -}
+  operator 31 $ do
+    -- Would print using PN instruction
+    -- pn currentInstr
+    chain (op 32)
+
   {-
-
-  Op. 32 transfers control to op. 28  if all instructions of the programme have not been examined.
-
+  Op. 32 transfers control to op. 27 if all instructions of the programme have not been examined.
   -}
+  operator 32 $ do
+    comp counterK (header `offAddr` 6) (op 27) (op 33)
+
   {-
-
-  Op. 33 calculates and sets the cell 000C the new value of K_f, changed through elimination of the open-parentheses of loops and signs of operator numbers.
-
+  Op. 33 calculates and sets in the header the new value of K_f, changed through
+  elimination of the open-parentheses of loops and signs of operator numbers.
   -}
+  operator 33 $ mdo
+    tN' trueAddrCounter (header `offAddr` 6)
+    -- Return to MP-3
+    jcc
+
   {-
-
-  Op. 34048 constitute a sub-routine for the formulation of relative addresses.
-
+  Operators 34-38: Subroutine for forming relative addresses
+  Source: 9_261.gif
   -}
+
   {-
-
-  Op. 34 transfers control to op. 35 if the number of an operator is in standard cell a.
-
+  Op. 34 transfers control to op. 35 if the number of an operator is in standard cell A.
   -}
+  operator 34 $ do
+    -- Check if address is an operator number (>= 0x0200 && < 0x0400)
+    -- If not, return via jcc
+    comp cellA (Absolute 0x0200) (op 35) (op 46)
+    comp cellA (Absolute 0x0400) (op 46) (op 35)
+
   {-
-
-  Op.  35 shifts the numbers of th operators to the first address and sets K _1 in the special counter K'.
-
+  Op. 35 shifts the operator number to the first address and sets K_1 in counter K'.
   -}
+  operator 35 $ do
+    shift cellA (left 22) cellA
+    tN' (header `offAddr` 4) counterKPrime
+    chain (op 36)
+
   {-
-
-  Op. 36 elects the next instruction from block K. beginning with the first instruction and adds unity to counter K'.
-
+  Op. 36 selects the next instruction from block K, beginning with the first
+  instruction, and adds unity to counter K'.
   -}
-  {-
+  operator 36 $ mdo
+    clcc (op 46)
+    ai counterKPrime one counterKPrime
+    chain (op 37)
 
+  {-
   Op. 37 repeats op. 36 until the sign of the given operator number is selected.
-
   -}
+  operator 37 $ do
+    -- Check if selected instruction matches operator sign (has 0x18 and matches operator)
+    tExp' currentInstr cellB
+    compWord cellB opcodeTemplate (op 36) (op 38)
+
   {-
-
-  Op. 38 obtains the code of the relative address equal to 0200 + |(C.K') - (C.L)| for the positive relative address and 1200 + |(c.K') - (c.K)| for negative.
-
+  Op. 38 obtains the code of the relative address.
+  Formula: 0200 + |(C.K') - (C.K)| for positive or 1200 + |(c.K') - (c.K)| for negative.
   -}
+  operator 38 $ mdo
+    -- Calculate relative address
+    sub' counterKPrime counterK delta
+    tMod' delta delta
+    ai delta (Absolute 0x0200) cellA
+    jcc
+
   {-
-
-  Operators 39 - 45 constitute the sub-routine changing the relative addresses.
-
+  Operators 39-45: Subroutine for changing relative addresses
+  Source: 9_262.gif
   -}
-  {-
 
+  {-
   Op. 39 transfers control to op. 40 if a relative address is in standard cell A.
-
   -}
+  operator 39 $ do
+    -- Check if it's a relative address (0x0200-0x03FF or 0x1200-0x13FF)
+    -- If not, return via jcc
+    comp cellA (Absolute 0x0200) (op 40) (op 46)
+    comp cellA (Absolute 0x0400) (op 46) (op 46)
+
   {-
-
-  Op. 40 clears counter K' and standard cell B.
-
+  Op. 40 clears counter K' and standard cell B (eliminatedCount).
   -}
+  operator 40 $ do
+    tN' zero counterKPrime
+    tN' zero eliminatedCount
+    chain (op 41)
+
   {-
-
-  Op. 41 selects the next instruction from the part of the programme located between the instruction with the given relative address and the instruction containing this relative address and ads unity to counter K'.
-
+  Op. 41 selects the next instruction from the programme and adds unity to counter K'.
   -}
+  operator 41 $ do
+    clcc (op 46)
+    ai counterKPrime one counterKPrime
+    chain (op 42)
+
   {-
-
-  Op. 42 determines the case of selection of an open-parenthesis of a loop or the sign of an operator number, transferring control to op. 43
-
+  Op. 42 determines if an open-parenthesis or operator sign was selected.
   -}
+  operator 42 $ do
+    tExp' currentInstr cellB
+    compWord cellB opcodeTemplate (op 43) (op 44)
+
   {-
-
-  Op. 43 which adds 1 to cell B.
-
+  Op. 43 adds 1 to cell B (eliminatedCount).
   -}
+  operator 43 $ do
+    ai eliminatedCount one eliminatedCount
+    chain (op 44)
+
   {-
-
-  Op. 44, comparing the indications of counter K' with the absolute magnitude Δ of the relative address, repeats the functioning of operators 41-43 Δ times.
-
+  Op. 44 compares counter K' with the absolute magnitude Δ of the relative address,
+  repeating operators 41-43 Δ times.
   -}
+  operator 44 $ do
+    -- Extract magnitude from relative address
+    bitAnd cellA (Absolute 0x01FF) delta
+    comp counterKPrime delta (op 41) (op 45)
+
   {-
-
-  Op. 45 forms the new value of the absolute magnitude of the relative address, equal to Δ - (B).
-
+  Op. 45 forms the new value of the absolute magnitude: Δ - (eliminatedCount).
   -}
+  operator 45 $ mdo
+    sub' delta eliminatedCount delta
+    -- Reconstruct relative address with new magnitude
+    bitAnd cellA (Absolute 0x1E00) cellA
+    ai cellA delta cellA
+    jcc
+
   {-
-
-  Op. 46 is the sub-routine for selecting instructions from block K.
-
+  Op. 46: Subroutine for selecting instructions from block K.
+  Source: 9_262.gif
   -}
-  {-
+  operator 46 $ do
+    -- Select instruction from K[counterK] into currentInstr
+    selectK <- tN' (Unknown "K") currentInstr
+    ai selectK one selectK
+    jcc
 
-  Op. 47 is the sub-routine for transferring instructions to block K.
--}
+  {-
+  Op. 47: Subroutine for transferring instructions to block K.
+  Source: 9_262.gif
+  -}
+  operator 47 $ do
+    -- Transfer instruction from currentInstr back to K[counterK]
+    writeK <- tN' currentInstr (Unknown "K")
+    ai writeK one writeK
+    jcc
+
+  -- Helper constants (Source: various operators)
+  local "not-first-addr" (Raw $ 0b000000_11111111111_11111111111)
+  local "not-second-addr" (Raw $ 0b111111_00000000000_11111111111)
+  local "not-third-addr" (Raw $ 0b111111_11111111111_00000000000)
+  local "Delta-K-pp3" Cell  -- Will be set by II-PP-3
+
+  -- Pinned K block (shared with PP-2)
+  pinned "K" "programme" (Size 750)
 
 {-
 
@@ -517,6 +675,7 @@ pp3_2 = do
     tN' zero oBar  -- Block O is empty in this implementation
 
     -- Calculate M bar (assuming no M block for now)
+    -- note: where did claude get this from?
     tN' zero mBar
 
     -- Calculate initial addresses (C_0* = P_1 + Pbar)

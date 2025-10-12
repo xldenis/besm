@@ -2,18 +2,18 @@
 # /// script
 # requires-python = ">=3.9"
 # dependencies = [
-#   "easyocr>=1.7.0",
+#   "paddlepaddle>=2.6.0",
+#   "paddleocr>=2.7.0",
 #   "pillow>=10.0.0",
 #   "numpy>=1.24.0",
 #   "opencv-python-headless>=4.8.0",
-#   "tqdm>=4.66.0",
 # ]
 # ///
 """
 OCR Processor for Russian Tables with Overline Notation
 
 This script processes image files containing tables in Russian with overline notation
-(0,1,2,3,4,5,6,7,8,9,1̅,2̅,3̅,4̅,5̅) and extracts text using OCR.
+(0,1,2,3,4,5,6,7,8,9,1̅,2̅,3̅,4̅,5̅) and extracts text using PaddleOCR.
 
 Run with uv:
     uv run ocr_processor.py
@@ -27,11 +27,12 @@ from pathlib import Path
 from typing import List, Optional, Dict
 import json
 from datetime import datetime
+import os
 
 try:
-    import easyocr
+    from paddleocr import PaddleOCR
 except ImportError:
-    easyocr = None
+    PaddleOCR = None
 
 try:
     from PIL import Image, ImageEnhance, ImageFilter
@@ -80,32 +81,51 @@ class OCRProcessor:
 
         Args:
             use_gpu: Whether to use GPU acceleration
-            languages: List of languages for OCR (default: ['ru', 'en'])
+            languages: List of languages for OCR (default: ['ru'])
             preprocess: Whether to preprocess images before OCR
         """
-        if easyocr is None:
+        if PaddleOCR is None:
             raise ImportError(
-                "easyocr is not installed. Run with: uv run ocr_processor.py"
+                "paddleocr is not installed. Run with: uv run ocr_processor.py"
             )
         if Image is None:
             raise ImportError(
                 "Pillow is not installed. Run with: uv run ocr_processor.py"
             )
 
+        # PaddleOCR language codes
+        # Common mappings for convenience
+        lang_map = {
+            'russian': 'ru',
+            'cyrillic': 'ru',
+            'ru': 'ru',
+            'en': 'en',
+            'english': 'en',
+            'ch': 'ch',
+            'chinese': 'ch'
+        }
+
         self.languages = languages or ['ru', 'en']
         self.use_gpu = use_gpu
         self.preprocess = preprocess
 
-        logger.info(f"Initializing EasyOCR with languages: {self.languages}")
+        # Map to PaddleOCR language codes
+        mapped_lang = self.languages[0].lower() if self.languages else 'ru'
+        self.paddle_lang = lang_map.get(mapped_lang, mapped_lang)
+
+        logger.info(f"Initializing PaddleOCR with language: {self.paddle_lang}")
         try:
-            self.reader = easyocr.Reader(
-                self.languages,
-                gpu=self.use_gpu,
-                verbose=False
+            # Suppress PaddleOCR's verbose output
+            os.environ.setdefault('FLAGS_FLAGS_logtostderr', '0')
+
+            self.reader = PaddleOCR(
+                use_textline_orientation=True,  # Enable text angle classification
+                lang=self.paddle_lang,
+                show_log=False
             )
-            logger.info("EasyOCR initialized successfully")
+            logger.info("PaddleOCR initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize EasyOCR: {e}")
+            logger.error(f"Failed to initialize PaddleOCR: {e}")
             raise
 
     def preprocess_image(self, image_path: Path) -> Image.Image:
@@ -188,8 +208,9 @@ class OCRProcessor:
             else:
                 ocr_path = str(image_path)
 
-            # Perform OCR
-            results = self.reader.readtext(ocr_path, detail=1, paragraph=True)
+            # Perform OCR with PaddleOCR
+            # PaddleOCR returns: [[bbox_points, (text, confidence)], ...]
+            results = self.reader.ocr(ocr_path, cls=True)
 
             # Clean up temp file
             if self.preprocess and temp_path.exists():
@@ -197,12 +218,22 @@ class OCRProcessor:
 
             # Extract text and confidence scores
             extracted_text = []
-            for bbox, text, confidence in results:
-                extracted_text.append({
-                    'text': text,
-                    'confidence': float(confidence),
-                    'bbox': bbox
-                })
+
+            # PaddleOCR returns results for each page (even for single images)
+            if results and results[0]:
+                for line in results[0]:
+                    if line:
+                        bbox_points = line[0]  # Bounding box coordinates
+                        text_info = line[1]     # (text, confidence) tuple
+
+                        text = text_info[0]
+                        confidence = float(text_info[1])
+
+                        extracted_text.append({
+                            'text': text,
+                            'confidence': confidence,
+                            'bbox': bbox_points
+                        })
 
             # Combine all text
             full_text = '\n'.join([item['text'] for item in extracted_text])
@@ -410,8 +441,8 @@ def main():
         '--languages',
         type=str,
         nargs='+',
-        default=['ru', 'en'],
-        help='Languages for OCR (default: ru en)'
+        default=['ru'],
+        help='Languages for OCR (default: ru). Use "ru" or "russian" for Russian'
     )
 
     parser.add_argument(

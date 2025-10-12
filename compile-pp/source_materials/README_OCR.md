@@ -4,25 +4,45 @@ A Python script for processing images containing Russian text tables with overli
 
 ## Features
 
-- **Russian Language Support**: Uses EasyOCR with Russian language models
+- **Russian Language Support**: Uses PaddleOCR with Cyrillic (Russian) language models
+- **High Accuracy**: PaddleOCR is known for its excellent accuracy on table data
 - **Image Preprocessing**: Automatic contrast enhancement, sharpening, and noise reduction
 - **Batch Processing**: Process multiple files at once
 - **Multiple Output Formats**: Save results as Markdown, JSON, or plain text
 - **Detailed Logging**: Comprehensive logs for debugging and monitoring
 - **Confidence Scoring**: Track OCR confidence for quality assessment
 - **Summary Reports**: Automatic generation of processing summaries
+- **Zero Setup**: Uses `uv` for automatic dependency management
+
+## Prerequisites
+
+Install `uv` (fast Python package installer):
+
+```bash
+# On macOS and Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# On Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Or with pip
+pip install uv
+```
 
 ## Installation
 
-### 1. Install Python Dependencies
+No installation required! The script uses inline dependency metadata (PEP 723). Just run it with `uv`:
 
 ```bash
-pip install -r requirements.txt
+uv run ocr_processor.py
 ```
 
-### 2. First Run (Downloads Language Models)
+On first run, `uv` will automatically:
+1. Create an isolated environment
+2. Install all required dependencies (PaddlePaddle, PaddleOCR, etc.)
+3. Download PaddleOCR Cyrillic model (~10MB)
 
-The first time you run the script, EasyOCR will download Russian and English language models (~100MB). This only happens once.
+This only happens once. Subsequent runs are instant.
 
 ## Usage
 
@@ -31,42 +51,43 @@ The first time you run the script, EasyOCR will download Russian and English lan
 Process all .gif files in the current directory:
 
 ```bash
-python ocr_processor.py
+uv run ocr_processor.py
 ```
 
 ### Advanced Usage
 
 ```bash
 # Specify input and output directories
-python ocr_processor.py -i /path/to/images -o /path/to/output
+uv run ocr_processor.py -i /path/to/images -o /path/to/output
 
 # Process specific file types
-python ocr_processor.py --pattern "*.png"
-python ocr_processor.py --pattern "8_*.gif"
+uv run ocr_processor.py --pattern "*.png"
+uv run ocr_processor.py --pattern "8_*.gif"
 
 # Change output format
-python ocr_processor.py --format json
-python ocr_processor.py --format txt
+uv run ocr_processor.py --format json
+uv run ocr_processor.py --format txt
 
 # Use GPU acceleration (if available)
-python ocr_processor.py --gpu
+uv run ocr_processor.py --gpu
 
 # Disable image preprocessing
-python ocr_processor.py --no-preprocess
+uv run ocr_processor.py --no-preprocess
 
 # Verbose logging
-python ocr_processor.py -v
+uv run ocr_processor.py -v
 
-# Add more languages
-python ocr_processor.py --languages ru en de
+# Specify language (cyrillic for Russian)
+uv run ocr_processor.py --languages cyrillic
+uv run ocr_processor.py --languages en
 ```
 
 ### Full Command Options
 
 ```
-usage: ocr_processor.py [-h] [-i INPUT_DIR] [-o OUTPUT_DIR] [-p PATTERN]
-                        [-f {markdown,json,txt}] [--no-preprocess] [--gpu]
-                        [--languages LANGUAGES [LANGUAGES ...]] [-v]
+usage: uv run ocr_processor.py [-h] [-i INPUT_DIR] [-o OUTPUT_DIR] [-p PATTERN]
+                               [-f {markdown,json,txt}] [--no-preprocess] [--gpu]
+                               [--languages LANGUAGES [LANGUAGES ...]] [-v]
 
 Options:
   -i, --input-dir       Input directory (default: current directory)
@@ -75,16 +96,19 @@ Options:
   -f, --format          Output format: markdown, json, or txt
   --no-preprocess       Disable image preprocessing
   --gpu                 Use GPU acceleration
-  --languages           Languages for OCR (default: ru en)
+  --languages           Languages for OCR (default: cyrillic en)
+                        Use "cyrillic" or "ru" for Russian
   -v, --verbose         Enable verbose logging
 ```
+
+**Note**: PaddleOCR uses "cyrillic" for Russian text. The script automatically maps "ru" or "russian" to "cyrillic".
 
 ## Examples
 
 ### Example 1: Process Current Directory
 
 ```bash
-python ocr_processor.py
+uv run ocr_processor.py
 ```
 
 This will:
@@ -96,7 +120,7 @@ This will:
 ### Example 2: Custom Directories and Format
 
 ```bash
-python ocr_processor.py \
+uv run ocr_processor.py \
   -i ~/Documents/scans \
   -o ~/Documents/ocr_results \
   --format json
@@ -105,7 +129,7 @@ python ocr_processor.py \
 ### Example 3: Specific Files Only
 
 ```bash
-python ocr_processor.py --pattern "8_40*.gif"
+uv run ocr_processor.py --pattern "8_40*.gif"
 ```
 
 This processes only files matching the pattern (e.g., 8_406.gif, 8_407.gif, etc.)
@@ -181,19 +205,23 @@ The `detect_overline_notation()` method can be customized based on how your spec
 
 ## Troubleshooting
 
-### Issue: EasyOCR installation fails
+### Issue: uv not found
 
-Try installing with specific versions:
+Make sure `uv` is installed:
 ```bash
-pip install torch torchvision
-pip install easyocr
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then restart your terminal or run:
+```bash
+source $HOME/.cargo/env
 ```
 
 ### Issue: Low OCR accuracy
 
 1. Try enabling preprocessing (default):
    ```bash
-   python ocr_processor.py
+   uv run ocr_processor.py
    ```
 
 2. Check image quality - ensure images are:
@@ -207,36 +235,28 @@ pip install easyocr
 
 1. Disable GPU if it's causing issues:
    ```bash
-   python ocr_processor.py  # GPU disabled by default
+   uv run ocr_processor.py  # GPU disabled by default
    ```
 
 2. Process files in smaller batches:
    ```bash
-   python ocr_processor.py --pattern "8_40*.gif"
-   python ocr_processor.py --pattern "8_41*.gif"
+   uv run ocr_processor.py --pattern "8_40*.gif"
+   uv run ocr_processor.py --pattern "8_41*.gif"
    ```
 
-## Alternative: Using Tesseract OCR
+### Issue: Dependency conflicts
 
-If you prefer Tesseract, install it separately:
+`uv` automatically manages dependencies in isolated environments, so conflicts are rare. If you encounter issues:
 
-**On macOS:**
-```bash
-brew install tesseract tesseract-lang
-```
+1. Clear the uv cache:
+   ```bash
+   uv cache clean
+   ```
 
-**On Ubuntu/Debian:**
-```bash
-sudo apt-get install tesseract-ocr tesseract-ocr-rus
-```
-
-**On Windows:**
-Download from: https://github.com/UB-Mannheim/tesseract/wiki
-
-Then install pytesseract:
-```bash
-pip install pytesseract
-```
+2. Run again:
+   ```bash
+   uv run ocr_processor.py
+   ```
 
 ## Performance Tips
 
@@ -259,8 +279,8 @@ Review this file if you encounter issues.
 
 ```
 source_materials/
-├── ocr_processor.py          # Main script
-├── requirements.txt          # Python dependencies
+├── ocr_processor.py          # Main script with inline dependencies
+├── requirements.txt          # Optional: for pip/traditional installs
 ├── README_OCR.md            # This file
 ├── 8_407.gif                # Input images
 ├── 8_408.gif
@@ -273,6 +293,40 @@ source_materials/
 └── ocr_processing.log       # Processing log
 ```
 
+## Why PaddleOCR?
+
+- **High Accuracy**: Excellent performance on Russian/Cyrillic text and tables
+- **Fast**: Optimized for production use
+- **Lightweight**: Smaller model downloads (~10MB vs ~100MB for EasyOCR)
+- **Table-Optimized**: Better at detecting structured table layouts
+- **Well-Maintained**: Active development and regular updates
+
+## Why uv?
+
+- **Fast**: 10-100x faster than pip
+- **Reliable**: Deterministic dependency resolution
+- **Simple**: No virtual environment management needed
+- **Modern**: Uses PEP 723 inline script metadata
+- **Isolated**: Each script runs in its own environment
+
+## Traditional Installation (Optional)
+
+If you prefer using pip and virtual environments:
+
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run script
+python ocr_processor.py
+```
+
+However, using `uv run` is recommended for simpler dependency management.
+
 ## License
 
 This script is provided as-is for processing Russian table OCR tasks.
@@ -281,5 +335,5 @@ This script is provided as-is for processing Russian table OCR tasks.
 
 For issues or questions:
 1. Check the log file: `ocr_processing.log`
-2. Run with verbose mode: `python ocr_processor.py -v`
+2. Run with verbose mode: `uv run ocr_processor.py -v`
 3. Review the processing summary: `ocr_output/processing_summary.md`
