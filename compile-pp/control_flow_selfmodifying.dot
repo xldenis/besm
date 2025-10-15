@@ -1,0 +1,316 @@
+digraph I_PP3_SelfModifying_ControlFlow {
+    // Graph attributes
+    rankdir=TB;
+    node [shape=box, style=rounded];
+
+    // Entry point
+    start [shape=ellipse, label="Entry\nI-PP-3", style=filled, fillcolor=lightgreen];
+
+    // ============================================================================
+    // LOOP 1: Operator Number Substitution (ops 1-10)
+    // ============================================================================
+
+    // Loop 1 Init
+    op1 [label="Op 1\nINITIALIZE LOOP 1\nK₀ → counter K\nForm commands:\n→ blank in op 2 (selection)\n→ blank in op 8 (transmission)",
+         style="filled,bold", fillcolor="#b3e0ff"];
+
+    // Loop 1 Body
+    op2 [label="Op 2\n<BLANK> ← selection cmd\n+1 → counter K\nExtract A₃"];
+    op3 [label="Op 3\nTest for operator sign\nor loop marker"];
+    op4 [label="Op 4\nShift A₃ → A₁\nForm selection cmd\n→ blank in op 5\nK → counter K'"];
+    op5 [label="Op 5\n<BLANK> ← selection cmd\nIncrement selection\n+1 → counter K'"];
+    op6 [label="Op 6\nCompare for\noperator number\n(2 comparisons)"];
+    op7 [label="Op 7\nCompute relative addr:\nK' - K → A₁, A₃\nReplace A₃\nAdd to instruction"];
+    op8 [label="Op 8\n<BLANK> ← transmission cmd\n(return to program)"];
+
+    // Loop 1 Update
+    op9 [label="Op 9\nUPDATE LOOP 1\nIncrement:\n→ blank in op 2\n→ blank in op 8",
+         style="filled", fillcolor="#ffffcc"];
+
+    // Loop 1 Test
+    op10 [label="Op 10\nTEST LOOP 1\ncounter K < K_k?",
+          shape=diamond, style=filled, fillcolor="#ffcccc"];
+
+    // ============================================================================
+    // LOOP 2: Opcode Processing & Relative Address Adjustment (ops 11-41)
+    // ============================================================================
+
+    // Loop 2 Init
+    op11 [label="Op 11\nINITIALIZE LOOP 2\nK_k → counter K\nForm commands:\n→ blank in op 12 (selection)\n→ blank in op 39 (transmission)",
+          style="filled,bold", fillcolor="#b3e0ff"];
+
+    // Loop 2 Body - Selection
+    op12 [label="Op 12\n<BLANK> ← selection cmd\n+1 → counter K\nExtract opcode x"];
+
+    // Opcode Classification Tree
+    op13 [label="Op 13\nx ≥ 18?", shape=diamond];
+    op14 [label="Op 14\nx ≥ 19?", shape=diamond];
+    op15 [label="Op 15\nx ≥ 20?", shape=diamond];
+    op16 [label="Op 16\nx ≥ 21?", shape=diamond];
+    op17 [label="Op 17\nx ≥ 26?", shape=diamond];
+    op18 [label="Op 18\n27 ≥ x?\nCall op 19", shape=diamond];
+
+    // Out-of-sequence processing
+    op19 [label="Op 19\nConditional selection\nMay call op 40"];
+    op20 [label="Op 20\nExtract A₃"];
+    op21 [label="Op 21\nx = 26?", shape=diamond];
+    op22 [label="Op 22\nTest MMUK/DBU\nMay call op 40"];
+
+    // Relative address processing
+    op23 [label="Op 23\nProcess relative addr\nForm absolute address"];
+    op24 [label="Op 24\nControlled cmd\nhigher?", shape=diamond];
+    op25 [label="Op 25\nAbsolute addr → A₁\nCall op 27"];
+    op26 [label="Op 26\nControl cmd addr → A₁"];
+
+    // SUB-LOOP: Distance calculation (ops 27-34)
+    op27 [label="Op 27\nSUB-LOOP INIT\nForm selection cmd\n→ blank in op 28\nDistance → K'\nInit hole counter",
+          style="filled,bold", fillcolor="#e6ccff"];
+    op28 [label="Op 28\n<BLANK> ← selection cmd\nExtract order field"];
+    op29 [label="Op 29\nOrder = 0?", shape=diamond];
+    op30 [label="Op 30\nDummy/blank?", shape=diamond];
+    op31 [label="Op 31\n+1 → hole counter"];
+    op32 [label="Op 32\nSUB-LOOP UPDATE\nIncrement blank in op 28\n-1 from K'",
+          style="filled", fillcolor="#f2e6ff"];
+    op33 [label="Op 33\nSUB-LOOP TEST\nAll checked?\n(K' = 0?)",
+          shape=diamond, style=filled, fillcolor="#ffe6f2"];
+    op34 [label="Op 34\nCompute precise\nrelative address:\nΔ - holes"];
+
+    // Address replacement
+    op35 [label="Op 35\n18 ≥ x?", shape=diamond];
+    op36 [label="Op 36\nExtract A₄\nA₄ → A₃"];
+    op37 [label="Op 37\nAddr1 = Addr3?", shape=diamond];
+    op38 [label="Op 38\nReplace rel addr\nin A₁ with precise"];
+    op39 [label="Op 39\nReplace rel addr\nin A₃ with precise\n<BLANK> ← transmission cmd\n(return to program)"];
+
+    // Loop 2 Update
+    op40 [label="Op 40\nUPDATE LOOP 2\nIncrement:\n→ blank in op 12\n→ blank in op 39",
+          style="filled", fillcolor="#ffffcc"];
+
+    // Loop 2 Test
+    op41 [label="Op 41\nTEST LOOP 2\ncounter K < K_f?",
+          shape=diamond, style=filled, fillcolor="#ffcccc"];
+
+    // ============================================================================
+    // LOOP 3: Hole Processing & Cleanup (ops 42-50)
+    // ============================================================================
+
+    // Loop 3 Init
+    op42 [label="Op 42\nINITIALIZE LOOP 3\nK_f → counter K\nK₁ → counter K'\nCalculate ΔK\nForm commands:\n→ blank in op 43 (selection)\n→ blank in op 48 (transmission)",
+          style="filled,bold", fillcolor="#b3e0ff"];
+
+    // Loop 3 Body
+    op43 [label="Op 43\n<BLANK> ← selection cmd\n+1 → counter K\nExtract order"];
+    op44 [label="Op 44\nOrder = 0?", shape=diamond];
+    op45 [label="Op 45\nDummy/blank?", shape=diamond];
+    op46a [label="Op 46 (part 1)\nStore hole address\nK' → A₃ of hole"];
+    op46b [label="Op 46 (part 2)\nCalculate precise\nhole address"];
+    op47 [label="Op 47\nPrint hole info\nCall op 49"];
+    op48 [label="Op 48\n<BLANK> ← transmission cmd\n+1 → transmission counter\n(increment blank in op 48)"];
+
+    // Loop 3 Update
+    op49 [label="Op 49\nUPDATE LOOP 3\nIncrement:\n→ blank in op 43",
+          style="filled", fillcolor="#ffffcc"];
+
+    // Loop 3 Test
+    op50 [label="Op 50\nTEST LOOP 3\ncounter K < K_f?",
+          shape=diamond, style=filled, fillcolor="#ffcccc"];
+
+    // Exit
+    op51 [label="Op 51\nCalculate new K_k\nExit to MP-3"];
+    exit [shape=ellipse, label="Exit to\nOP-2 (MP-3)", style=filled, fillcolor=lightcoral];
+
+    // ============================================================================
+    // CONTROL FLOW EDGES
+    // ============================================================================
+
+    start -> op1;
+
+    // Loop 1 flow
+    op1 -> op2;
+    op2 -> op3;
+    op3 -> op4 [label="not marker"];
+    op3 -> op9 [label="marker/sign"];
+    op4 -> op5;
+    op5 -> op6;
+    op6 -> op5 [label="loop"];
+    op6 -> op7 [label="found"];
+    op7 -> op8;
+    op8 -> op9;
+    op9 -> op10;
+    op10 -> op2 [label="yes\n(continue)", constraint=false];
+    op10 -> op11 [label="no\n(done)"];
+
+    // Loop 2 initialization and selection
+    op11 -> op12;
+    op12 -> op13;
+
+    // Opcode classification tree
+    op13 -> op40 [label="< 18"];
+    op13 -> op14 [label="≥ 18"];
+    op14 -> op19 [label="< 19\n(x=18)"];
+    op14 -> op15 [label="≥ 19"];
+    op15 -> op40 [label="< 20\n(x=19)"];
+    op15 -> op16 [label="≥ 20"];
+    op16 -> op19 [label="< 21\n(x=20)"];
+    op16 -> op17 [label="≥ 21"];
+    op17 -> op40 [label="< 26\n(x=21-25)"];
+    op17 -> op18 [label="≥ 26"];
+    op18 -> op40 [label="> 27"];
+    op18 -> op19 [label="≤ 27\n(x=26-27)"];
+
+    // Out-of-sequence processing
+    op19 -> op40 [label="direct"];
+    op19 -> op20 [label="fallthrough"];
+    op20 -> op21;
+    op21 -> op28 [label="≠ 26"];
+    op21 -> op22 [label="= 26"];
+    op22 -> op23 [label="is MMUK"];
+    op22 -> op40 [label="not MMUK"];
+    op23 -> op24;
+    op24 -> op26 [label="not higher"];
+    op24 -> op25 [label="higher"];
+    op25 -> op27;
+    op26 -> op27;
+
+    // Sub-loop (distance calculation)
+    op27 -> op28;
+    op28 -> op29;
+    op29 -> op32 [label="≠ 0"];
+    op29 -> op30 [label="= 0"];
+    op30 -> op32 [label="is dummy"];
+    op30 -> op31 [label="not dummy"];
+    op31 -> op32;
+    op32 -> op33;
+    op33 -> op28 [label="not done", constraint=false];
+    op33 -> op34 [label="done"];
+
+    // Address replacement
+    op34 -> op35;
+    op35 -> op39 [label="< 18"];
+    op35 -> op36 [label="≥ 18"];
+    op36 -> op37;
+    op37 -> op39 [label="≠"];
+    op37 -> op38 [label="="];
+    op38 -> op39;
+
+    // Loop 2 update and test
+    op39 -> op40;
+    op40 -> op41;
+    op41 -> op12 [label="yes\n(continue)", constraint=false];
+    op41 -> op42 [label="no\n(done)"];
+
+    // Loop 3 flow
+    op42 -> op43;
+    op43 -> op44;
+    op44 -> op48 [label="≠ 0"];
+    op44 -> op45 [label="= 0"];
+    op45 -> op48 [label="is dummy"];
+    op45 -> op46a [label="is hole"];
+    op46a -> op46b;
+    op46b -> op47;
+    op47 -> op49;
+    op48 -> op49;
+    op49 -> op50;
+    op50 -> op43 [label="yes\n(continue)", constraint=false];
+    op50 -> op51 [label="no\n(done)"];
+
+    op51 -> exit;
+
+    // ============================================================================
+    // SELF-MODIFYING CODE ANNOTATIONS (dashed edges)
+    // ============================================================================
+
+    op1 -> op2 [label="fills blank", style=dashed, color=blue];
+    op1 -> op8 [label="fills blank", style=dashed, color=blue];
+    op9 -> op2 [label="modifies", style=dashed, color=purple];
+    op9 -> op8 [label="modifies", style=dashed, color=purple];
+
+    op4 -> op5 [label="fills blank", style=dashed, color=blue];
+    op5 -> op5 [label="self-modifies", style=dashed, color=purple];
+
+    op11 -> op12 [label="fills blank", style=dashed, color=blue];
+    op11 -> op39 [label="fills blank", style=dashed, color=blue];
+    op40 -> op12 [label="modifies", style=dashed, color=purple];
+    op40 -> op39 [label="modifies", style=dashed, color=purple];
+
+    op27 -> op28 [label="fills blank", style=dashed, color=blue];
+    op32 -> op28 [label="modifies", style=dashed, color=purple];
+
+    op42 -> op43 [label="fills blank", style=dashed, color=blue];
+    op42 -> op48 [label="fills blank", style=dashed, color=blue];
+    op48 -> op48 [label="self-modifies", style=dashed, color=purple];
+    op49 -> op43 [label="modifies", style=dashed, color=purple];
+
+    // ============================================================================
+    // SUBGRAPH CLUSTERING
+    // ============================================================================
+
+    subgraph cluster_loop1 {
+        label = "LOOP 1: Operator Number Substitution\n(Ops 1-10)\n\nIterates through program to K_k\nConverts operator numbers → relative addresses";
+        style = filled;
+        fillcolor = "#e6f7ff";
+        op1; op2; op3; op4; op5; op6; op7; op8; op9; op10;
+    }
+
+    subgraph cluster_loop2 {
+        label = "LOOP 2: Opcode Processing & Relative Address Adjustment\n(Ops 11-41)\n\nIterates through entire program to K_f\nClassifies opcodes and adjusts relative addresses";
+        style = filled;
+        fillcolor = "#fff7e6";
+
+        subgraph cluster_classification {
+            label = "Opcode Classification Tree";
+            style = filled;
+            fillcolor = "#ffe6e6";
+            op13; op14; op15; op16; op17; op18;
+        }
+
+        subgraph cluster_processing {
+            label = "Address Processing";
+            style = filled;
+            fillcolor = "#e6f2ff";
+            op19; op20; op21; op22; op23; op24; op25; op26;
+        }
+
+        subgraph cluster_subloop {
+            label = "Sub-Loop: Distance Calculation";
+            style = filled;
+            fillcolor = "#f5e6ff";
+            op27; op28; op29; op30; op31; op32; op33; op34;
+        }
+
+        subgraph cluster_replacement {
+            label = "Address Replacement";
+            style = filled;
+            fillcolor = "#e6ffe6";
+            op35; op36; op37; op38; op39;
+        }
+
+        op11; op12; op40; op41;
+    }
+
+    subgraph cluster_loop3 {
+        label = "LOOP 3: Hole Processing & Cleanup\n(Ops 42-50)\n\nIterates through entire program to K_f\nRemoves and documents holes (loop markers/operator signs)";
+        style = filled;
+        fillcolor = "#ffe6f7";
+        op42; op43; op44; op45; op46a; op46b; op47; op48; op49; op50;
+    }
+
+    subgraph cluster_exit_group {
+        label = "Exit";
+        style = filled;
+        fillcolor = "#ffcccc";
+        op51;
+    }
+
+    // Legend
+    legend [shape=none, margin=0, label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="4">
+            <tr><td colspan="2" bgcolor="lightgray"><b>Legend</b></td></tr>
+            <tr><td bgcolor="#b3e0ff">INITIALIZE</td><td align="left">Form initial commands</td></tr>
+            <tr><td bgcolor="#ffffcc">UPDATE</td><td align="left">Modify commands for next iteration</td></tr>
+            <tr><td bgcolor="#ffcccc">TEST</td><td align="left">Loop control decision</td></tr>
+            <tr><td><font color="blue">──→</font></td><td align="left">Fills blank (initial)</td></tr>
+            <tr><td><font color="purple">──→</font></td><td align="left">Modifies (incremental)</td></tr>
+        </table>
+    >];
+}

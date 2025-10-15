@@ -1,0 +1,209 @@
+digraph I_PP3_Documented_ControlFlow {
+    // Graph attributes
+    rankdir=TB;
+    node [shape=box, style=rounded];
+
+    // Entry point
+    start [shape=ellipse, label="Entry\n(Documentation)", style=filled, fillcolor=lightgreen];
+
+    // PART 1: Operators 1-13 (Substitution of operator numbers)
+    op1 [label="Op 1\nSend K₀ to counter K"];
+    op2 [label="Op 2\nSelect next instruction\nAdd 1 to counter K"];
+    op3 [label="Op 3\nDetermine if loop\nparenthesis or\noperator sign"];
+    op4 [label="Op 4\nIf Ma or Mb:\ntransfer to op 10\n(skip first two addresses)"];
+    op5 [label="Op 5\nDetermine first address\nShift to cell A"];
+    op6 [label="Op 6\nExamine extracted\naddress\n→ call subroutine (op 34)"];
+    op7 [label="Op 7\nSet tested first address\nExtract second address\nShift to cell A"];
+    op8 [label="Op 8\nTest selected address\n→ call subroutine (op 34)"];
+    op9 [label="Op 9\nSet tested second\naddress in instruction"];
+    op10 [label="Op 10\nExtract third address\nSet in cell A"];
+    op11 [label="Op 11\nTest selected address\n→ call subroutine (op 34)\nSet in instruction"];
+    op12 [label="Op 12\nTransfer instruction\nback to block K"];
+    op13 [label="Op 13\nIf all instructions\nexamined: continue\nElse: transfer to op 2"];
+
+    // PART 2: Operators 14-25 (Change relative addresses)
+    op14 [label="Op 14\nSend K₀ to counter K"];
+    op15 [label="Op 15\nSelect next instruction\nAdd 1 to counter K"];
+    op16 [label="Op 16\nIf Ma or Mb:\ntransfer to op 22\n(rel addr only in 3rd)"];
+    op17 [label="Op 17\nExtract first address\nSend to cell A"];
+    op18 [label="Op 18\nExamine extracted\naddress\n→ call subroutine (op 39)"];
+    op19 [label="Op 19\nSet tested address\nExtract second address\nSend to cell A"];
+    op20 [label="Op 20\nTest extracted address\n→ call subroutine (op 39)"];
+    op21 [label="Op 21\nSend tested address\nto instruction"];
+    op22 [label="Op 22\nExtract third address\nSend to cell A"];
+    op23 [label="Op 23\nTest extracted address\n→ call subroutine (op 39)"];
+    op24 [label="Op 24\nSend tested address\nTransfer instruction\nback to block K"];
+    op25 [label="Op 25\nIf all instructions\nexamined: continue\nElse: transfer to op 15"];
+
+    // PART 3: Operators 26-33 (Remove open-parentheses and signs)
+    op26 [label="Op 26\nCalculate true K₁*\nSet in special counter"];
+    op27 [label="Op 27\nSelect next instruction\nfrom block K"];
+    op28 [label="Op 28\nIf instruction:\ntransfer to op 29\nIf loop/op sign:\ntransfer to op 30"];
+    op29 [label="Op 29\nSend instruction back\nAdd 1 to true\naddress counter"];
+    op30 [label="Op 30\nSet true address in\n3rd addr of loop/op sign"];
+    op31 [label="Op 31\nPrint loop parenthesis\nor operator sign"];
+    op32 [label="Op 32\nIf all instructions\nexamined: continue\nElse: transfer to op 27"];
+    op33 [label="Op 33\nCalculate and set\nnew K_f value"];
+
+    // SUBROUTINE 1: Operators 34-38 (Forming relative addresses)
+    sub34_entry [shape=hexagon, label="Subroutine Entry\n(Ops 34-38)", style=filled, fillcolor=lightyellow];
+    op34 [label="Op 34\nIf operator number\nin cell A:\ntransfer to op 35\nElse: return"];
+    op35 [label="Op 35\nShift operator number\nto first address\nSet K₁ in counter K'"];
+    op36 [label="Op 36\nSelect next instruction\nfrom block K\nAdd 1 to counter K'"];
+    op37 [label="Op 37\nRepeat op 36 until\noperator sign selected"];
+    op38 [label="Op 38\nObtain relative address:\n0200 + |K' - K| (positive)\n1200 + |K' - K| (negative)"];
+    sub34_return [shape=hexagon, label="Return from\nOps 34-38", style=filled, fillcolor=lightyellow];
+
+    // SUBROUTINE 2: Operators 39-45 (Changing relative addresses)
+    sub39_entry [shape=hexagon, label="Subroutine Entry\n(Ops 39-45)", style=filled, fillcolor=lightcyan];
+    op39 [label="Op 39\nIf relative address\nin cell A:\ntransfer to op 40\nElse: return"];
+    op40 [label="Op 40\nClear counter K'\nClear cell B"];
+    op41 [label="Op 41\nSelect next instruction\nbetween rel addr and\ncontaining instruction\nAdd 1 to counter K'"];
+    op42 [label="Op 42\nIf loop parenthesis or\noperator sign selected:\ntransfer to op 43"];
+    op43 [label="Op 43\nAdd 1 to cell B"];
+    op44 [label="Op 44\nCompare K' with |Δ|\nRepeat ops 41-43\nΔ times"];
+    op45 [label="Op 45\nForm new relative\naddress: Δ - (B)"];
+    sub39_return [shape=hexagon, label="Return from\nOps 39-45", style=filled, fillcolor=lightcyan];
+
+    // SUBROUTINE 3: Operators 46-47 (Block K operations)
+    op46 [shape=hexagon, label="Op 46\nSubroutine for\nselecting instructions\nfrom block K", style=filled, fillcolor=lavender];
+    op47 [shape=hexagon, label="Op 47\nSubroutine for\ntransferring instructions\nto block K", style=filled, fillcolor=lavender];
+
+    // Exit point
+    exit [shape=ellipse, label="Exit to\nOP-2/MP-3", style=filled, fillcolor=lightcoral];
+
+    // Main flow edges
+    start -> op1;
+
+    // Part 1: Operators 1-13
+    op1 -> op2;
+    op2 -> op3;
+    op3 -> op4 [label="instruction"];
+    op3 -> op12 [label="loop/sign"];
+    op4 -> op5 [label="not Ma/Mb"];
+    op4 -> op10 [label="Ma or Mb"];
+    op5 -> op6;
+    op6 -> sub34_entry [label="call", style=dashed];
+    sub34_return -> op6 [style=dashed];
+    op6 -> op7;
+    op7 -> op8;
+    op8 -> op9;
+    op8 -> sub34_entry [label="call", style=dashed];
+    sub34_return -> op8 [style=dashed];
+    op9 -> op10;
+    op10 -> op11;
+    op11 -> op12;
+    op11 -> sub34_entry [label="call", style=dashed];
+    sub34_return -> op11 [style=dashed];
+    op12 -> op13;
+    op13 -> op2 [label="not all\nexamined"];
+    op13 -> op14 [label="all examined\n(continue)"];
+
+    // Part 2: Operators 14-25
+    op14 -> op15;
+    op15 -> op16;
+    op16 -> op17 [label="not Ma/Mb"];
+    op16 -> op22 [label="Ma or Mb"];
+    op17 -> op18;
+    op18 -> op19;
+    op18 -> sub39_entry [label="call", style=dashed];
+    sub39_return -> op18 [style=dashed];
+    op19 -> op20;
+    op20 -> op21;
+    op20 -> sub39_entry [label="call", style=dashed];
+    sub39_return -> op20 [style=dashed];
+    op21 -> op22;
+    op22 -> op23;
+    op23 -> op24;
+    op23 -> sub39_entry [label="call", style=dashed];
+    sub39_return -> op23 [style=dashed];
+    op24 -> op25;
+    op25 -> op15 [label="not all\nexamined"];
+    op25 -> op26 [label="all examined\n(continue)"];
+
+    // Part 3: Operators 26-33
+    op26 -> op27;
+    op27 -> op28;
+    op28 -> op29 [label="instruction"];
+    op28 -> op30 [label="loop/op sign"];
+    op29 -> op32;
+    op30 -> op31;
+    op31 -> op32;
+    op32 -> op27 [label="not all\nexamined"];
+    op32 -> op33 [label="all examined\n(continue)"];
+    op33 -> exit;
+
+    // Subroutine 1 (Ops 34-38)
+    sub34_entry -> op34;
+    op34 -> sub34_return [label="not operator\nnumber"];
+    op34 -> op35 [label="operator\nnumber"];
+    op35 -> op36;
+    op36 -> op37;
+    op37 -> op36 [label="not found\n(loop)"];
+    op37 -> op38 [label="operator\nsign found"];
+    op38 -> sub34_return;
+
+    // Subroutine 2 (Ops 39-45)
+    sub39_entry -> op39;
+    op39 -> sub39_return [label="not relative\naddress"];
+    op39 -> op40 [label="relative\naddress"];
+    op40 -> op41;
+    op41 -> op42;
+    op42 -> op44 [label="not loop/sign"];
+    op42 -> op43 [label="loop/sign"];
+    op43 -> op44;
+    op44 -> op41 [label="K' < |Δ|\n(repeat)"];
+    op44 -> op45 [label="K' = |Δ|\n(done)"];
+    op45 -> sub39_return;
+
+    // Subroutine usage (illustrative - not exhaustive)
+    op12 -> op47 [label="uses", style=dotted, color=gray];
+    op2 -> op46 [label="uses", style=dotted, color=gray];
+    op15 -> op46 [label="uses", style=dotted, color=gray];
+    op27 -> op46 [label="uses", style=dotted, color=gray];
+    op24 -> op47 [label="uses", style=dotted, color=gray];
+    op29 -> op47 [label="uses", style=dotted, color=gray];
+
+    // Subgraph clustering
+    subgraph cluster_part1 {
+        label = "PART 1: Substitute Operator Numbers\n(Ops 1-13)\n\nCalls subroutine 34-38 for each address";
+        style = filled;
+        fillcolor = "#e6f3ff";
+        op1; op2; op3; op4; op5; op6; op7; op8; op9; op10; op11; op12; op13;
+    }
+
+    subgraph cluster_part2 {
+        label = "PART 2: Change Relative Addresses\n(Ops 14-25)\n\nCalls subroutine 39-45 for each address";
+        style = filled;
+        fillcolor = "#ffe6f0";
+        op14; op15; op16; op17; op18; op19; op20; op21; op22; op23; op24; op25;
+    }
+
+    subgraph cluster_part3 {
+        label = "PART 3: Remove Loop Parentheses & Signs\n(Ops 26-33)\n\nPrints markers with true addresses";
+        style = filled;
+        fillcolor = "#f0ffe6";
+        op26; op27; op28; op29; op30; op31; op32; op33;
+    }
+
+    subgraph cluster_sub1 {
+        label = "SUBROUTINE 1: Form Relative Addresses\n(Ops 34-38)\n\nConverts operator numbers to relative addresses";
+        style = filled;
+        fillcolor = "#ffffcc";
+        sub34_entry; op34; op35; op36; op37; op38; sub34_return;
+    }
+
+    subgraph cluster_sub2 {
+        label = "SUBROUTINE 2: Change Relative Addresses\n(Ops 39-45)\n\nAdjusts for removed loop markers";
+        style = filled;
+        fillcolor = "#ccffff";
+        sub39_entry; op39; op40; op41; op42; op43; op44; op45; sub39_return;
+    }
+
+    subgraph cluster_sub3 {
+        label = "SUBROUTINE 3: Block K Operations\n(Ops 46-47)\n\nSelection and transfer utilities";
+        style = filled;
+        fillcolor = "#f0e6ff";
+        op46; op47;
+    }
+}

@@ -1,0 +1,217 @@
+digraph I_PP3_ControlFlow {
+    // Graph attributes
+    rankdir=TB;
+    node [shape=box, style=rounded];
+
+    // Entry point
+    start [shape=ellipse, label="Entry", style=filled, fillcolor=lightgreen];
+
+    // Operator nodes
+    op1 [label="Op 1\nInitialize counter K\nwith K₀"];
+    op2 [label="Op 2\nSelect next instruction\nfrom block K\n+1 to counter K"];
+    op3 [label="Op 3\nTest for loop parenthesis\nor operator sign"];
+    op4 [label="Op 4\nShift A₃ to A₁\nForm selection command"];
+    op5 [label="Op 5\nSelect from program\nIncrement counters"];
+    op6 [label="Op 6\nExamine extracted\naddress (2 comparisons)"];
+    op7 [label="Op 7\nCompute relative address\nK' - K → A₁, A₃"];
+    op8 [label="Op 8\nReverse transmission\nto program"];
+    op9 [label="Op 9\nIncrement selection\nand transmission counters"];
+    op10 [label="Op 10\nLoop control:\ncounter K < K_k?"];
+    op11 [label="Op 11\nForm selection/transmission\ncommands\nK_k → counter K"];
+    op12 [label="Op 12\nSelect from program\n+1 to counter K\nExtract opcode"];
+    op13 [label="Op 13\nOpcode classification:\nx ≥ 18?"];
+    op14 [label="Op 14\nOpcode classification:\nx ≥ 19?"];
+    op15 [label="Op 15\nOpcode classification:\nx ≥ 20?"];
+    op16 [label="Op 16\nOpcode classification:\nx ≥ 21?"];
+    op17 [label="Op 17\nOpcode classification:\nx ≥ 26?"];
+    op18 [label="Op 18\nOpcode classification:\n27 ≥ x?\nCall op 10"];
+    op19 [label="Op 19\nConditional selection\nCall op 40"];
+    op20 [label="Op 20\nExtract A₃\nfrom instruction"];
+    op21 [label="Op 21\nTest x = 26?"];
+    op22 [label="Op 22\nTest MMUK/DBU\nCall op 40"];
+    op23 [label="Op 23\nProcess relative addresses\nForm absolute address"];
+    op24 [label="Op 24\nTest if controlled\ncommand is higher"];
+    op25 [label="Op 25\nMove absolute address\nto A₁\nCall op 27"];
+    op26 [label="Op 26\nMove control command\naddress to A₁"];
+    op27 [label="Op 27\nForm selection command\nSet distance to K'\nInit holes counter"];
+    op28 [label="Op 28\nSelect from program\nExtract order field"];
+    op29 [label="Op 29\nTest if order = 0"];
+    op30 [label="Op 30\nTest if dummy/blank\nselected"];
+    op31 [label="Op 31\n+1 to holes counter"];
+    op32 [label="Op 32\nIncrement selection cmd\n-1 from counter K'"];
+    op33 [label="Op 33\nLoop control:\nAll commands checked?"];
+    op34 [label="Op 34\nCompute precise\nrelative address"];
+    op35 [label="Op 35\nTest 18 ≥ x?"];
+    op36 [label="Op 36\nExtract A₄ from\ninstruction\nA₄ → A₃"];
+    op37 [label="Op 37\nTest if 1st address\n= 3rd address"];
+    op38 [label="Op 38\nReplace old relative\naddress in A₁\nwith precise address"];
+    op39 [label="Op 39\nReplace old relative\naddress in A₃\nTransmit to program"];
+    op40 [label="Op 40\nIncrement selection\nand transmission\ncommand counters"];
+    op41 [label="Op 41\nLoop control:\ncounter K < K_f?"];
+    op42 [label="Op 42\nForm selection/transmission\ncommands\nCalculate ΔK"];
+    op43 [label="Op 43\nSelect from program\n+1 to counter K\nExtract order"];
+    op44 [label="Op 44\nTest if order = 0"];
+    op45 [label="Op 45\nTest if dummy/blank"];
+    op46a [label="Op 46 (first)\nStore hole address\n(= counter K') in A₃"];
+    op46b [label="Op 46 (second)\nCalculate precise\nhole address in A₃"];
+    op47 [label="Op 47\nPrint hole information\nCall op 49"];
+    op48 [label="Op 48\nReverse transmission\nIncrement counters"];
+    op49 [label="Op 49\nIncrement selection\ncommand counter"];
+    op50 [label="Op 50\nLoop control:\ncounter K < K_f?"];
+    op51 [label="Op 51\nCalculate new K_k\nExit to MP-3"];
+
+    // Exit point
+    exit [shape=ellipse, label="Exit to MP-3", style=filled, fillcolor=lightcoral];
+
+    // Control flow edges
+    start -> op1;
+
+    // Part 1: Operators 1-13 (main program flow)
+    op1 -> op2;
+    op2 -> op3;
+    op3 -> op4 [label="not loop/sign"];
+    op3 -> op9 [label="loop/sign"];
+    op4 -> op5;
+    op5 -> op6;
+    op6 -> op5;
+    op6 -> op7;
+    op7 -> op8;
+    op8 -> op9;
+    op9 -> op10;
+    op10 -> op2 [label="K < K_k\n(continue)"];
+    op10 -> op11 [label="K ≥ K_k\n(done)"];
+    op11 -> op12;
+    op12 -> op13;
+
+    // Opcode classification tree (ops 13-18)
+    op13 -> op40 [label="x < 18"];
+    op13 -> op14 [label="x ≥ 18"];
+    op14 -> op19 [label="x < 19"];
+    op14 -> op15 [label="x ≥ 19"];
+    op15 -> op40 [label="x < 20"];
+    op15 -> op16 [label="x ≥ 20"];
+    op16 -> op19 [label="x < 21"];
+    op16 -> op17 [label="x ≥ 21"];
+    op17 -> op40 [label="x < 26"];
+    op17 -> op18 [label="x ≥ 26"];
+    op18 -> op40 [label="x > 27"];
+    op18 -> op19 [label="x ≤ 27\n(call)"];
+
+    // Out-of-sequence operators (19-22)
+    op19 -> op40 [label="call"];
+    op19 -> op20 [label="fall-through"];
+    op20 -> op21;
+    op21 -> op28 [label="x ≠ 26"];
+    op21 -> op22 [label="x = 26"];
+    op22 -> op23;
+    op22 -> op40 [label="call"];
+
+    // Operators 23-26
+    op23 -> op24;
+    op24 -> op26 [label="cmd not higher"];
+    op24 -> op25 [label="cmd higher"];
+    op25 -> op27 [label="call"];
+    op26 -> op27;
+
+    // Operators 27-34 (loop removal section)
+    op27 -> op28;
+    op28 -> op29;
+    op29 -> op32 [label="order ≠ 0"];
+    op29 -> op30 [label="order = 0"];
+    op30 -> op32 [label="is dummy"];
+    op30 -> op31 [label="not dummy"];
+    op31 -> op32;
+    op32 -> op33;
+    op33 -> op28 [label="not all checked\n(loop back)"];
+    op33 -> op34 [label="all checked"];
+    op34 -> op35;
+
+    // Operators 35-39 (relative address adjustment)
+    op35 -> op39 [label="x < 18"];
+    op35 -> op36 [label="x ≥ 18"];
+    op36 -> op37;
+    op37 -> op39 [label="addr1 ≠ addr3"];
+    op37 -> op38 [label="addr1 = addr3"];
+    op38 -> op39;
+    op39 -> op40;
+
+    // Operators 40-42
+    op40 -> op41;
+    op41 -> op12 [label="K < K_f\n(loop back)"];
+    op41 -> op42 [label="K ≥ K_f"];
+    op42 -> op43;
+
+    // Operators 43-47 (hole processing)
+    op43 -> op44;
+    op44 -> op48 [label="order ≠ 0"];
+    op44 -> op45 [label="order = 0"];
+    op45 -> op48 [label="is dummy"];
+    op45 -> op46a [label="not dummy"];
+    op46a -> op46b;
+    op46b -> op47 [label="call (alt entry)"];
+    op47 -> op49 [label="call"];
+
+    // Operators 48-51 (final loop and exit)
+    op48 -> op49;
+    op49 -> op50;
+    op50 -> op43 [label="K < K_f\n(loop back)"];
+    op50 -> op51 [label="K ≥ K_f"];
+    op51 -> exit;
+
+    // Subgraph clustering for readability
+    subgraph cluster_init {
+        label = "Part 1: Address Substitution\n(Ops 1-13)";
+        style = filled;
+        fillcolor = lightblue;
+        op1; op2; op3; op4; op5; op6; op7; op8; op9; op10; op11; op12; op13;
+    }
+
+    subgraph cluster_opcode {
+        label = "Opcode Classification Tree\n(Ops 13-18)";
+        style = filled;
+        fillcolor = lightyellow;
+        op14; op15; op16; op17; op18;
+    }
+
+    subgraph cluster_outofseq {
+        label = "Out-of-Sequence\n(Ops 19-22)";
+        style = filled;
+        fillcolor = pink;
+        op19; op20; op21; op22;
+    }
+
+    subgraph cluster_reladdr {
+        label = "Relative Address Processing\n(Ops 23-26)";
+        style = filled;
+        fillcolor = lightcyan;
+        op23; op24; op25; op26;
+    }
+
+    subgraph cluster_removal {
+        label = "Loop Removal\n(Ops 27-34)";
+        style = filled;
+        fillcolor = lightgreen;
+        op27; op28; op29; op30; op31; op32; op33; op34;
+    }
+
+    subgraph cluster_adjust {
+        label = "Address Adjustment\n(Ops 35-42)";
+        style = filled;
+        fillcolor = lavender;
+        op35; op36; op37; op38; op39; op40; op41; op42;
+    }
+
+    subgraph cluster_holes {
+        label = "Hole Processing\n(Ops 43-47)";
+        style = filled;
+        fillcolor = peachpuff;
+        op43; op44; op45; op46a; op46b; op47;
+    }
+
+    subgraph cluster_exit {
+        label = "Final Loop & Exit\n(Ops 48-51)";
+        style = filled;
+        fillcolor = mistyrose;
+        op48; op49; op50; op51;
+    }
+}
