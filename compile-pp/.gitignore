@@ -5,3 +5,4 @@ compile-pp.cabal
 *.sm
 traces/
 optrace
+.DS_Store
