@@ -236,6 +236,10 @@ tN, tN' :: Address -> Address -> Builder Address
 tN a c = emitInstr $ TN a c Normalized
 tN' a c = emitInstr $ TN a c UnNormalized
 
+-- | Print number. 
+pN' :: Address -> Address -> Builder Address
+pN' a = emitInstr $ PN a
+
 ai, ai' :: Address -> Address -> Address -> Builder Address
 
 {- |

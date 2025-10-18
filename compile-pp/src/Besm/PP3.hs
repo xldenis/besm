@@ -10,7 +10,7 @@ import qualified Data.Bits as B
 
 header = Unknown "programme header table" `offAddr` 6 -- This should be cell 7
 
-cellKlast = header `offAddr` 5
+counterKlast = header `offAddr` 5
 
 {-
 
@@ -117,11 +117,11 @@ pp3_1 = do
   mbTemplate <- global "mbTemplate" (Template (Mb zero))
 
   -- Probably need to make cellA global for this to work
-  transTemplate <- local "trans_template" (Template tN cellA (var "unknown buffer"))
-  selTemplate <- local "sel_template" (Template (var "uknown cell") currentInstr)
+  transTemplate <- local "trans_template" (Template $ TN cellA (var "unknown buffer") UnNormalized)
+  selTemplate <- local "sel_template" (Template $ TN (var "uknown cell") currentInstr UnNormalized)
   local "all-but-third" (Raw 0b111_111_111_1111_1111_111_1111_1111_000_0000_0000)
 
-  let k0 = header `offAddr1 4 in
+  let k0 = header `offAddr` 4
   {-
   Op. 1 sends K0 to counter K, in which is fixed the address of the last instruction selected from block K.
   -}
@@ -154,7 +154,7 @@ pp3_1 = do
   are not examined.
   -}
   operator 4 $ do
-    comp currentInstr mBTemplate (op 4) (op 12)
+    comp currentInstr mbTemplate (op 4) (op 12)
     comp currentInstr maTemplate (op 12) (op 4)
 
   {-
@@ -162,7 +162,7 @@ pp3_1 = do
   third address of the standard cell A.
   -}
   operator 5 $ do
-    bitAnd currentInstr firstAddress cellA
+    bitAnd currentInstr firstAddr cellA
     shift cellA (right 22) cellA -- original code uses a shiftall? but that seems unnecessary / wrong?
     chain (op 6)
   {-
@@ -184,7 +184,7 @@ pp3_1 = do
     shift cellA (left 22) cellA
     bitAnd currentInstr (var "all-but-first") currentInstr
     ai currentInstr cellA currentInstr
-    bitAnd currentInstr secondAddress cellA
+    bitAnd currentInstr secondAddr cellA
     shift cellA (left 11) cellA
     chain (op 8)
   {-
@@ -211,8 +211,8 @@ pp3_1 = do
   Op. 10 extracts the third address of the instruction and sets it in cell A.
 
   -}
-  op 10 do 
-    bitAnd currentInstr thirdAddress cellA
+  operator 10 $ do
+    bitAnd currentInstr thirdAddr cellA
     chain (op 11)
   {-
 
@@ -229,7 +229,7 @@ pp3_1 = do
   Op. 12 transfers the instruction back to block K.
 
   -}
-  op 12 $ do
+  operator 12 $ do
     clcc (op 47)
     chain (op 13)
 
@@ -238,9 +238,9 @@ pp3_1 = do
   Op. 13 transfers control to op. 2 if all instructions from block K have not been examined.
 
   -}
-  op 13 $ do
+  operator 13 $ do
 
-    comp (cellK) (cellKlast) (op 2) (op 14)
+    comp (counterK) (counterKlast) (op 2) (op 14)
   {-
 
   Operators 14-25 realize change in relative address, connected with elimination from the programmme of open-parentheses and signs of operator numbers. For this a special sub-routine  (operators 39-45) examines the addresses of instructions and for each relative address Δ calculates the number n of the open-parentheses of loops and signs of operator numbers located in the programme between the instruction having the given relative address Δ and the instruction in which this address is encountered. The number n obtained is the n subtracted from the absolute magnitude of Δ.
@@ -252,7 +252,7 @@ pp3_1 = do
   Op. 14 sends K0 to counter K.
 
   -}
-  op 14 $ do
+  operator 14 $ do
     tN' k0 counterK 
     chain (op 15)
   {-
@@ -260,9 +260,9 @@ pp3_1 = do
   Op. 15 selects the next instruction from the block K and adds unity to counter K.
 
   -}
-  op 15 $ do 
+  operator 15 $ do 
     clcc (op 46)
-    ai cellK one cellK
+    ai counterK one counterK
     chain (op 16)
   {-
 
@@ -274,8 +274,8 @@ pp3_1 = do
   Op. 17 extracts the first address of the instruction and sends it to the third address of the standard cell A.
 
   -}
-  op 17 $ do
-    bitAnd currentInstr firstAddress cellA
+  operator 17 $ do
+    bitAnd currentInstr firstAddr cellA
     shift cellA (right 22) cellA
     chain (op 18) 
   {-
@@ -283,7 +283,7 @@ pp3_1 = do
   Op. 18 examines the extracted address.
 
   -}
-  op 18 $ do
+  operator 18 $ do
     clcc (op 39)
     chain (op 19)
   {-
@@ -291,11 +291,11 @@ pp3_1 = do
   Op. 19 sets the tested address in the instruction, extracts the second address and sends it to the third address of cell A.
 
   -}
-  operator 7 $ do
+  operator 19 $ do
     shift cellA (left 22) cellA
     bitAnd currentInstr (var "all-but-first") currentInstr
     ai currentInstr cellA currentInstr
-    bitAnd currentInstr secondAddress cellA
+    bitAnd currentInstr secondAddr cellA
     shift cellA (left 11) cellA
     chain (op 8)
   {-
@@ -303,7 +303,7 @@ pp3_1 = do
   Op. 20 tests the extracted address.
 
   -}
-  op 20 $ do
+  operator 20 $ do
     clcc (op 39)
     chain (op 21)
   {-
@@ -312,7 +312,7 @@ pp3_1 = do
 
   -}
 
-  op 21 $ do
+  operator 21 $ do
     shift cellA (left 11) cellA
     bitAnd currentInstr (var "all-but-first") currentInstr
     ai currentInstr cellA currentInstr
@@ -322,15 +322,15 @@ pp3_1 = do
   Op. 22 extracts the third address of the instruction, sending it to cell A.
 
   -}
-  op 10 do 
-    bitAnd currentInstr thirdAddress cellA
+  operator 10 $ do
+    bitAnd currentInstr thirdAddr cellA
     chain (op 11)
   {-
 
   Op. 23 tests the extracted address.
 
   -}
-  op 20 $ do
+  operator 20 $ do
     clcc (op 39)
     chain (op 24)
   {-
@@ -338,7 +338,7 @@ pp3_1 = do
   Op. 24 sends the tested address to the instruction and transfers the instruction back to block K.
 
   -}
-  op 24 $ do
+  operator 24 $ do
     bitAnd currentInstr (var "all-but-third") currentInstr
     ai currentInstr cellA currentInstr
     clcc (op 47)
@@ -348,8 +348,8 @@ pp3_1 = do
   Op. 25 transfers control to op. 15 if all instructions in block K have not been examined.
 
   -}
-  op 25 $ do
-    comp cellK cellKlast (op 15) (op 26)
+  operator 25 $ do
+    comp counterK counterKlast (op 15) (op 26)
   {-
 
   Operators 26 - 33 remove open-parentheses of loops and the signs of operator numbers from the assembled programme. Printing of information on the constructed programme takes place this time. The open-parentheses of loops are printed and the signs of operator numbers, in the third addresses of which is first place d the true address of the first instruction of the loop (for open-parentheses) or the true address of the first instruction of the operator (for signs of operator numbers).
@@ -360,7 +360,7 @@ pp3_1 = do
   Op. 26 calculates the true initial K_1* of the programme and sets it in a special counter in which, at the moment of selection from the programme of the open-parentheses of a loop or the sign of an operator number, will be the true address of the following instruction.
 
   -}
-  op 26 $ do
+  operator 26 $ do
     tN' (var "K_1*") (var "trueAddresses") -- "K_1*" is somewhere in the header
     tN' k0 counterK
     chain (op 27)
@@ -369,9 +369,9 @@ pp3_1 = do
   Op. 27 selects the next instruction of the programme from block K.
 
   -}
-  op 27 $ do 
+  operator 27 $ do 
     clcc (op 46)
-    ai cellK unity cellK -- inferred
+    ai counterK unity counterK -- inferred
     chain (op 28)
 
   {-
@@ -379,14 +379,14 @@ pp3_1 = do
   Op. 28 transfers control to op. 29 if an instruction has been selected to op. 30 if the open-parentheses of a loop or the sign of an operator number has been selected.
 
   -}
-  op 28 $ do 
+  operator 28 $ do 
     comp currentInstr (var "0x18") (op 30) (op 29) 
   {-
 
   Op. 29 sends the instruction back to the programme and adds unity to the special counter of true instruction addresses.
 
   -}
-  op 29 $ do
+  operator 29 $ do
     clcc (op 47)
     ai (var "trueAddresses") unity (var "trueAddresses")
     chain (op 32)
@@ -395,7 +395,7 @@ pp3_1 = do
   Op. 30 sets in the third address of the open-parentheses of the loop or the sign of the operator number the true addresses of the following instruction.
 
   -}
-  op 30 $ do 
+  operator 30 $ do 
     bitAnd currentInstr (var "all-but-third") currentInstr
     ai currentInstr (var "trueAddresses") currentInstr
     chain (op 31)
@@ -404,7 +404,7 @@ pp3_1 = do
   Op. 31 prints the open-parentheses of the loop or the operator number sign.
 
   -}
-  op 31 $ do
+  operator 31 $ do
     -- todo
     chain (op 32)
   {-
@@ -412,15 +412,15 @@ pp3_1 = do
   Op. 32 transfers control to op. 28  if all instructions of the programme have not been examined.
 
   -}
-  op 32 $ do
-    comp cellK cellKlast (op 28) (op 33) -- inferred
+  operator 32 $ do
+    comp counterK counterKlast (op 28) (op 33) -- inferred
   {-
 
   Op. 33 calculates and sets the cell 000C the new value of K_f, changed through elimination of the open-parentheses of loops and signs of operator numbers.
 
   -}
-  op 33 $ do
-    sub' (var "trueAddresses") one cellKlast
+  operator 33 $ do
+    sub' (var "trueAddresses") one counterKlast
     cccc (Procedure "MP-3" (op 2)) 
 
   {-
@@ -514,106 +514,283 @@ pp3_1 = do
   the scheme of block II-PP-3 is represented in Fig. 17.
 -}
 pp3_2 = do
+  -- Working cells and variables
+  cell_03F0 <- local "03F0" Cell  -- Standard working cell
+  cell_0001 <- local "0001" Cell  -- Standard working cell
+  cell_0004 <- local "0004" Cell  -- M_1^(i+1)* counter
+
+  -- Constants
+  pBar <- local "Pbar" Cell       -- 03E1
+  cBar <- local "Cbar" Cell       -- 03E2
+  kBar <- local "Kbar" Cell       -- 03E3
+  gammaBar <- local "gammaBar" Cell  -- 03E4
+  p0 <- local "P0" Cell          -- 0008
+  c0 <- local "C0" Cell          -- 03EA (also Ko)
+  k0 <- local "K0" Cell          -- 03EB (also T0)
+  gamma0 <- local "gamma0" Cell  -- 03EC (also F0)
+  o0 <- local "O0" Cell          -- 03ED (also M0)
+  m1 <- local "M1" Cell          -- M^(1)
+
+  deltaC <- local "deltaC" Cell  -- 03F7
+  deltaGamma <- local "deltaGamma" Cell  -- 03F9
+  deltaK <- local "deltaK" Cell  -- 03F8
+  deltaRPD <- local "deltaRPD" Cell  -- 03FA
+
+  fetchCounter <- local "fetchCounter" Cell  -- 03FD
+  cellA <- local "cellA" Cell    -- 03FB
+  cellB <- local "cellB" Cell    -- 03FE
+
+  -- Constants from transcription
+  local "0x18" (Raw 0x18)
+
+
+  local "const_0337" (Raw 0x0337)  -- Value 31 for comparison (2^5,F8)
+  local "const_0338" (Raw 0x0338)  -- Value 03F0 for comparison
+  local "const_033A" (Raw 0x033A)  -- Forward address shift info mask (-2^0,000000FF)??
+  local "const_033C" (Raw 0x033C)  -- Old RPD end (2^1,11111111)???
+  local "const_033B" (Raw 0x34F)  
+
+  -- 0334: ,TN 0010 03F0
+  fetchTemplate <- local "fetchTemplate" (Template (var "unknown_op") cell_03F0)
+  -- 0334: ,TN 0010 03F0
+  returnTemplate <- local "returnTemplate" (Template cell_03F0 (var "unknown_op"))
+  counterTemplate <- (Raw 0xF)
 
 
   {-
     Op 1. calculates Pbar, Cbar, Kbar, ɣbar Obar and C_0*, K_0*, ɣ_0*, O_0*, M_0*
   -}
-
-  op 1 $ do
-    -- todo
+  operator 1 $ do
+    -- /Pₓ +1 /  - P₀  =P+1
+    sub' (header `offAddr` 9) (header `offAddr` 8) (var "0001")
+    -- P
+    sub' (var "0001") one pBar
+    -- Cₓ + P₀ =C+P=Cₘ=Ko
+    sub' (header `offAddr` 10) (header `offAddr` 8) c0
+    -- (C+P) -P = C
+    sub' c0 pBar cBar
+    -- K = Kₓ - K₀
+    sub' (header `offAddr` 12) (header `offAddr` 11) kBar
+    -- γbar
+    sub' (header `offAddr` 6) (header `offAddr` 13) gammaBar
+    -- 0 constant
+    tN' (header `offAddr` 7) (var "const_03D5")
+    -- (P+C) + K = Kₓ =T₀
+    ai c0 kBar k0
+    -- (P+C + K) + F = Fₓ = 0₀
+    ai k0 gammaBar gamma0
+    -- (P+C+K+F) +0 = 0ₓ = M₀
+    ai gamma0 (var "const_03E5") o0
+    -- M₀+1 = M₁ = M⁽¹⁾
+    ai o0 one m1
     chain (op 2)
 
-    {-
-      Op. 2 calculates the correction Δ C, forms the instructions for processing the block V and prints a number of special form, which denotes that immediately after it on the tape will be printed information on the strange blocks.
-    -}
-    op 2 $ do
-      op 
+  {-
+    Op. 2 calculates the correction Δ C, forms the instructions for processing the block V
+    and prints a number of special form, which denotes that immediately after it on the tape
+    will be printed information on the strange blocks.
+  -}
+  operator 2 $ do
+    -- ΔС = -Пₖ
+    tSign' p0 deltaC
+    -- ΔС with order 31
+    addE' deltaC (op 9) (var "const_0339")
+    -- Loading fetch command from array П
+    tN' fetchTemplate (op 3)
+    -- Loading return command to array П
+    tN' returnTemplate (op 15)
+    -- Fetch counter from array П to initial position /П₀/
+    tN' counterTemplate fetchCounter
+    -- Print information flags about memory arrays
+    pN' (var "const_033C")
+    pN' (var "const_033C")
+    chain (op 3)
 
-    {-
-      Op. 3 selects the next line of information of block V.
-    -}
+  {-6
+    Op. 3 selects the next line of information of block V.
+  -}
+  operator 3 $ do
+    -- Fetch from array П to 03F0 (template filled in)
+    empty
+    -- +1 to fetch counter
+    ai fetchCounter one fetchCounter
+    -- Extraction of order x
+    tExp cell_03F0 cell_0001
+    chain (op 4)
 
-    {-
-      Op. 4 tests the selected line, transferring control to op. 5 if a "main head" has been selected for the next block M^i (i = 1.. l).
-    -}
+  {-
+    Op. 4 tests the selected line, transferring control to op. 5 if a "main head"
+    has been selected for the next block M^i (i = 1.. l).
+  -}
+  operator 4 $ do
+    -- 31 ≥ℐ? NO - op 14
+    comp cell_0001 (var "const_0337") (op 14) (op 5)
 
-    {-
-      Op. 5 extracts the third address of the "main head".
-    -}
+  {-
+    Op. 5 extracts the third address of the "main head".
+  -}
+  operator 5 $ do
+    -- Extraction of Az
+    bitAnd cell_03F0 thirdAddr cell_0001
+    chain (op 6)
 
-    {-
-      Op. 6 compares the extracted address with zero. If it is not equal to zero this denotes that the corresponding block M^i relates to the group of constants from block C. In this case op. 10 functions.
-    -}
+  {-
+    Op. 6 compares the extracted address with zero. If it is not equal to zero this denotes
+    that the corresponding block M^i relates to the group of constants from block C.
+    In this case op. 10 functions.
+  -}
+  operator 6 $ do
+    -- Start assigned to array? YES - op 10
+    comp zero cell_0001 (op 10) (op 7)
 
-    {-
-      Op. 7 sets M_l^i* in the third address of the "main head" and calculates M_l^(i+1)* = M_l^i* +Mbar^i.
-    -}
+  {-
+    Op. 7 sets M_l^i* in the third address of the "main head" and calculates M_l^(i+1)* = M_l^i* +Mbar^i.
+  -}
+  operator 7 $ do
+    -- Next М₁⁽ⁱ⁾ in Az /start assigned to array М⁽ⁱ⁾
+    ai cell_03F0 m1 cell_03F0
+    -- Extraction of А₂ /size of array М⁽ⁱ⁾/
+    bitAnd cell_03F0 secondAddr cell_0001
+    -- А₂ to Ae
+    shift cell_0001 (right 11) cell_0001
+    -- М₁⁽ⁱ⁺¹⁾ = М₁⁽ⁱ⁾ + М⁽ⁱ⁾
+    ai m1 cell_0001 m1
+    chain (op 8)
 
-    {-
-      Op. 8 compares M_l^(i+1)* with 03FFF.
-    -}
+  {-
+    Op. 8 compares M_l^(i+1)* with 03FFF.
+  -}
+  operator 8 $ do
+    -- N₁⁽ⁱ⁺²⁾ ≥ 0350 ? NO - op 11
+    comp m1 (var "const_0338") (op 11) (op 9)
 
-    {-
-      Op. 9 is a check stop for M_l^(i+1)* 03FFF.
-    -}
+  {-
+    Op. 9 is a check stop for M_l^(i+1)* 03FFF.
+  -}
+  operator 9 $ do
+    -- Control stop
+    stop
 
-    {-
-      If M^i relates to the group of constants from block C,
-    -}
+  {-
+    Op. 10 obtains the true address M_l^i*, adding Δ C to the third address of the "main head".
+  -}
+  operator 10 $ do
+    -- Decrease array start from constants by ΔС
+    add' cell_03F0 deltaC cell_03F0
+    chain (op 11)
 
-    {-
-      Op. 10 obtains the true address M_l^i*, adding Δ C to the third address of the "main head".
-    -}
+  {-
+    Op. 11 eliminates the operation code in the "main head".
+  -}
+  operator 11 $ do
+    -- Separation of operation code
+    bitAnd cell_03F0 negAddrModifConstant cell_0001
+    chain (op 12)
 
-    {-
-      Op. 11 eliminates the operation code in the "main head".
-    -}
+  {-
+    Op. 12 prints information on the current block M^i.
+  -}
+  operator 12 $ do
+    -- Print information about array :М⁽ⁱ⁾
+    -- part of mp-3
+    clcc (var "const_03A4") (var "const_038C")
+    empty
+    chain (op 13)
 
-    {-
-      Op. 12 prints information on the current block M^i.
-    -}
+  {-
+    Op. 13 sets Mbar^i in the first address and M_l^i* in the second address of a certain
+    working cell for arranging these quantities in the line of information on the variable
+    addresses relating to the block M^i.
+  -}
+  operator 13 $ do
+    -- Shift header to А₁ and А₂ for placement in forward address info
+    shift cell_0001 (left 11) cellA
+    cccc (op 15)
+    empty -- ???
+    chain (op 14)
 
-    {-
-      Op. 13 sets Mbar^i in the first address and M_l^i* in the second address of a certain working cell for arranging these quantities in the line of information on the variable addresses relating to the block M^i.
-    -}
+  {-
+    Op. 14 sets Mbar^i in the first address of this line and in the second address M_l^i*,
+    leaving the magnitude of the shift delta of the variable address in the third address,
+    and the sign of the shift in the eleventh place of the first address.
+  -}
+  operator 14 $ do
+    -- Extraction of information about forward address shift
+    bitAnd cell_03F0 (var "const_033A") cellB
+    -- The size and start of the array is loaded into the forward address info
+    ai cellB cellA cellB
+    chain (op 15)
 
-    {-
-      If a line of information on a variable address has been selected,
-    -}
+  {-
+    Op. 15 transfers the processed line of information back to block V.
+  -}
+  operator 15 $ do
+    empty
+    chain (op 16)
 
-    {-
-      Op. 14 sets Mbar^i in the first address of this line and in the second address M_l^i*, leaving the magnitude of the shift delta of the variable address in the third address, and the sign of the shift in the eleventh place of the first address.
-    -}
+  {-
+    Op. 16 carries out modification of the selection instruction address and the arrangements
+    in op. 3 and op. 15.
+  -}
+  operator 16 $ do
+    -- Counter of fetch command from array Г
+    ai (op 3) two (op 3)
+    -- Counter of return command to array П
+    ai (op 15) one (op 15)
+    chain (op 17)
 
-    {-
-      Op. 15  transfers the processed line of information back to block V.
-    -}
+  {-
+    Op. 17 repeats the functioning of operators 3-16 for all lines of the block V.
+  -}
+  operator 17 $ do
+    -- Fetch counter < Пk ? YES - op 3
+    comp fetchCounter p0 (op 3) (op 18)
 
-    {-
-      Op. 16 carries out modification of the selection instruction address and the arrangements in op. 3 and op. 15.
-    -}
+  {-
+    Op. 18 forms Mbar, R_O*, Rbar and R_f*.
+  -}
+  operator 18 $ do
+    -- (P/d)_к = Mк
+    sub' m1 one (var "const_03EE")
+    -- М = M_к - М_0
+    sub' (var "const_03EE") o0 (var "const_03E6")
+    -- (P/d)_к = Mк + P/d
+    -- not sure that the header value thing is correct
+    -- not sure where 0x3EE is from and whetehr there's a well known value associated
+    sub' (var "const_03EE") (header `offAddr` 5) (var "const_03EF")
+    chain (op 19)
 
-    {-
-      Op. 17 repeats the functioning of operators 3-16 for all lines of the block V.
-    -}
+  {-
+    Op. 19 compares R_f* with 03FFF
+  -}
+  operator 19 $ do
+    -- (P/d)к ≥ 03F0 NO - op 21
+    comp (var "const_03EF") (var "const_0338") (op 21) (op 20)
 
-    {-
-      Op. 18 forms Mbar, R_O*, Rbar and R_f*.
-    -}
+  {-
+    Op. 20 is a check stop for R_f* > 03FF.
+  -}
+  operator 20 $ do
+    -- Control stop
+    stop
 
-    {-
-      Op. 19 compares R_f* with 03FFF
-    -}
+  {-
+    Op. 21 calculates the corrections Δ ɣ, Δ R, Δ K.
+  -}
+  operator 21 $ do
+    -- ΔГ = Г₀ - ɣ₀
+    -- need to correct the header offsets
+    sub' k0 (header `offAddr` 13) deltaGamma
+    -- Δ(P/d) = (P/ya)₀ - (P/ya)ₑ old
+    sub' (var "const_03EE") (var "const_033B") deltaRPD
+    -- ΔК = Кg - Кo
+    sub' c0 (header `offAddr` 11) deltaK
+    -- inlined end to op 21
+    -- header values are off!
+    tN' (header `offAddr` 5) (var "const_03E7")
+    -- Exit from program to MP-3
+    cccc (Procedure "MP-3" (op 3))
 
-    {-
-      Op. 20 is a check stop for R_f* > 03FFF.
-    -}
-
-    {-
-      Op. 21 calculates the corrections Δ ɣ, Δ R, Δ K.
-
-    -}
 
 {-
   Block for Assigning True Addresses
