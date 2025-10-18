@@ -117,8 +117,8 @@ pp3_1 = do
   mbTemplate <- global "mbTemplate" (Template (Mb zero))
 
   -- Probably need to make cellA global for this to work
-  transTemplate <- "trans_template" (Template tN cellA (var "unknown buffer"))
-  selTemplate <- "sel_template" (Template (var "uknown cell") currentInstr)
+  transTemplate <- local "trans_template" (Template tN cellA (var "unknown buffer"))
+  selTemplate <- local "sel_template" (Template (var "uknown cell") currentInstr)
   local "all-but-third" (Raw 0b111_111_111_1111_1111_111_1111_1111_000_0000_0000)
 
   let k0 = header `offAddr1 4 in
@@ -435,7 +435,7 @@ pp3_1 = do
   -}
   {-
 
-  Op.  35 shifts the numbers of th operators to the first address and sets K _1 in the special counter K'.
+  Op.  35 shifts the numbers of the operators to the first address and sets K_1 in the special counter K'.
 
   -}
   {-
@@ -501,7 +501,7 @@ pp3_1 = do
   {-
 
   Op. 47 is the sub-routine for transferring instructions to block K.
--}
+  -}
 
 {-
 
@@ -512,54 +512,108 @@ pp3_1 = do
   In addition, the block II-PP-3 carries out transformation of information on variable addresses in the block V and prints information on the variable addresses in the block V and the positions of the blocks M^i in the store. The third address of the first cell of M^i is placed in each "main head" with information on storage blocks M^i (i = 1..l); the "main head" itself with the eliminated operation code are printed in the form of an instruction. In each line of information about a variable address relating to the storage block M^i (i = 1..l), the magnitude of the block M^i is set in the first address while in the second address , the address of its start M*_l^i.
   These data will be utilized in forming the initial values of variable addresses during the period of functioning of block III-PP-3.
   the scheme of block II-PP-3 is represented in Fig. 17.
-
-  Op 1. calculates Pbar, Cbar, Kbar, ɣbar Obar and C_0*, K_0*, ɣ_0*, O_0*, M_0*
-
-  Op. 2 calculates the correction Δ C, forms the instructions for processing the block V and prints a number of special form, which denotes that immediately after it on the tape will be printed information on the strange blocks.
-
-  Op. 3 selects the next line of information of block V.
-
-  Op. 4 tests the selected line, transferring control to op. 5 if a "main head" has been selected for the next block M^i (i = 1.. l).
-
-  Op. 5 extracts the third address of the "main head".
-
-  Op. 6 compares the extracted address with zero. If it is not equal to zero this denotes that the corresponding block M^i relates to the group of constants from block C. In this case op. 10 functions.
-
-  Op. 7 sets M_l^i* in the third address of the "main head" and calculates M_l^(i+1)* = M_l^i* +Mbar^i.
-
-  Op. 8 compares M_l^(i+1)* with 03FFF.
-
-  Op. 9 is a check stop for M_l^(i+1)* 03FFF.
-
-  If M^i relates to the group of constants from block C,
-
-  Op. 10 obtains the true address M_l^i*, adding Δ C to the third address of the "main head".
-
-  Op. 11 eliminates the operation code in the "main head".
-
-  Op. 12 prints information on the current block M^i.
-
-  Op. 13 sets Mbar^i in the first address and M_l^i* in the second address of a certain working cell for arranging these quantities in the line of information on the variable addresses relating to the block M^i.
-
-  If a line of information on a variable address has been selected,
-
-  Op. 14 sets Mbar^i in the first address of this line and in the second address M_l^i*, leaving the magnitude of the shift delta of the variable address in the third address, and the sign of the shift in the eleventh place of the first address.
-
-  Op. 15  transfers the processed line of information back to block V.
-
-  Op. 16 carries out modification of the selection instruction address and the arrangements in op. 3 and op. 15.
-
-  Op. 17 repeats the functioning of operators 3-16 for all lines of the block V.
-
-  Op. 18 forms Mbar, R_O*, Rbar and R_f*.
-
-  Op. 19 compares R_f* with 03FFF
-
-  Op. 20 is a check stop for R_f* > 03FFF.
-
-  Op. 21 calculates the corrections Δ ɣ, Δ R, Δ K.
-
 -}
+pp3_2 = do
+
+
+  {-
+    Op 1. calculates Pbar, Cbar, Kbar, ɣbar Obar and C_0*, K_0*, ɣ_0*, O_0*, M_0*
+  -}
+
+  op 1 $ do
+    -- todo
+    chain (op 2)
+
+    {-
+      Op. 2 calculates the correction Δ C, forms the instructions for processing the block V and prints a number of special form, which denotes that immediately after it on the tape will be printed information on the strange blocks.
+    -}
+    op 2 $ do
+      op 
+
+    {-
+      Op. 3 selects the next line of information of block V.
+    -}
+
+    {-
+      Op. 4 tests the selected line, transferring control to op. 5 if a "main head" has been selected for the next block M^i (i = 1.. l).
+    -}
+
+    {-
+      Op. 5 extracts the third address of the "main head".
+    -}
+
+    {-
+      Op. 6 compares the extracted address with zero. If it is not equal to zero this denotes that the corresponding block M^i relates to the group of constants from block C. In this case op. 10 functions.
+    -}
+
+    {-
+      Op. 7 sets M_l^i* in the third address of the "main head" and calculates M_l^(i+1)* = M_l^i* +Mbar^i.
+    -}
+
+    {-
+      Op. 8 compares M_l^(i+1)* with 03FFF.
+    -}
+
+    {-
+      Op. 9 is a check stop for M_l^(i+1)* 03FFF.
+    -}
+
+    {-
+      If M^i relates to the group of constants from block C,
+    -}
+
+    {-
+      Op. 10 obtains the true address M_l^i*, adding Δ C to the third address of the "main head".
+    -}
+
+    {-
+      Op. 11 eliminates the operation code in the "main head".
+    -}
+
+    {-
+      Op. 12 prints information on the current block M^i.
+    -}
+
+    {-
+      Op. 13 sets Mbar^i in the first address and M_l^i* in the second address of a certain working cell for arranging these quantities in the line of information on the variable addresses relating to the block M^i.
+    -}
+
+    {-
+      If a line of information on a variable address has been selected,
+    -}
+
+    {-
+      Op. 14 sets Mbar^i in the first address of this line and in the second address M_l^i*, leaving the magnitude of the shift delta of the variable address in the third address, and the sign of the shift in the eleventh place of the first address.
+    -}
+
+    {-
+      Op. 15  transfers the processed line of information back to block V.
+    -}
+
+    {-
+      Op. 16 carries out modification of the selection instruction address and the arrangements in op. 3 and op. 15.
+    -}
+
+    {-
+      Op. 17 repeats the functioning of operators 3-16 for all lines of the block V.
+    -}
+
+    {-
+      Op. 18 forms Mbar, R_O*, Rbar and R_f*.
+    -}
+
+    {-
+      Op. 19 compares R_f* with 03FFF
+    -}
+
+    {-
+      Op. 20 is a check stop for R_f* > 03FFF.
+    -}
+
+    {-
+      Op. 21 calculates the corrections Δ ɣ, Δ R, Δ K.
+
+    -}
 
 {-
   Block for Assigning True Addresses
