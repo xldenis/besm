@@ -798,60 +798,150 @@ pp3_2 = do
   The block III-PP-3 substitutes their true addresses for the codes of quantities and the relative address of variable instructions in the instructions of the assembled programme. Determination of the types of quantities according to the values of their codes is cvarried out in accordance with Table 17 (S 19).
 
   The first part of the block (operators 1 -18) carries out assignment of true addresses. The direct substitution of codes of quantities or relative addresses by true address of quantities or instructions is carried out by a sub-routeine (operators 26 -42).
+-}
 
+pp3_3 = do
+  {-
   Op. 1 sets K_0 in counter K, in which will be stored the addres of the current instruction selected from the programme during functioning of the block.
+  -}
+  operator 1 $ do
+    undefined
 
+  {-
   Op. 2 transfers the next instruction from the block K to the stnadard cell A. and adds l to counter K.
+  -}
+  operator 2 $ do
+    undefined
 
+  {-
   Op. 3 transfers the operation code of the selected instruction to the stnadard cell B in which will be obtained the instruction with true address.
+  -}
+  operator 3 $ do
+    undefined
 
+  {-
   Op. 4 transfers control to op. 11 if an instruction Ma or Mb was selected, since in them ttrue addresses are assigned only to the third address.
+  -}
+  operator 4 $ do
+    undefined
 
+  {-
   Op. 5 extracts the first address of the instruction and shifts it to the third address of the standard cell C which is reserved foir the current codde y, cahnged by the programme to tje true address Y.
+  -}
+  operator 5 $ do
+    undefined
 
+  {-
   Op. 6 obtains the true address in cell C>
+  -}
+  operator 6 $ do
+    undefined
 
+  {-
   Op. 7 sets it in the first address of cell B.
+  -}
+  operator 7 $ do
+    undefined
 
+  {-
   Op. 8 extracts the second address of the instruction and shifts it to the third address C.
+  -}
+  operator 8 $ do
+    undefined
 
+  {-
   Op. 9 obtains the true address in cell C.
+  -}
+  operator 9 $ do
+    undefined
 
+  {-
   Op., 10 sets it in the second address of cell B.
+  -}
+  operator 10 $ do
+    undefined
 
+  {-
   Op. 11 extracts the third address of the instructio nand sends it to cell C.
+  -}
+  operator 11 $ do
+    undefined
 
+  {-
   Op. 12 obtains the true address in cell C.
+  -}
+  operator 12 $ do
+    undefined
 
+  {-
   Op. 13 sets it in the third address of cell B.
 
   In the description of BESM it was indicated that usually in the instruction "CCCC wit hsecond address", in reference t o a sub-routine, the addresss of the second instruction of RTC is given in the second address. In coding the instruction "CCCC with second addresss" the addresss in RTC is an operator number assigned to the instructions of RTC. In assigning true addresses this operator number will be substituted by the true addrses of the first instruction of RTC since to obtain the correct second address of CCCC it is necessary to increas it by 1'
+  -}
+  operator 13 $ do
+    undefined
 
+  {-
   Op. 14, in accordance with the above, transers control to op. 15 if an instruction CCCC has been selected in the cell.
+  -}
+  operator 14 $ do
+    undefined
 
+  {-
   op. 15 determines the case of instruction CCCC in the second address of which is a relative address, transferring control to op. 16.
+  -}
+  operator 15 $ do
+    undefined
 
+  {-
   Op. 16 increases the second address of the instruction CCCC in the cell B by 1.
+  -}
+  operator 16 $ do
+    undefined
 
+  {-
   Op. 17 transfers the instruction from cell B back to the block.
+  -}
+  operator 17 $ do
+    undefined
 
+  {-
   Op. 18, comparing the contents of counter K_f,transfers control to op.2 if trure addresses have not been assigned to all instructions of the block K.
 
   The second part of the block (operators 19- 25) places inthe initail values of variable instrucvtions taken from block K in the cells of blocvk ɣ reserved for them.
+  -}
+  operator 18 $ do
+    undefined
 
+  {-
   Op. 19 places K_0 in counter K.
+  -}
+  operator 19 $ do
+    undefined
 
+  {-
   Op. 20 selects the next instruction from the blocvk K.
+  -}
+  operator 20 $ do
+    undefined
 
+  {-
   Op. 21 transfers control to op., 22 if an instruction AI has been selected.
+  -}
+  operator 21 $ do
+    undefined
 
+  {-
   Op. 22 transfers control to op. 23 if in the first addrss of the selected instructions AI is an addresss included in the limits between ɣ_1* and gamm_f*. This signifies that an instruction dispatching the inital value of variable instruction has been selected, having the form
     ┌────┬─────┬─────┬──────┐
     │ AI │ "x" │     │ "y"  │
     └────┴─────┴─────┴──────┘
   where x is the true address of the initial value of the variable instruction, stored int he block ɣ, y is the true address of the variable instruction.
+  -}
+  operator 22 $ do
+    undefined
 
-
+  {-
   Op. 23 forms and carries out the instruction
 
     ┌────┬──────┬─────┬──────┐
@@ -859,27 +949,63 @@ pp3_2 = do
     └────┴──────┴─────┴──────┘
 
   which transfers the initial value of the variabl instruction located in the block K to storage in block ɣ.
+  -}
+  operator 23 $ do
+    undefined
 
+  {-
   Op. 24 adds 1 to counter K.
+  -}
+  operator 24 $ do
+    undefined
 
+  {-
   Op. 25, comparing the contents of counter K with K_f, transfers control to op. 20 if all instructions of the programme have not been examined.
 
   Operators 26 -  42 constitutedx a sub-routine which, for the code y located in the third address of c ell C, calculates the true address Y of the corresponding quantity or instruction obtained in the third address of the same cell C.
 
   Operators 26- 32 test the magnitude of the code y.
+  -}
+  operator 25 $ do
+    undefined
 
+  {-
   Op. 26 calls up exit from the sub-routine if 0000 <= y <= 000F (y is the address of a standard cell).
+  -}
+  operator 26 $ do
+    undefined
 
+  {-
   Op. 27 refers to op. 33 if 0010 <= y <= V_f (y is the code of the quantity having a variable address).
+  -}
+  operator 27 $ do
+    undefined
 
+  {-
   Op. 28 refers to op. 37 if P_1 <= y <= C_f (y is the code of a parameter or quantity from block C).
+  -}
+  operator 28 $ do
+    undefined
 
+  {-
   Op. 29 refers to op. 38 if 01A0 <= y <= 01FF (y is the code of a quantity from block gamma).
+  -}
+  operator 29 $ do
+    undefined
 
+  {-
   Op. 30 refers to op. 40 if 0200 <= y <= 03FF (y is the code of a postiive relative address).
+  -}
+  operator 30 $ do
+    undefined
 
+  {-
   Op. 31 calls up exit from the sub-routine if 10000 <= y <= 11EF (y is the address of a cell in DS).
+  -}
+  operator 31 $ do
+    undefined
 
+  {-
   Op. 32 crefers top op. 39 if 11F0 <= y <= 11FF (y is the code of a working cell), and top op. 41 if 1200 <= y <= 13F5 (y is the code a negative relative address).
 
   Operators 33- 36 obitain the initial value of the variable address Y according to the formula:
@@ -887,28 +1013,69 @@ pp3_2 = do
     Y = M_1 - 1/2 (sign delta - 1) ( m - 1) + delta
 
   where m_1 is the address of the first cell of the storage block to which the given variable adddress refers, m is the number of cells in the block, delta is the shift of the variable adddress.
+  -}
+  operator 32 $ do
+    undefined
 
+  {-
   Op. 33 selects the information on the gien addess according to the magnitude of the code y, obtaining from m_1, m, and delta.
+  -}
+  operator 33 $ do
+    undefined
 
+  {-
   Op. 34 determines the case of a negative shift, transferring control to
+  -}
+  operator 34 $ do
+    undefined
 
+  {-
   Op. 35 which forms the quantity m_l + (m - 1) = m_f.
+  -}
+  operator 35 $ do
+    undefined
 
+  {-
   Op. 36 obtains the initial value of the variable address Y = m_sigma + delta, where m_sigma is equal to m_1 or m_f.
+  -}
+  operator 36 $ do
+    undefined
 
+  {-
   Op. 37 obtains the true address of the parameter counter for the quantity from block C according to the formula Y = y + Delta C.
+  -}
+  operator 37 $ do
+    undefined
 
+  {-
   Op. 38 obtains the true address of the quantity from block gamma according to the formula Y = y + Delta gamma.
+  -}
+  operator 38 $ do
+    undefined
 
+  {-
   Op. 39 obtains the t rue address of the working cell according to the formula Y = y + Delta R.
+  -}
+  operator 39 $ do
+    undefined
 
+  {-
   Op. 40 obtains the address k' of the instructiosn in the block K according to the formula k' = y - 02200 + (c.K).
+  -}
+  operator 40 $ do
+    undefined
 
+  {-
   Op. 41 obtains the address of instruction k' in the block K according to the formula k' = (c.K) - (y- 1200).
+  -}
+  operator 41 $ do
+    undefined
 
+  {-
   Op. 42 obtains the true address of the isntruction according to the formula Y = k' + Delta K.
-
--}
+  -}
+  operator 42 $ do
+    undefined
 
 
 {-
@@ -934,68 +1101,197 @@ pp3_2 = do
   Zeros in the corresponding places denote the contrary.
 
   After printing the programme and constants (if they were required to be printed), two vcheck sums are printed (the contents of the programme with all constants relating to it are summed before and after writing on MD-1). Agreement of the check sums ensures correct recording of the constructed programme on MD-1.
-
-  The block IV-PP-3 consists of the following operators:
-
-  Op. 1 carries out the prepatory instructions.
-
-  Op. 2 prints a number, the index of hte i-th block and formas a line of information on this block.
-
-  Op. 3 prints the line of information.
-
-  Op. 4 realizes address-modification in op. 2
-
-  Op. 5 repreats the functioning of operators 2-4 seven times.
-
-  Op. 6 carries out the prepatory instructions connected with summing and prining the instructions.
-
-  Op. 7 selects the next instruction from block K and adds it to the check sum.
-
-  Op.  8 verifies if it is necessary to print the instruction (YES  -- op. 9, NO -- op. 10).
-
-  Op. 9 prints the instruction.
-
-  Op. 10 pcarries out address-modification of selection instructions in op. 7.
-
-  Op. 11 repeats operators 7-10 for all instructions of the programme.
-
-  Op. 12 carries out prepatory instructions connected with summation and printing the constnats from block gamma.
-
-  Op. 13 selects from block gamma the next constant and adds it to the check sum.
-
-  Op. 14 verifies if it is necessar yto print the constants from the block (YEs -- op. 15, No -- op. 16).
-
-  Op. 15 prints the constant sfrom block gamma.
-
-  Op. 16 carries out modification of the selection instruction addresses in op. 13.
-
-  Op. 17 repeats the function of operators 13-16 for all constants of block gamma.
-
-  Op. 18 writes blocks K and gamma on MD-1 in cells K_1* -K_f* and gamma _1* - gamma_f * respectively and reads block C from MD-2 into IS.
-
-  Op. 19 transfers the constant from block C to the stnadard cell.
-
-  Op. 20 verifies if itis necessary to tansform the constant to the binary system (YES -- op. 21, No -- op. 22).
-
-  Op.  21 transforms the constant to the binary system..
-
-  Op. 22 transforms a binary constant to the decimal system, preparing it at the same time for printing.
-
-  Op. 23 veirfies it if  is necessary to print the constant (YES -- op. 24, NO -- op. 25).
-
-  Op. 24 prints the constant in the decimal system.
-
-  Op. 25 adds teh binary constant to the check sum and sends it to block C.
-
-  Op. 26 carries out modification of addresses in op. 25 -and op .19 .
-
-  Op. 27 repeats functioning of operators 19-26 for all constants of the block C.
-
-  Op. 28 writes blcok C on Md-1 in cells C_1* - C_f* and prints the first check sum.
-
-  Op. 29 reads teh contents of the programme with all of its constant from MD-1.
-
-  Op. 30 and op. 31 repeat summation of the programme and its constants.
-
-  Op. 32 prints the seocnd check sum.
 -}
+
+pp3_4 = do
+  {-
+  Op. 1 carries out the prepatory instructions.
+  -}
+  operator 1 $ do
+    undefined
+
+  {-
+  Op. 2 prints a number, the index of hte i-th block and formas a line of information on this block.
+  -}
+  operator 2 $ do
+    undefined
+
+  {-
+  Op. 3 prints the line of information.
+  -}
+  operator 3 $ do
+    undefined
+
+  {-
+  Op. 4 realizes address-modification in op. 2
+  -}
+  operator 4 $ do
+    undefined
+
+  {-
+  Op. 5 repreats the functioning of operators 2-4 seven times.
+  -}
+  operator 5 $ do
+    undefined
+
+  {-
+  Op. 6 carries out the prepatory instructions connected with summing and prining the instructions.
+  -}
+  operator 6 $ do
+    undefined
+
+  {-
+  Op. 7 selects the next instruction from block K and adds it to the check sum.
+  -}
+  operator 7 $ do
+    undefined
+
+  {-
+  Op.  8 verifies if it is necessary to print the instruction (YES  -- op. 9, NO -- op. 10).
+  -}
+  operator 8 $ do
+    undefined
+
+  {-
+  Op. 9 prints the instruction.
+  -}
+  operator 9 $ do
+    undefined
+
+  {-
+  Op. 10 pcarries out address-modification of selection instructions in op. 7.
+  -}
+  operator 10 $ do
+    undefined
+
+  {-
+  Op. 11 repeats operators 7-10 for all instructions of the programme.
+  -}
+  operator 11 $ do
+    undefined
+
+  {-
+  Op. 12 carries out prepatory instructions connected with summation and printing the constnats from block gamma.
+  -}
+  operator 12 $ do
+    undefined
+
+  {-
+  Op. 13 selects from block gamma the next constant and adds it to the check sum.
+  -}
+  operator 13 $ do
+    undefined
+
+  {-
+  Op. 14 verifies if it is necessar yto print the constants from the block (YEs -- op. 15, No -- op. 16).
+  -}
+  operator 14 $ do
+    undefined
+
+  {-
+  Op. 15 prints the constant sfrom block gamma.
+  -}
+  operator 15 $ do
+    undefined
+
+  {-
+  Op. 16 carries out modification of the selection instruction addresses in op. 13.
+  -}
+  operator 16 $ do
+    undefined
+
+  {-
+  Op. 17 repeats the function of operators 13-16 for all constants of block gamma.
+  -}
+  operator 17 $ do
+    undefined
+
+  {-
+  Op. 18 writes blocks K and gamma on MD-1 in cells K_1* -K_f* and gamma _1* - gamma_f * respectively and reads block C from MD-2 into IS.
+  -}
+  operator 18 $ do
+    undefined
+
+  {-
+  Op. 19 transfers the constant from block C to the stnadard cell.
+  -}
+  operator 19 $ do
+    undefined
+
+  {-
+  Op. 20 verifies if itis necessary to tansform the constant to the binary system (YES -- op. 21, No -- op. 22).
+  -}
+  operator 20 $ do
+    undefined
+
+  {-
+  Op.  21 transforms the constant to the binary system..
+  -}
+  operator 21 $ do
+    undefined
+
+  {-
+  Op. 22 transforms a binary constant to the decimal system, preparing it at the same time for printing.
+  -}
+  operator 22 $ do
+    undefined
+
+  {-
+  Op. 23 veirfies it if  is necessary to print the constant (YES -- op. 24, NO -- op. 25).
+  -}
+  operator 23 $ do
+    undefined
+
+  {-
+  Op. 24 prints the constant in the decimal system.
+  -}
+  operator 24 $ do
+    undefined
+
+  {-
+  Op. 25 adds teh binary constant to the check sum and sends it to block C.
+  -}
+  operator 25 $ do
+    undefined
+
+  {-
+  Op. 26 carries out modification of addresses in op. 25 -and op .19 .
+  -}
+  operator 26 $ do
+    undefined
+
+  {-
+  Op. 27 repeats functioning of operators 19-26 for all constants of the block C.
+  -}
+  operator 27 $ do
+    undefined
+
+  {-
+  Op. 28 writes blcok C on Md-1 in cells C_1* - C_f* and prints the first check sum.
+  -}
+  operator 28 $ do
+    undefined
+
+  {-
+  Op. 29 reads teh contents of the programme with all of its constant from MD-1.
+  -}
+  operator 29 $ do
+    undefined
+
+  {-
+  Op. 30 and op. 31 repeat summation of the programme and its constants.
+  -}
+  operator 30 $ do
+    undefined
+
+  {-
+  Op. 31 repeats summation of the programme and its constants.
+  -}
+  operator 31 $ do
+    undefined
+
+  {-
+  Op. 32 prints the seocnd check sum.
+  -}
+  operator 32 $ do
+    undefined
