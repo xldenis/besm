@@ -1291,7 +1291,7 @@ pp3_4 = do
     undefined
 
   {-
-  Op. 32 prints the seocnd check sum.
+  Op. 32 prints the second check sum.
   -}
   operator 32 $ do
     undefined
