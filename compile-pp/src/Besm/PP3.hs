@@ -127,8 +127,8 @@ pp3_1 = do
   -}
   operator 1 $ do
     tN' k0 counterK
-    ai (Unknown "sel_template") counterK (op 2)  -- Form selection command
-    ai (Unknown "trans_template") counterK (op 8)  -- Form transmission command
+    ai (Unknown "sel_template") counterK (op 46)  -- Form selection command
+    ai (Unknown "trans_template") finalK (op 47)  -- Form transmission command
     chain (op 2)
 
   {-
@@ -433,26 +433,56 @@ pp3_1 = do
   Op. 34 transfers control to op. 35 if the number of an operator is in standard cell a.
 
   -}
+  operator 34 $ do
+    comp cellA (var "1200") (op ??) (op 35)
   {-
 
   Op.  35 shifts the numbers of the operators to the first address and sets K_1 in the special counter K'.
 
   -}
+  operator 35 $ do
+    shift' cellA (left 22) cellB
+    empty -- ???
+    tN' k0 counterK'
+    undefined
+    chain (op 36)
   {-
 
   Op. 36 elects the next instruction from block K. beginning with the first instruction and adds unity to counter K'.
 
   -}
+  operator 36 $ mdo
+    transfer <- empty
+    ai transfer oneFirstAddr transfer
+    ai counterK' one counterK'
+    chain (op 37)
   {-
 
   Op. 37 repeats op. 36 until the sign of the given operator number is selected.
 
   -}
+  operator 37 $ mdo
+    comp fetchK cellB (op 36) next
+    next <- comp cellB fetchK (op 36) (op 38)
+
   {-
 
-  Op. 38 obtains the code of the relative address equal to 0200 + |(C.K') - (C.L)| for the positive relative address and 1200 + |(c.K') - (c.K)| for negative.
+  Op. 38 obtains the code of the relative address equal to 0200 + |(C.K') - (C.K)| for the positive relative address and 1200 + |(c.K') - (c.K)| for negative.
 
   -}
+  operator 38 $ mdo
+    let cell_0001 = var "cell_0001" 
+    sub' counterK' counterK cell_0001
+    -- shift cell_0001 (left 22) cell_0001
+
+    comp zero cell_0001 pos neg
+
+    pos <- block $ do
+      ai cell_0001 (var "0200") cell_0001
+      jcc
+    neg <- tnMod' cell_0001 cell_0001
+    ai cell_0001 (var "1200") cell_001
+    jcc 
   {-
 
   Operators 39 - 45 constitute the sub-routine changing the relative addresses.
@@ -462,46 +492,84 @@ pp3_1 = do
 
   Op. 39 transfers control to op. 40 if a relative address is in standard cell A.
 
+
+  todo: add loop making code
   -}
+  operator 39 $ mdo
+    comp cellA (var "0200") exit cont
+    cont <- comp cellA (var "1000") (op 40) cont2
+    cont2 <- comp (var "1200") cellA (op 40) exit
+    exit <- jcc 
   {-
 
   Op. 40 clears counter K' and standard cell B.
 
   -}
+  operator 40 $ do 
+    tn' zero counterK'
+    tn' zero cellB
+    chain (op 41)
   {-
 
-  Op. 41 selects the next instruction from the part of the programme located between the instruction with the given relative address and the instruction containing this relative address and ads unity to counter K'.
+  Op. 41 selects the next instruction from the part of the programme located between the instruction with the given relative address and the instruction containing this relative address and adds unity to counter K'.
 
   -}
+  operator 41 $ do
+    empty
+    ai counterK' one counterK'
+    tExp' fetchK cellC
+    chain (op 42)
   {-
 
   Op. 42 determines the case of selection of an open-parenthesis of a loop or the sign of an operator number, transferring control to op. 43
 
   -}
+  operator 42 $ do
+    comp (var "0x18") cellC (op 42) (op 44) 
   {-
 
   Op. 43 which adds 1 to cell B.
 
   -}
+  operator 43 $ do
+    ai cellB one cellB
+    ai (op 41) oneFirstAddr (op 41)
+    chain (op 44)
   {-
 
   Op. 44, comparing the indications of counter K' with the absolute magnitude Δ of the relative address, repeats the functioning of operators 41-43 Δ times.
 
   -}
+  operator 44 $ do
+    
+    comp counterK' (var "delta") (op 41) (op 45)
   {-
 
   Op. 45 forms the new value of the absolute magnitude of the relative address, equal to Δ - (B).
 
   -}
+  operator 45 $ do
+    sub' (var "delta") cellB cellA
+    jcc
   {-
 
   Op. 46 is the sub-routine for selecting instructions from block K.
-
+  
+  todo: make self-incrementing?
   -}
+  operator 46 $ do
+    empty
+    jcc
   {-
 
   Op. 47 is the sub-routine for transferring instructions to block K.
+
+    todo: make self-incrementing?
+
   -}
+  operator 47 $ do
+    empty
+    jcc
 
 {-
 
