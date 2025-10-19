@@ -803,8 +803,12 @@ pp3_2 = do
 -}
 
 pp3_3 = do
+  let relocRes = var "relocRes" 
   deltaK <- global "deltaK" Cell  -- 03F8
   deltaGamma <- global "deltaGamma" Cell  
+
+  relocationTemplate <- local "relocationTemplate" (Template (TN zero relocRes))
+
   {-
   Op. 1 sets K_0 in counter K, in which will be stored the addres of the current instruction selected from the programme during functioning of the block.
   -}
@@ -1026,114 +1030,148 @@ pp3_3 = do
   Operators 26- 32 test the magnitude of the code y.
 
   Corresponds to 39-54 in machine code
+
+  todo: check that all the bounds aren't off by one!!!! (I think all the conditions need to be flipped actually)
   -}
   {-
   Op. 26 calls up exit from the sub-routine if 0000 <= y <= 000F (y is the address of a standard cell).
   -}
   operator 26 $ do
-    undefined
+    comp cellC (var "0xF") (op X) (op 27)
 
   {-
   Op. 27 refers to op. 33 if 0010 <= y <= V_f (y is the code of the quantity having a variable address).
   -}
   operator 27 $ do
-    undefined
+    comp cellC (var "V_f") (op 33) (op 28)
 
   {-
   Op. 28 refers to op. 37 if P_1 <= y <= C_f (y is the code of a parameter or quantity from block C).
   -}
   operator 28 $ do
-    undefined
+    -- todo: do I need to check for P_1 or is is it contiguous with V_f?
+    comp cellC (var "C_f") (op 37) (op 29)
 
   {-
   Op. 29 refers to op. 38 if 01A0 <= y <= 01FF (y is the code of a quantity from block gamma).
   -}
   operator 29 $ do
-    undefined
+    -- todo: check this....
+    comp cellC gammaFinal (op 38) (op 30)
 
   {-
   Op. 30 refers to op. 40 if 0200 <= y <= 03FF (y is the code of a postiive relative address).
   -}
   operator 30 $ do
-    undefined
+    comp cellC (var "0x3ff") (op 40) (op 31)
 
   {-
-  Op. 31 calls up exit from the sub-routine if 10000 <= y <= 11EF (y is the address of a cell in DS).
+  Op. 31 calls up exit from the sub-routine if 1000 <= y <= 11EF (y is the address of a cell in DS).
   -}
   operator 31 $ do
-    undefined
+    comp cellC (var "0x11EF") (var ??) (op 32)
 
   {-
   Op. 32 refers to op. 39 if 11F0 <= y <= 11FF (y is the code of a working cell), and top op. 41 if 1200 <= y <= 13F5 (y is the code a negative relative address).
+  -}
+  operator 32 $ do
+    -- todo: do I actually need to do the last test?
+    comp cellC (var "0x11FF") (var 39) (op 41)
 
-  Operators 33- 36 obitain the initial value of the variable address Y according to the formula:
+  {-
+  Operators 33- 36 obtain the initial value of the variable address Y according to the formula:
 
     Y = M_1 - 1/2 (sign delta - 1) ( m - 1) + delta
 
   where m_1 is the address of the first cell of the storage block to which the given variable adddress refers, m is the number of cells in the block, delta is the shift of the variable adddress.
-  -}
-  operator 32 $ do
-    undefined
 
-  {-
-  Op. 33 selects the information on the gien addess according to the magnitude of the code y, obtaining from m_1, m, and delta.
+  Op. 33 selects the information on the given address according to the magnitude of the code y, obtaining from m_1, m, and delta.
   -}
   operator 33 $ do
-    undefined
+    -- [ - | 1000 | - | 00FF ]
+    local "const_02FF" (Template (0b000_000_1_00_0000_0000_0_00_0000_0000_0_00_0000_0000)
+    shift cellC (left 22) cellX
+    ai relocationTemplate cellX next
+    next <- empty
+
+    -- m & sign(\delta)?
+    bitAnd relocRes const_02FF cellX
+    -- Array start 
+    bitAnd relocRes secondAddr cellZ
+    shift cellZ (right 11) cellZ
+
+    chain (op 34)
 
   {-
   Op. 34 determines the case of a negative shift, transferring control to
   -}
   operator 34 $ do
-    undefined
+    comp zero relocRes (op 36) (op 35)
 
   {-
   Op. 35 which forms the quantity m_l + (m - 1) = m_f.
+  is this math correct
   -}
   operator 35 $ do
-    undefined
+    bitAnd relocRes firstaddr cellC
+    shift cellC (right 22) cellC
+    add' cellC one cellC
+    sub'  cellZ cellC cellZ
+    chain (op 50)
 
   {-
   Op. 36 obtains the initial value of the variable address Y = m_sigma + delta, where m_sigma is equal to m_1 or m_f.
   -}
   operator 36 $ do
-    undefined
+    -- -- Delta
+    -- bitAnd cellA thirdAddr cellC
+    -- -- ???? not correct
+    -- ai cellZ cellC cellC
+    jcc
 
   {-
   Op. 37 obtains the true address of the parameter counter for the quantity from block C according to the formula Y = y + Delta C.
   -}
   operator 37 $ do
-    undefined
+    ai ?? deltaC cellC
+    jcc
 
   {-
   Op. 38 obtains the true address of the quantity from block gamma according to the formula Y = y + Delta gamma.
   -}
   operator 38 $ do
-    undefined
+    ai ?? deltaGamma cellC
+    jcc
 
   {-
-  Op. 39 obtains the t rue address of the working cell according to the formula Y = y + Delta R.
+  Op. 39 obtains the true address of the working cell according to the formula Y = y + Delta R.
   -}
   operator 39 $ do
-    undefined
+    ai ?? deltaR cellC
+    jcc
 
   {-
-  Op. 40 obtains the address k' of the instructiosn in the block K according to the formula k' = y - 02200 + (c.K).
+  Op. 40 obtains the address k' of the instructiosn in the block K according to the formula k' = y - 0200 + (c.K).
   -}
   operator 40 $ do
-    undefined
+    sub' cellC (var "0200") cellC
+    ai cellC counterK k'
+    chain (op 42)
 
   {-
-  Op. 41 obtains the address of instruction k' in the block K according to the formula k' = (c.K) - (y- 1200).
+  Op. 41 obtains the address of instruction k' in the block K according to the formula k' = (c.K) - ( y - 1200).
   -}
   operator 41 $ do
-    undefined
+    sub' cellC (var "1200") cellC
+    sub' counterK cellC k'
+    chain (op 42)
 
   {-
   Op. 42 obtains the true address of the isntruction according to the formula Y = k' + Delta K.
   -}
   operator 42 $ do
-    undefined
+    ai k' deltaK cellC
+    jcc
 
 
 {-
