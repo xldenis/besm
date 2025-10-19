@@ -1,0 +1,240 @@
+digraph PP3_III_ControlFlow {
+    rankdir=TB;
+    node [shape=box, style=rounded];
+
+    // File 9_382_en.md operators
+    op1 [label="op 1\nForm commands"];
+    op2 [label="op 2\nFetch from program\n+1 to counter K"];
+    op3 [label="op 3\nPRU formation"];
+    op4 [label="op 4\nx >= 20?"];
+    op5 [label="op 5\nx <= 21?"];
+    op6 [label="op 6\nReplace relative A₃", color=blue];
+    op7 [label="op 7\nx >= 18?"];
+    op8 [label="op 8\n18 >= x?"];
+    op9 [label="op 9\nCheck command form"];
+    op10 [label="op 10\nEmpty command", color=blue];
+    op11 [label="op 11\nExtract A₁"];
+    op12 [label="op 12\nA₁ = A₃?"];
+    op13 [label="op 13\nAbsolute A₁"];
+    op14 [label="op 14\nx >= 26?"];
+    op15 [label="op 15\nx <= 26?"];
+    op16 [label="op 16\nExtract A₃"];
+    op17 [label="op 17\nIMUK on DZU?"];
+    op18 [label="op 18\nReplace relative A₃", color=blue];
+
+    // File 9_383_en.md operators
+    op19 [label="op 19\n27 >= x?"];
+    op20 [label="op 20\nExtract A₂"];
+    op21 [label="op 21\nMTSUK with 2nd addr?"];
+    op22 [label="op 22\nExtract A₃\nForm commands"];
+    op23 [label="op 23\nFetch from operator\n+1 to K'"];
+    op24 [label="op 24\nExtract op code in A"];
+    op25 [label="op 25\nPRU formation"];
+    op26 [label="op 26\nPrepare MTSUK addr"];
+    op27 [label="op 27\nVLU command built?"];
+    op28 [label="op 28\nForm VLU command"];
+    op29 [label="op 29\nReplace relative A₃", color=blue];
+    op30 [label="op 30\nBack transfer"];
+    op31 [label="op 31\nSk commands"];
+    op32 [label="op 32\nCounter K < K_k?"];
+    op33 [label="op 33\nForm fetch/transfer\narray ɣ"];
+    op34 [label="op 34\nFetch from array ɣ"];
+    op35 [label="op 35\nZero op code?"];
+    op36 [label="op 36\nBack transfer to ɣ"];
+    op37 [label="op 37\nSk commands"];
+    op38 [label="op 38\nFetch counter < ɣ_k?"];
+    op39 [label="op 39\n[u] >= P₃?"];
+    op40 [label="op 40\nP_k >= [y]?"];
+
+    // File 9_384_en.md operators
+    op41 [label="op 41\nC_k >= [y]?"];
+    op42 [label="op 42\nY = [y] + ΔC"];
+    op43 [label="op 43\nɣ_k > y?"];
+    op44 [label="op 44\nY = [y] + Δδ"];
+    op45 [label="op 45\nP/δ >= y?"];
+    op46 [label="op 46\nY = [y] + Δ(P/δ)"];
+    op47 [label="op 47\nForm fetch cmd\nExtract relocation"];
+    op48 [label="op 48\nShift relative?"];
+    op49 [label="op 49\nExtract array size"];
+    op50 [label="op 50\nAdd shift"];
+    op51 [label="op 51\nExtract relative addr"];
+    op52 [label="op 52\nAddress relative?"];
+    op53 [label="op 53\nExtract 11th bit"];
+    op54 [label="op 54\nCalculate exact addr"];
+    op55 [label="op 55\nExtract A₃"];
+    op56 [label="op 56\nGet exact addr Y", color=blue];
+    op57 [label="op 57\nDuplicate command"];
+    op58 [label="op 58\nExtract A₁"];
+    op59 [label="op 59\nGet exact addr Y", color=blue];
+    op60 [label="op 60\nSend addr to A₁"];
+    op61 [label="op 61\nExtract A₂"];
+    op62 [label="op 62\nGet exact addr Y", color=blue];
+    op63 [label="op 63\nSend addr to A₂"];
+
+    subgraph cluster_subroutine {
+      op39; op40; op41; op42; op43; op44; op45; op46; op47; op48; op49; op50; ret;
+    }
+
+    subgraph cluster_subroutine51 {
+      op51; op52; op53; op54; ret51;
+    }
+
+    // Special nodes
+    start [label="START", shape=ellipse, style=filled, fillcolor=lightgreen];
+    exit [label="EXIT\n(VP-2)", shape=ellipse, style=filled, fillcolor=lightcoral];
+    ret [label="RETURN", shape=ellipse, style=filled, fillcolor=lightcoral];
+
+    ret51 [label="RETURN", shape=ellipse, style=filled, fillcolor=lightcoral];
+
+    // Control flow edges from 9_382_en.md
+    start -> op1;
+    op1 -> op2;
+    op2 -> op3;
+    op3 -> op4 [label="NO"];
+    op3 -> op31;
+    op4 -> op5 [label="YES"];
+    op4 -> op7 [label="NO"];
+    op5 -> op6 [label="YES"];
+    op5 -> op14 [label="NO"];
+    // op6 -> op51 [label="call", style=dashed];
+    op6 -> op58;
+
+    op7 -> op8 [label="YES"];
+    op7 -> op55 [label="NO"];
+
+    op8 -> op9 [label="YES"];
+    op8 -> op14 [label="NO"];
+
+    op9 -> op10;
+    op9 -> op31;
+
+    // op10 -> op51 [label="call", style=dashed];
+    op10 -> op11;
+
+    op11 -> op12;
+
+    op12 -> op58 [label="NO"];
+    op12 -> op13 [label="YES"];
+
+    op13 -> op61;
+
+    op14 -> op15 [label="YES"];
+    op14 -> op55 [label="NO"];
+
+    op15 -> op16 [label="YES"];
+    op15 -> op19 [label="NO"];
+
+    op16 -> op17;
+
+    op17 -> op31 [label="YES"];
+    op17 -> op18 [label="NO"];
+
+    // op18 -> op51 [label="call", style=dashed];
+    op18 -> op30;
+
+    // Control flow edges from 9_383_en.md
+    op19 -> op20 [label="YES"];
+    op19 -> op55 [label="NO"];
+
+    op20 -> op21;
+
+    op21 -> op22 [label="YES"];
+    op21 -> op18 [label="NO"];
+
+    op22 -> op23;
+
+    op23 -> op24;
+
+    op24 -> op25;
+    op25 -> op26 [label="NO"];
+    op25 -> op23 [label="YES"];
+
+    op26 -> op27;
+    op27 -> op28 [label="NO"];
+    op27 -> op29 [label="YES"];
+    op28 -> op29;
+    // op29 -> op51 [label="call", style=dashed];
+    op29 -> op30;
+
+    op30 -> op31;
+    op31 -> op32;
+
+    op32 -> op2 [label="YES"];
+    op32 -> op33 [label="NO"];
+
+    op33 -> op34;
+
+    op34 -> op35;
+
+    op35 -> op55 [label="NO"];
+    op35 -> op36 [label="YES"];
+
+    op36 -> op37;
+
+    op37 -> op38;
+
+    op38 -> op34 [label="YES"];
+    op38 -> exit [label="NO"];
+
+    op39 -> ret [label="NO"];
+    op39 -> op40 [label="YES"];
+
+    op40 -> op47 [label="NO"];
+    op40 -> op41 [label="YES"];
+
+    // Control flow edges from 9_384_en.md
+    op41 -> op42 [label="YES"];
+    op41 -> op43 [label="NO"];
+
+    op42 -> ret;
+
+    op43 -> op44 [label="YES"];
+    op43 -> op45 [label="NO"];
+
+    op44 -> ret;
+
+    op45 -> op46 [label="YES"];
+    op45 -> ret [label="NO"];
+
+    op46 -> ret;
+
+    op47 -> op48;
+
+    op48 -> op49 [label="YES"];
+    op48 -> op50 [label="NO"];
+
+    op49 -> op50;
+
+    op50 -> ret;
+
+    op51 -> op52;
+
+    op52 -> op53 [label="YES"];
+    op52 -> op54 [label="NO"];
+
+    op53 -> op54;
+
+    op54 -> ret51;
+
+    op55 -> op56;
+
+    // op56 -> op39 [label="call", style=dashed];
+    op56 -> op57;
+
+    op57 -> op58;
+
+    op58 -> op59;
+
+    // op59 -> op39 [label="call", style=dashed];
+    op59 -> op60;
+
+    op60 -> op61;
+
+    op61 -> op62;
+
+    // op62 -> op39 [label="call", style=dashed];
+    op62 -> op63;
+
+    op63 -> op30;
+    op63 -> op36 [label="when array ɣ"];
+}
