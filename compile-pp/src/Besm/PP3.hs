@@ -110,8 +110,14 @@ pp3_1 = do
   -- Should be shared with PP-2 (pinned)
   counterK <- global "k" Cell
   cellA <- local "A" Cell
+  cellC <- local "C" Cell
+
   currentInstr <- local "currentInstr" Cell
   local "0x18" (Raw 0x18)
+
+  counterK' <- local "counterK'" Cell
+  fetchK <- local "fetchK" Cell
+  let finalK = var "final-k"
 
   maTemplate <- global "maTemplate" (Template (Ma zero zero zero))
   mbTemplate <- global "mbTemplate" (Template (Mb zero))
@@ -433,8 +439,10 @@ pp3_1 = do
   Op. 34 transfers control to op. 35 if the number of an operator is in standard cell a.
 
   -}
-  operator 34 $ do
-    comp cellA (var "1200") (op ??) (op 35)
+  operator 34 $ mdo
+    comp cellA (var "1200") exit (op 35)
+    exit <- jcc
+    pure ()
   {-
 
   Op.  35 shifts the numbers of the operators to the first address and sets K_1 in the special counter K'.
@@ -464,6 +472,7 @@ pp3_1 = do
   operator 37 $ mdo
     comp fetchK cellB (op 36) next
     next <- comp cellB fetchK (op 36) (op 38)
+    pure ()
 
   {-
 
@@ -480,8 +489,8 @@ pp3_1 = do
     pos <- block $ do
       ai cell_0001 (var "0200") cell_0001
       jcc
-    neg <- tnMod' cell_0001 cell_0001
-    ai cell_0001 (var "1200") cell_001
+    neg <- tMod' cell_0001 cell_0001
+    ai cell_0001 (var "1200") cell_0001
     jcc 
   {-
 
@@ -500,14 +509,15 @@ pp3_1 = do
     cont <- comp cellA (var "1000") (op 40) cont2
     cont2 <- comp (var "1200") cellA (op 40) exit
     exit <- jcc 
+    pure ()
   {-
 
   Op. 40 clears counter K' and standard cell B.
 
   -}
   operator 40 $ do 
-    tn' zero counterK'
-    tn' zero cellB
+    tN' zero counterK'
+    tN' zero cellB
     chain (op 41)
   {-
 
@@ -619,10 +629,10 @@ pp3_2 = do
   local "const_033B" (Raw 0x34F)  
 
   -- 0334: ,TN 0010 03F0
-  fetchTemplate <- local "fetchTemplate" (Template (var "unknown_op") cell_03F0)
+  fetchTemplate <- local "fetchTemplate" (Template $ TN (var "unknown_op") cell_03F0 UnNormalized)
   -- 0334: ,TN 0010 03F0
-  returnTemplate <- local "returnTemplate" (Template cell_03F0 (var "unknown_op"))
-  counterTemplate <- (Raw 0xF)
+  returnTemplate <- local "returnTemplate" (Template (TN cell_03F0 (var "unknown_op") UnNormalized))
+  counterTemplate <- local "counterTemplate" (Raw 0xF)
 
 
   {-
@@ -660,7 +670,7 @@ pp3_2 = do
   -}
   operator 2 $ do
     -- ΔС = -Пₖ
-    tSign' p0 deltaC
+    tMod' p0 deltaC
     -- ΔС with order 31
     addE' deltaC (op 9) (var "const_0339")
     -- Loading fetch command from array П
@@ -761,7 +771,7 @@ pp3_2 = do
   operator 12 $ do
     -- Print information about array :М⁽ⁱ⁾
     -- part of mp-3
-    clcc (var "const_03A4") (var "const_038C")
+    callRtc (var "const_03A4") (var "const_038C")
     empty
     chain (op 13)
 
@@ -874,8 +884,22 @@ pp3_3 = do
   let relocRes = var "relocRes" 
   deltaK <- global "deltaK" Cell  -- 03F8
   deltaGamma <- global "deltaGamma" Cell  
+  let gammaFinal = var "gammaFinal" -- somewhere in header
+  let gamma0 = var "gamma0" -- somewhere in header
+  let k0 = var "k0" -- somewhere in header
 
-  relocationTemplate <- local "relocationTemplate" (Template (TN zero relocRes))
+
+  relocationTemplate <- local "relocationTemplate" (Template (TN zero relocRes UnNormalized))
+
+  cellZ <- local "cellZ" Cell
+  cellX <- local "cellX" Cell
+  cellC <- local "cellC" Cell
+
+  counterK <- local "counterK" Cell
+  k' <- local "k'" Cell
+
+  deltaR <- global "deltaR" Cell
+  deltaC <- global "deltaC" Cell
 
   {-
   Op. 1 sets K_0 in counter K, in which will be stored the addres of the current instruction selected from the programme during functioning of the block.
@@ -908,6 +932,7 @@ pp3_3 = do
   operator 4 $ mdo
     comp cellB (var "22") (op 5) next
     next <- comp cellB (var "23") (op 11) (op 5)
+    pure ()
 
   {-
   Op. 5 extracts the first address of the instruction and shifts it to the third address of the standard cell C which is reserved for the current code y, changed by the programme to the true address Y. 
@@ -940,7 +965,7 @@ pp3_3 = do
   -}
   operator 8 $ do
     bitAnd cellA secondAddr cellC
-    shift (right 11) cellC
+    shift cellC (right 11) cellC
     chain (op 9)
 
   {-
@@ -1003,7 +1028,7 @@ pp3_3 = do
   op 26 in machien code
   -}
   operator 16 $ do
-    ai cellB oneSecondAddr cellB
+    ai cellB oneSndAddr cellB
     chain (op 17)
 
   {-
@@ -1051,11 +1076,12 @@ pp3_3 = do
     └────┴─────┴─────┴──────┘
   where x is the true address of the initial value of the variable instruction, stored in the block ɣ, y is the true address of the variable instruction.
   -}
-  operator 22 $ do
+  operator 22 $ mdo
     bitAnd cellA firstAddr cellC 
     shift cellC (right 22) cellC
     comp cellC gamma0 (op 24) next
-    comp gammaFinal cellC (op 24) (op 23)
+    next <- comp gammaFinal cellC (op 24) (op 23)
+    pure ()
 
   {-
   Op. 23 forms and carries out the instruction
@@ -1091,6 +1117,7 @@ pp3_3 = do
   operator 25 $ mdo
     comp counterK counterKlast (op 20) ret
     ret <- cccc (Procedure "MP-3" (op 4))  
+    pure ()
   {-
   
   Operators 26 -  42 constituted a sub-routine which, for the code y located in the third address of cell C, calculates the true address Y of the corresponding quantity or instruction obtained in the third address of the same cell C.
@@ -1105,7 +1132,7 @@ pp3_3 = do
   Op. 26 calls up exit from the sub-routine if 0000 <= y <= 000F (y is the address of a standard cell).
   -}
   operator 26 $ do
-    comp cellC (var "0xF") (op X) (op 27)
+    comp cellC (var "0xF") (op 31 `offAddr` 1) (op 27)
 
   {-
   Op. 27 refers to op. 33 if 0010 <= y <= V_f (y is the code of the quantity having a variable address).
@@ -1136,15 +1163,17 @@ pp3_3 = do
   {-
   Op. 31 calls up exit from the sub-routine if 1000 <= y <= 11EF (y is the address of a cell in DS).
   -}
-  operator 31 $ do
-    comp cellC (var "0x11EF") (var ??) (op 32)
+  operator 31 $ mdo
+    comp cellC (var "0x11EF") exit (op 32)
+    exit <- jcc
+    pure ()
 
   {-
   Op. 32 refers to op. 39 if 11F0 <= y <= 11FF (y is the code of a working cell), and top op. 41 if 1200 <= y <= 13F5 (y is the code a negative relative address).
   -}
   operator 32 $ do
     -- todo: do I actually need to do the last test?
-    comp cellC (var "0x11FF") (var 39) (op 41)
+    comp cellC (var "0x11FF") (op 39) (op 41)
 
   {-
   Operators 33- 36 obtain the initial value of the variable address Y according to the formula:
@@ -1155,9 +1184,9 @@ pp3_3 = do
 
   Op. 33 selects the information on the given address according to the magnitude of the code y, obtaining from m_1, m, and delta.
   -}
-  operator 33 $ do
+  operator 33 $ mdo
     -- [ - | 1000 | - | 00FF ]
-    local "const_02FF" (Template (0b000_000_1_00_0000_0000_0_00_0000_0000_0_00_0000_0000)
+    const_02FF <- local "const_02FF"  (Raw 0b000_000_1_00_0000_0000_0_00_0000_0000_0_00_0000_0000)
     shift cellC (left 22) cellX
     ai relocationTemplate cellX next
     next <- empty
@@ -1181,7 +1210,7 @@ pp3_3 = do
   is this math correct
   -}
   operator 35 $ do
-    bitAnd relocRes firstaddr cellC
+    bitAnd relocRes firstAddr cellC
     shift cellC (right 22) cellC
     add' cellC one cellC
     sub'  cellZ cellC cellZ
@@ -1199,23 +1228,24 @@ pp3_3 = do
 
   {-
   Op. 37 obtains the true address of the parameter counter for the quantity from block C according to the formula Y = y + Delta C.
-  -}
+  todo: is cellC + deltaC safe? 
+   -}
   operator 37 $ do
-    ai ?? deltaC cellC
+    ai cellC deltaC cellC
     jcc
 
   {-
   Op. 38 obtains the true address of the quantity from block gamma according to the formula Y = y + Delta gamma.
   -}
   operator 38 $ do
-    ai ?? deltaGamma cellC
+    ai cellC deltaGamma cellC
     jcc
 
   {-
   Op. 39 obtains the true address of the working cell according to the formula Y = y + Delta R.
   -}
   operator 39 $ do
-    ai ?? deltaR cellC
+    ai cellC deltaR cellC
     jcc
 
   {-
@@ -1270,6 +1300,36 @@ pp3_3 = do
 pp3_4 = do
   let const_035d = var "2^8,88888888"
   let const_035e = var "const_035e"
+
+  checksum <- local "checksum" Cell
+  cell_03f1 <- local "cell_03f1" Cell
+  cell_03f2 <- local "cell_03f2" Cell  
+  cell_0001 <- local "cell_0001" Cell
+  let const_03d2 = var "const_03d2"
+
+  let addr_034d = var "addr_034d"
+  let addr_0344 = var "addr_0344"
+
+  let controlFlags = var "1100"
+
+  transferCounter <- local "transferCounter" Cell
+
+  cell_0004 <- local "cell_0004" Cell
+  cell_0002 <- local "cell_0002" Cell
+
+  let cell_000a = var "cell_000a" -- something from header
+  let cell_0006 = var "cell_0006" -- something from header
+
+  let gamma0 = var "gamma0"
+  let c0 = var "C_0"
+
+  const_0305 <- local "const_0305" (Raw 0x3)
+
+  let const_03ff = var "const_03ff"
+
+  let pBar = var "pBar"
+  let p0 = var "p0"
+
   {-
   Op. 1 carries out the prepatory instructions.
   -}
@@ -1285,7 +1345,7 @@ pp3_4 = do
   -}
   operator 2 $ do
     pN' cell_0004
-    ai p0 const_10b9 cell_0001
+    ai p0 one cell_0001
     shift cell_0001 (left 22) cell_0001
     shift pBar (left 11) cell_0002
     ai cell_0001 cell_0002 cell_0001
@@ -1296,7 +1356,7 @@ pp3_4 = do
   Op. 3 prints the line of information.
   -}
   operator 3 $ do
-    clcc (var "printSubroutine_03a4") (var "printEntry_038c")
+    callRtc (var "printSubroutine_03a4") (var "printEntry_038c")
     chain (op 4)
 
 
@@ -1304,9 +1364,9 @@ pp3_4 = do
   Op. 4 realizes address-modification in op. 2
   -}
   operator 4 $ do
-    ai (op 2 `offAddr` 1) const_10b7 (op 2 `offAddr` 1)
-    ai (op 2 `offAddr` 3) const_10b7 (op 2 `offAddr` 3)
-    ai (op 2 `offAddr` 5) const_10b8 (op 2 `offAddr` 5)
+    ai (op 2 `offAddr` 1) oneFirstAddr (op 2 `offAddr` 1)
+    ai (op 2 `offAddr` 3) oneFirstAddr (op 2 `offAddr` 3)
+    ai (op 2 `offAddr` 5) oneSndAddr   (op 2 `offAddr` 5)
     add' cell_0004 const_035d cell_0004
     chain (op 5)
 
@@ -1323,7 +1383,7 @@ pp3_4 = do
     pN' const_035e
     pN' const_035d
     bitAnd controlFlags (var "0304") cell_0004
-    ai const_10bb const_03ff (op 7)
+    ai oneFirstAndThird const_03ff (op 7)
     tN' (header `offAddr` 11) transferCounter
     chain (op 7)
 
@@ -1331,9 +1391,9 @@ pp3_4 = do
   Op. 7 selects the next instruction from block K and adds it to the check sum.
   -}
   operator 7 $ do
-    empty  -- Transfer from K (template in addr_0317)
+    empty  -- Transfer from K 
     ai' checksum cell_0001 checksum
-    ai transferCounter const_10b9 transferCounter
+    ai transferCounter one transferCounter
     chain (op 8)
 
 
@@ -1341,20 +1401,20 @@ pp3_4 = do
   Op.  8 verifies if it is necessary to print the instruction (YES  -- op. 9, NO -- op. 10).
   -}
   operator 8 $ do
-    comp const_0305 controlFlags addr_031c (op 9)
+    comp const_0305 controlFlags (op 10) (op 9)
 
   {-
   Op. 9 prints the instruction.
   -}
   operator 9 $ do
-    clcc (var "printSubroutine_03a4") (var "printEntry_039c")
+    callRtc (var "printSubroutine_03a4") (var "printEntry_039c")
     chain (op 10)
 
   {-
   Op. 10 carries out address-modification of selection instructions in op. 7.
   -}
   operator 10 $ do
-    ai addr_0317 const_10b7 addr_0317
+    ai (op 7) oneFirstAddr (op 7)
     chain (op 11)
 
   {-
@@ -1368,7 +1428,7 @@ pp3_4 = do
   -}
   operator 12 $ do
     shift gamma0 (left 22) cell_0001
-    ai (var "const_10bb") cell_0001 (op 13)
+    ai oneFirstAndThird cell_0001 (op 13)
     tN' gamma0 transferCounter
     chain (op 13)
 
@@ -1376,29 +1436,29 @@ pp3_4 = do
   Op. 13 selects from block gamma the next constant and adds it to the check sum.
   -}
   operator 13 $ do
-    empty  -- Transfer from gamma (template in addr_0321)
-    ai transferCounter const_10b9 transferCounter
-    tN' checksum cell_0001 checksum
+    empty  -- Transfer from gamma 
+    ai transferCounter one transferCounter
+    ai' checksum cell_0001 checksum
     chain (op 14)
 
   {-
   Op. 14 verifies if it is necessar yto print the constants from the block (YEs -- op. 15, No -- op. 16).
   -}
   operator 14 $ do
-    comp const_0305 controlFlags addr_0326 (op 15)
+    comp const_0305 controlFlags (op 26) (op 15)
 
   {-
   Op. 15 prints the constant sfrom block gamma.
   -}
   operator 15 $ do
-    clcc (var "printSubroutine_03a4") (var "printEntry_0382")
+    callRtc (var "printSubroutine_03a4") (var "printEntry_0382")
     chain (op 16)
 
   {-
   Op. 16 carries out modification of the selection instruction addresses in op. 13.
   -}
   operator 16 $ do
-    ai addr_0321 const_10b7 addr_0321
+    ai (op 13) oneFirstAddr (op 13)
     chain (op 17)
 
   {-
@@ -1412,8 +1472,8 @@ pp3_4 = do
   -}
   operator 18 $ mdo
     -- Write K to MD-1
-    ai (header `offAddr` 11) const_10b9 cell_0001
-    ai (var "const_03da") const_10b9 cell_0002
+    ai (header `offAddr` 11) one cell_0001
+    ai (var "const_03da") one cell_0002
     shift cell_0002 (left 11) cell_0002
     ai cell_0001 cell_0002 cell_0001
     ai maAddr cell_0001 maAddr
@@ -1423,8 +1483,8 @@ pp3_4 = do
     mbAddr <- mb zero
 
     -- Write gamma to MD-1
-    ai gamma0 const_10b9 cell_0001
-    ai (var "const_03db") const_10b9 cell_0002
+    ai gamma0 one cell_0001
+    ai (var "const_03db") one cell_0002
     shift cell_0002 (left 11) cell_0002
     ai cell_0001 cell_0002 cell_0001
     ai ma2 cell_0001 ma2
@@ -1459,7 +1519,7 @@ pp3_4 = do
 
   -- comp cell_0004 const_01b9 const_034b (op 22)
 
-  --  comp const_10b9 cell_0004 const_034c (op 21)
+  --  comp one cell_0004 const_034c (op 21)
   {-
   Op. 20 verifies if it is necessary to tansform the constant to the binary system (YES -- op. 21, No -- op. 22).
   -}
@@ -1484,7 +1544,7 @@ pp3_4 = do
   Op. 23 verifies it if is necessary to print the constant (YES -- op. 24, NO -- op. 25).
   -}
   operator 23 $ do
-    compMod cell_03f1 const_10b9 (op 24) (op 25)
+    compMod cell_03f1 one (op 24) (op 25)
 
   {-
   Op. 24 prints the constant in the decimal system.
@@ -1507,9 +1567,9 @@ pp3_4 = do
   -}
   operator 26 $ do
 
-    ai addr_0344 const_10b7 (op 19)
-    ai transferCounter const_10b9 transferCounter
-    ai addr_034d const_10b9 (op 25 `offAddr1` 1)
+    ai addr_0344 oneFirstAddr (op 19)
+    ai transferCounter one transferCounter
+    ai addr_034d one (op 25 `offAddr` 1)
     chain (op 27)
 
   {-
@@ -1528,8 +1588,8 @@ pp3_4 = do
     ai maAddr cell_0001 maAddr
     shift (var "const_03ea") (left 11) cell_0001
     ai mbAddr cell_0001 mbAddr 
-    maAddr <- ma 
-    mbAddr <- mb
+    maAddr <- ma zero zero zero
+    mbAddr <- mb zero 
     tN' checksum cell_03f1 
     clcc (var "decimalConvertSub_10a2")
     pN' cell_03f2
