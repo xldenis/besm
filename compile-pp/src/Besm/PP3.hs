@@ -452,7 +452,8 @@ pp3_1 = do
     shift' cellA (left 22) cellB
     empty -- ???
     tN' k0 counterK'
-    undefined
+    tN' (var "transferTemplate") (op 36)
+    -- todo diff address?
     chain (op 36)
   {-
 
@@ -518,6 +519,7 @@ pp3_1 = do
   operator 40 $ do 
     tN' zero counterK'
     tN' zero cellB
+    tN' (var "transferTemplate") (op 41)
     chain (op 41)
   {-
 
@@ -1521,12 +1523,14 @@ pp3_4 = do
 
   --  comp one cell_0004 const_034c (op 21)
   {-
+  flags are stored in 0x1100 ... (dont print prog) (dont print consts) (dont encode binary)
   Op. 20 verifies if it is necessary to tansform the constant to the binary system (YES -- op. 21, No -- op. 22).
   -}
   operator 20 $ do
-   undefined
+    comp cell_0004 one (op 21) (op 22)
 
   {-
+
   Op. 21 transforms the constant to the binary system..
   -}
   operator 21 $ do
@@ -1544,7 +1548,8 @@ pp3_4 = do
   Op. 23 verifies it if is necessary to print the constant (YES -- op. 24, NO -- op. 25).
   -}
   operator 23 $ do
-    compMod cell_03f1 one (op 24) (op 25)
+    comp one cell_0004 (op 25) (op 24)
+    -- compMod cell_03f1 one (op 24) (op 25)
 
   {-
   Op. 24 prints the constant in the decimal system.

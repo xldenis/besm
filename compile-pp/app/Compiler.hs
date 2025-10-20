@@ -23,6 +23,8 @@ import qualified Besm.PP2.Control as Control
 import qualified Besm.PP2.Distribute as Distribute
 import qualified Besm.PP2.Loop as Loop
 
+import qualified Besm.PP3 as PP3
+
 import Besm.Assembler
 import Besm.Put
 import Control.Monad
@@ -81,27 +83,32 @@ compiledModules = do
   let pp1 = compile (simpleModule pp1Procedures)
   let pp2Segs = [MkSeg ["MP-2"], MkSeg ["I-PP-2", "II-PP-2", "III-PP-2"]]
   let pp2 = compile ((simpleModule pp2Procedures){segments = pp2Segs, packSize = True})
+  let pp3 = compile (simpleModule pp3Procedures)
 
-  (,) <$> pp1 <*> pp2
+  (,,) <$> pp1 <*> pp2 <*> pp3
 
 compileCommand (oDir, smDir) = do
   case compiledModules of
     Left err -> mapM_ putStrLn err
-    Right (pp1, pp2) -> do
+    Right (pp1, pp2, pp3) -> do
       case oDir of
         Just o -> do
           writeFile (o </> "mp1.txt") . unlines $ render pp1 & map toHexString
           writeFile (o </> "mp2.txt") . unlines $ render pp2 & map toHexString
+          writeFile (o </> "mp3.txt") . unlines $ render pp3 & map toHexString
           writeFile (o </> "boot.txt") . unlines $ renderProc 0 (bootloader pp1 pp2) & map toHexString
         Nothing -> do
           putStrLn . unlines $ render pp1 & map toHexString
           putStrLn "\n\n PP-2 \n\n"
           putStrLn . unlines $ render pp2 & map toHexString
+          putStrLn "\n\n PP-3 \n\n"
+          putStrLn . unlines $ render pp3 & map toHexString
 
       case smDir of
         Just path -> do
           writeFile (path </> "pp1.sm") $ renderSourceMap pp1
           writeFile (path </> "pp2.sm") $ renderSourceMap pp2
+          writeFile (path </> "pp3.sm") $ renderSourceMap pp3
         Nothing -> return ()
 
   return ()
@@ -140,7 +147,7 @@ compileCommand (oDir, smDir) = do
 
 debugCommand _ = do
   case compiledModules of
-    Right (pp1, pp2) -> do
+    Right (pp1, pp2, pp3) -> do
       modInfo pp1
       modInfo pp2
       pure ()
@@ -184,6 +191,14 @@ pp2Procedures =
   , runProcedure "I-PP-2" Loop.pp2_1
   , runProcedure "II-PP-2" Control.pp2_2
   , runProcedure "III-PP-2" Distribute.pp2_3
+  ]
+
+pp3Procedures =
+  [ runProcedure "MP-3" PP3.mp3
+  , runProcedure "I-PP-3" PP3.pp3_1
+  , runProcedure "II-PP-3" PP3.pp3_2
+  , runProcedure "III-PP-3" PP3.pp3_3
+  , runProcedure "IV-PP-3" PP3.pp3_4
   ]
 
 main :: IO ()
