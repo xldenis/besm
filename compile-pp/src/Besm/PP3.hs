@@ -107,8 +107,10 @@ mp3 = do
 
 -- Probably a shared counter?
 pp3_1 = do
+  pinned "header" "programme header table" (Size 15)
   -- Should be shared with PP-2 (pinned)
   counterK <- global "k" Cell
+  counterK' <- local "trueAddresses" Cell -- might be a global
   cellA <- local "A" Cell
   cellC <- local "C" Cell
 
@@ -117,24 +119,36 @@ pp3_1 = do
 
   counterK' <- local "counterK'" Cell
   fetchK <- local "fetchK" Cell
-  let finalK = var "final-k"
+  let finalK = counterKlast
 
   maTemplate <- global "maTemplate" (Template (Ma zero zero zero))
   mbTemplate <- global "mbTemplate" (Template (Mb zero))
 
   -- Probably need to make cellA global for this to work
-  transTemplate <- local "trans_template" (Template $ TN cellA (var "unknown buffer") UnNormalized)
-  selTemplate <- local "sel_template" (Template $ TN (var "uknown cell") currentInstr UnNormalized)
-  local "all-but-third" (Raw 0b111_111_111_1111_1111_111_1111_1111_000_0000_0000)
+  transTemplate <- local "trans_template" (Template $ TN cellA (Absolute 1) UnNormalized)
+  selTemplate <- local "sel_template" (Template $ TN (Absolute 1) currentInstr UnNormalized)
+  local "all-but-third" (Raw $ 0b1_11_1111_1111 `B.shift` 22 B..|. 0b1_11_1111_1111 `B.shift` 11)
+  local "all-but-first" (Raw $ 0b1_11_1111_1111 `B.shift` 11 B..|. 0b1_11_1111_1111)
+  local "all-but-second" (Raw $ 0b1_11_1111_1111 `B.shift` 22 B..|. 0b1_11_1111_1111)
+
+  local "transferTemplate" (Template $ TN zero (var "fetchK") UnNormalized)
+
+  local "B" Cell
+
+  local "0200"   (Raw 0x0200)
+  local "1200"   (Raw 0x1200)
+  local "1000"   (Raw 0x1000)
+
 
   let k0 = header `offAddr` 4
   {-
   Op. 1 sends K0 to counter K, in which is fixed the address of the last instruction selected from block K.
   -}
   operator 1 $ do
-    tN' k0 counterK
+    shift k0 (left 22) counterK
     ai (Unknown "sel_template") counterK (op 46)  -- Form selection command
     ai (Unknown "trans_template") finalK (op 47)  -- Form transmission command
+    tN' k0 counterK
     chain (op 2)
 
   {-
@@ -367,7 +381,7 @@ pp3_1 = do
 
   -}
   operator 26 $ do
-    tN' (var "K_1*") (var "trueAddresses") -- "K_1*" is somewhere in the header
+    ai k0 one (var "trueAddresses") -- "K_1*" is somewhere in the header
     tN' k0 counterK
     chain (op 27)
   {-
@@ -451,9 +465,9 @@ pp3_1 = do
   operator 35 $ do
     shift' cellA (left 22) cellB
     empty -- ???
+    shift counterK (left 22) counterK'
+    ai (var "transferTemplate") counterK (op 36) -- todo: unclear if it should be counter k
     tN' k0 counterK'
-    tN' (var "transferTemplate") (op 36)
-    -- todo diff address?
     chain (op 36)
   {-
 
@@ -481,7 +495,7 @@ pp3_1 = do
 
   -}
   operator 38 $ mdo
-    let cell_0001 = var "cell_0001" 
+    cell_0001 <- local "cell_0001" Cell -- todo: figure out which cell i can safely use here
     sub' counterK' counterK cell_0001
     -- shift cell_0001 (left 22) cell_0001
 
@@ -517,9 +531,13 @@ pp3_1 = do
 
   -}
   operator 40 $ do 
-    tN' zero counterK'
+    -- tN' zero counterK'
     tN' zero cellB
     tN' (var "transferTemplate") (op 41)
+    -- rather than performing a comparison between K' and delta we just decrement delta and compare against zero. 
+    -- this is what appears to be done in op 27 of the source.
+    tMod' cellA counterK' 
+
     chain (op 41)
   {-
 
@@ -528,7 +546,7 @@ pp3_1 = do
   -}
   operator 41 $ do
     empty
-    ai counterK' one counterK'
+    sub' counterK' one counterK'
     tExp' fetchK cellC
     chain (op 42)
   {-
@@ -553,15 +571,16 @@ pp3_1 = do
 
   -}
   operator 44 $ do
-    
-    comp counterK' (var "delta") (op 41) (op 45)
+    comp zero counterK' (op 41) (op 45)
   {-
 
   Op. 45 forms the new value of the absolute magnitude of the relative address, equal to Δ - (B).
 
   -}
   operator 45 $ do
-    sub' (var "delta") cellB cellA
+    -- do we need to do anything here?
+    -- maybe the delta logic used in op 40 i actually incorrect?
+    tN' cellB cellA
     jcc
   {-
 
@@ -594,22 +613,26 @@ pp3_1 = do
   the scheme of block II-PP-3 is represented in Fig. 17.
 -}
 pp3_2 = do
+  pinned "header" "programme header table" (Size 15)
+
   -- Working cells and variables
   cell_03F0 <- local "03F0" Cell  -- Standard working cell
   cell_0001 <- local "0001" Cell  -- Standard working cell
-  cell_0004 <- local "0004" Cell  -- M_1^(i+1)* counter
+  -- cell_0004 <- local "0004" Cell  -- M_1^(i+1)* counter
 
   -- Constants
-  pBar <- local "Pbar" Cell       -- 03E1
+  pBar <- global "Pbar" Cell      -- 03E1
   cBar <- local "Cbar" Cell       -- 03E2
   kBar <- local "Kbar" Cell       -- 03E3
   gammaBar <- local "gammaBar" Cell  -- 03E4
   p0 <- local "P0" Cell          -- 0008
   c0 <- local "C0" Cell          -- 03EA (also Ko)
   k0 <- local "K0" Cell          -- 03EB (also T0)
+  -- hrrmmm 
   gamma0 <- local "gamma0" Cell  -- 03EC (also F0)
   o0 <- local "O0" Cell          -- 03ED (also M0)
   m1 <- local "M1" Cell          -- M^(1)
+  o  <- local "O" Cell           -- 03E5
 
   deltaC <- local "deltaC" Cell  -- 03F7
   deltaGamma <- global "deltaGamma" Cell  -- 03F9
@@ -621,7 +644,7 @@ pp3_2 = do
   cellB <- local "cellB" Cell    -- 03FE
 
   -- Constants from transcription
-  local "0x18" (Raw 0x18)
+  -- local "0x18" (Raw 0x18)
 
 
   local "const_0337" (Raw 0x0337)  -- Value 31 for comparison (2^5,F8)
@@ -629,6 +652,8 @@ pp3_2 = do
   local "const_033A" (Raw 0x033A)  -- Forward address shift info mask (-2^0,000000FF)??
   local "const_033C" (Raw 0x033C)  -- Old RPD end (2^1,11111111)???
   local "const_033B" (Raw 0x34F)  
+
+  local "const_0339" Cell
 
   -- 0334: ,TN 0010 03F0
   fetchTemplate <- local "fetchTemplate" (Template $ TN (var "unknown_op") cell_03F0 UnNormalized)
@@ -641,6 +666,7 @@ pp3_2 = do
     Op 1. calculates Pbar, Cbar, Kbar, ɣbar Obar and C_0*, K_0*, ɣ_0*, O_0*, M_0*
   -}
   operator 1 $ do
+    -- check these offsets!!!
     -- /Pₓ +1 /  - P₀  =P+1
     sub' (header `offAddr` 9) (header `offAddr` 8) (var "0001")
     -- P
@@ -654,13 +680,13 @@ pp3_2 = do
     -- γbar
     sub' (header `offAddr` 6) (header `offAddr` 13) gammaBar
     -- 0 constant
-    tN' (header `offAddr` 7) (var "const_03D5")
+    tN' (header `offAddr` 7) o
     -- (P+C) + K = Kₓ =T₀
     ai c0 kBar k0
     -- (P+C + K) + F = Fₓ = 0₀
     ai k0 gammaBar gamma0
     -- (P+C+K+F) +0 = 0ₓ = M₀
-    ai gamma0 (var "const_03E5") o0
+    ai gamma0 o o0
     -- M₀+1 = M₁ = M⁽¹⁾
     ai o0 one m1
     chain (op 2)
@@ -883,15 +909,29 @@ pp3_2 = do
 -}
 
 pp3_3 = do
+  pinned "header" "programme header table" (Size 15)
+
+  let k0 = header `offAddr` 4
+
   let relocRes = var "relocRes" 
   deltaK <- global "deltaK" Cell  -- 03F8
   deltaGamma <- global "deltaGamma" Cell  
-  let gammaFinal = var "gammaFinal" -- somewhere in header
-  let gamma0 = var "gamma0" -- somewhere in header
-  let k0 = var "k0" -- somewhere in header
 
+  gammaFinal <- local "gammaFinal" (Raw 0x01FF) -- probs should be 0x200
+  let gamma0 = header `offAddr` 7
 
   relocationTemplate <- local "relocationTemplate" (Template (TN zero relocRes UnNormalized))
+
+  local "0x11EF" (Raw 0x11EF)
+  local "0x11FF" (Raw 0x11FF)
+  local "0200"   (Raw 0x0200)
+  local "1200"   (Raw 0x1200)
+
+  local "22" (Raw 22)
+  local "23" (Raw 23)
+
+  local "A" Cell
+  local "B" Cell
 
   cellZ <- local "cellZ" Cell
   cellX <- local "cellX" Cell
@@ -1300,8 +1340,13 @@ pp3_3 = do
 -}
 
 pp3_4 = do
-  let const_035d = var "2^8,88888888"
-  let const_035e = var "const_035e"
+  pinned "header" "programme header table" (Size 15)
+
+  let binaryConvertSub_1120 = Absolute 0x1120
+  let decimalConvertSub_10a2 = Absolute 0x10a2
+
+  const_035d <- local "const_035d" (Raw 0x0) -- 2^1,11111111
+  const_035e <- local "const_035e" (Raw 0x0) -- 2^8,88888888
 
   checksum <- local "checksum" Cell
   cell_03f1 <- local "cell_03f1" Cell
@@ -1309,10 +1354,9 @@ pp3_4 = do
   cell_0001 <- local "cell_0001" Cell
   let const_03d2 = var "const_03d2"
 
-  let addr_034d = var "addr_034d"
   let addr_0344 = var "addr_0344"
 
-  let controlFlags = var "1100"
+  let controlFlags = Absolute 0x1100
 
   transferCounter <- local "transferCounter" Cell
 
@@ -1322,7 +1366,7 @@ pp3_4 = do
   let cell_000a = var "cell_000a" -- something from header
   let cell_0006 = var "cell_0006" -- something from header
 
-  let gamma0 = var "gamma0"
+  let gamma0 = header `offAddr` 7
   let c0 = var "C_0"
 
   const_0305 <- local "const_0305" (Raw 0x3)
@@ -1330,14 +1374,25 @@ pp3_4 = do
   let const_03ff = var "const_03ff"
 
   let pBar = var "pBar"
-  let p0 = var "p0"
 
+  c0 <- local "c0" Cell -- 0x3e9
+
+  local "0304" (Raw 4)
+
+  p0 <- local "P0" Cell          -- 0x3D8
+
+  global "pBar" Cell
+
+  -- this makes no sense?
+  aiTemplate <- local "const_03ea" (Template $ AI (var "??") one (var "??"))
+
+  local "const_03d2" (Template $ TN (Absolute 0b1_11_1111_1111) (var "const_03F1") UnNormalized)
   {-
   Op. 1 carries out the prepatory instructions.
   -}
   operator 1 $ do
     tN' zero p0
-    tN' pBar (var "03e9")
+    tN' pBar c0
     tN' transferCounter cell_0004
     chain (op 2)
 
@@ -1351,14 +1406,14 @@ pp3_4 = do
     shift cell_0001 (left 22) cell_0001
     shift pBar (left 11) cell_0002
     ai cell_0001 cell_0002 cell_0001
-    ai cell_0001 (var "03e9") cell_0001
+    ai cell_0001 c0 cell_0001
     chain (op 3)
 
   {-
   Op. 3 prints the line of information.
   -}
   operator 3 $ do
-    callRtc (var "printSubroutine_03a4") (var "printEntry_038c")
+    callRtc (var "printSubroutine_03a4") (var "printEntry_039c")
     chain (op 4)
 
 
@@ -1453,7 +1508,7 @@ pp3_4 = do
   Op. 15 prints the constant sfrom block gamma.
   -}
   operator 15 $ do
-    callRtc (var "printSubroutine_03a4") (var "printEntry_0382")
+    callRtc (var "printSubroutine_03a4") (var "printEntry_039c")
     chain (op 16)
 
   {-
@@ -1481,7 +1536,8 @@ pp3_4 = do
     ai maAddr cell_0001 maAddr
     shift (header `offAddr` 12) (left 11) cell_0001
     ai mbAddr cell_0001 mbAddr
-    maAddr <- ma (var "0301") zero zero
+    -- todo investigate this absolute
+    maAddr <- ma (Absolute 0x0301) zero zero
     mbAddr <- mb zero
 
     -- Write gamma to MD-1
@@ -1492,7 +1548,7 @@ pp3_4 = do
     ai ma2 cell_0001 ma2
     shift (var "const_03dc") (left 11) cell_0001
     ai mb2 cell_0001 mb2
-    ma2 <- ma (var "0301") zero zero
+    ma2 <- ma (Absolute 0x0301) zero zero
     mb2 <- mb zero
 
     -- Read C from MD-2
@@ -1500,7 +1556,8 @@ pp3_4 = do
     ai ma3 cell_0001 ma3
     shift cell_000a (left 11) cell_0001
     ai mb3 cell_0001 mb3
-    ma3 <- ma (var "0102") zero (var "addr_0010")
+    -- todo: audit the 0x0102
+    ma3 <- ma (Absolute 0x0102) zero (var "addr_0010")
     mb3 <- mb zero
  
     -- Prepare for constant processing
@@ -1534,14 +1591,14 @@ pp3_4 = do
   Op. 21 transforms the constant to the binary system..
   -}
   operator 21 $ do
-    clcc (var "binaryConvertSub_1120")
+    clcc binaryConvertSub_1120
     chain (op 23)
 
   {-
   Op. 22 transforms a binary constant to the decimal system, preparing it at the same time for printing.
   -}
   operator 22 $ do
-    clcc (var "decimalConvertSub_10a2")
+    clcc decimalConvertSub_10a2
     tN' cell_03f2 cell_03f1
     chain (op 22)
   {-
@@ -1572,9 +1629,9 @@ pp3_4 = do
   -}
   operator 26 $ do
 
-    ai addr_0344 oneFirstAddr (op 19)
+    ai (op 19) oneFirstAddr (op 19)
     ai transferCounter one transferCounter
-    ai addr_034d one (op 25 `offAddr` 1)
+    ai (op 25 `offAddr` 1) one (op 25 `offAddr` 1)
     chain (op 27)
 
   {-
@@ -1587,7 +1644,7 @@ pp3_4 = do
   Op. 28 writes block C on Md-1 in cells C_1* - C_f* and prints the first check sum.
   -}
   operator 28 $ mdo
-    add' (var "addr_03F9") one cell_0001
+    add' c0 one cell_0001
     shift cell_0001 (left 11) cell_0001
     -- Write C to MD-1 (addresses uncertain)
     ai maAddr cell_0001 maAddr
@@ -1596,7 +1653,7 @@ pp3_4 = do
     maAddr <- ma zero zero zero
     mbAddr <- mb zero 
     tN' checksum cell_03f1 
-    clcc (var "decimalConvertSub_10a2")
+    clcc decimalConvertSub_10a2
     pN' cell_03f2
 
     chain (op 29)
@@ -1630,6 +1687,6 @@ pp3_4 = do
   operator 32 $ do
     -- Print final checksum
     tN' checksum cell_03f1
-    clcc (var "decimalConvertSub_10a2")
+    clcc decimalConvertSub_10a2
     pN' cell_03f2
     stop
