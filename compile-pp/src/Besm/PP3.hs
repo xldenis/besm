@@ -685,7 +685,7 @@ pp3_2 = do
     -- (C+P) -P = C
     sub' c0 pBar cBar
     -- K = Kₓ - K₀
-    sub' (header `offAddr` 12) (header `offAddr` 11) kBar
+    sub' (header `offAddr` 12) k0 kBar
     -- γbar
     sub' (header `offAddr` 6) (header `offAddr` 13) gammaBar
     -- 0 constant
@@ -899,7 +899,7 @@ pp3_2 = do
     -- Δ(P/d) = (P/ya)₀ - (P/ya)ₑ old
     sub' (var "const_03EE") (var "const_033B") deltaRPD
     -- ΔК = Кg - Кo
-    sub' c0 (header `offAddr` 11) deltaK
+    sub' c0 k0 deltaK
     -- inlined end to op 21
     -- header values are off!
     tN' (header `offAddr` 5) (var "const_03E7")
@@ -919,6 +919,7 @@ pp3_2 = do
 
 pp3_3 = do
   pinned "header" "programme header table" (Size 15)
+  pinned "prog" "programme" (Size 750)
 
   let k0 = header `offAddr` 4
 
@@ -1358,6 +1359,9 @@ pp3_3 = do
 
 pp3_4 = do
   pinned "header" "programme header table" (Size 15)
+  pinned "prog" "programme" (Size 750)
+
+  let k0 = header `offAddr` 4
 
   let binaryConvertSub_1120 = Absolute 0x1120
   let decimalConvertSub_10a2 = Absolute 0x10a2
@@ -1380,15 +1384,16 @@ pp3_4 = do
   cell_0004 <- local "cell_0004" Cell
   cell_0002 <- local "cell_0002" Cell
 
-  let cell_000a = var "cell_000a" -- something from header
-  let cell_0006 = var "cell_0006" -- something from header
+  let cell_000a = header `offAddr` 3 -- C_f
+  cell_0006 <- local "cell_0006" Cell -- possible something carried over from PP-2?
 
   let gamma0 = header `offAddr` 7
   let c0 = var "C_0"
 
   const_0305 <- local "const_0305" (Raw 0x3)
 
-  let const_03ff = var "const_03ff"
+  const_03ff <- local "const_03ff" Cell -- appears to have 0xb <- 22??
+
 
   let pBar = var "pBar"
 
@@ -1401,12 +1406,14 @@ pp3_4 = do
   global "pBar" Cell
 
   -- this makes no sense?
-  aiTemplate <- local "const_03ea" (Template $ AI (var "??") one (var "??"))
+  local "const_03ea" Cell -- filled in by II-PP-3
+  local "const_03eb" Cell -- filled in by II-PP-3
+  local "const_03ec" Cell -- filled in by II-PP-3
 
   global "printEntry_039c" Cell -- actually a program
   global "printSubroutine_03a4" Cell -- actually a program
 
-  local "const_03d2" (Template $ TN (Absolute 0b1_11_1111_1111) (var "const_03F1") UnNormalized)
+  local "const_03d2" (Template $ TN (Absolute 0b1_11_1111_1111) (var "cell_03f1") UnNormalized)
   {-
   Op. 1 carries out the prepatory instructions.
   -}
@@ -1460,8 +1467,9 @@ pp3_4 = do
     pN' const_035e
     pN' const_035d
     bitAnd controlFlags (var "0304") cell_0004
+    -- implies oneFirstAndThird is a ,Tn command?
     ai oneFirstAndThird const_03ff (op 7)
-    tN' (header `offAddr` 11) transferCounter
+    tN' k0 transferCounter
     chain (op 7)
 
   {-
@@ -1549,8 +1557,8 @@ pp3_4 = do
   -}
   operator 18 $ mdo
     -- Write K to MD-1
-    ai (header `offAddr` 11) one cell_0001
-    ai (var "const_03da") one cell_0002
+    ai k0 one cell_0001
+    ai (var "const_03ea") one cell_0002
     shift cell_0002 (left 11) cell_0002
     ai cell_0001 cell_0002 cell_0001
     ai maAddr cell_0001 maAddr
@@ -1562,11 +1570,11 @@ pp3_4 = do
 
     -- Write gamma to MD-1
     ai gamma0 one cell_0001
-    ai (var "const_03db") one cell_0002
+    ai (var "const_03eb") one cell_0002
     shift cell_0002 (left 11) cell_0002
     ai cell_0001 cell_0002 cell_0001
     ai ma2 cell_0001 ma2
-    shift (var "const_03dc") (left 11) cell_0001
+    shift (var "const_03ec") (left 11) cell_0001
     ai mb2 cell_0001 mb2
     ma2 <- ma (Absolute 0x0301) zero zero
     mb2 <- mb zero
@@ -1577,7 +1585,7 @@ pp3_4 = do
     shift cell_000a (left 11) cell_0001
     ai mb3 cell_0001 mb3
     -- todo: audit the 0x0102
-    ma3 <- ma (Absolute 0x0102) zero (var "addr_0010")
+    ma3 <- ma (Absolute 0x0102) zero (var "programme")
     mb3 <- mb zero
  
     -- Prepare for constant processing
@@ -1591,7 +1599,7 @@ pp3_4 = do
   Op. 19 transfers the constant from block C to the standard cell.
   -}
   operator 19 $ do
-    tN' (var "addr_0010") cell_03f1
+    tN' (var "programme") cell_03f1
     ai' checksum cell_03f1 checksum
     chain (op 20)
 
@@ -1640,7 +1648,7 @@ pp3_4 = do
   -}
   operator 25 $ do
     add' checksum cell_03f1 checksum
-    tN' cell_03f2 (var "addr_0010")
+    tN' cell_03f2 (var "programme")
     chain (op 26)
     
 
