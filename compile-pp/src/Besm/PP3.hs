@@ -922,7 +922,7 @@ pp3_3 = do
 
   let k0 = header `offAddr` 4
 
-  let relocRes = var "relocRes" 
+  relocRes <- local "relocRes" Cell -- 03F2
   deltaK <- global "deltaK" Cell  -- 03F8
   deltaGamma <- global "deltaGamma" Cell  
 
@@ -935,6 +935,12 @@ pp3_3 = do
   local "0x11FF" (Raw 0x11FF)
   local "0200"   (Raw 0x0200)
   local "1200"   (Raw 0x1200)
+  local "0x1B"   (Raw 0x1B)
+  local "0x12"   (Raw 0x12)
+  local "0xF"    (Raw 0xF)
+  local "0x3ff"  (Raw 0x3ff)
+
+  local ",P template" (Template $ TN zero zero UnNormalized)
 
   local "22" (Raw 22)
   local "23" (Raw 23)
@@ -1057,7 +1063,7 @@ pp3_3 = do
     chain (op 14)
 
   {-
-  In the description of BESM it was indicated that usually in the instruction "CCCC with second address", in reference t o a sub-routine, the addresss of the second instruction of RTC is given in the second address. In coding the instruction "CCCC with second addresss" the addresss in RTC is an operator number assigned to the instructions of RTC. In assigning true addresses this operator number will be substituted by the true addrses of the first instruction of RTC since to obtain the correct second address of CCCC it is necessary to increas it by 1'
+  In the description of BESM it was indicated that usually in the instruction "CCCC with second address", in reference to a sub-routine, the addresss of the second instruction of RTC is given in the second address. In coding the instruction "CCCC with second addresss" the addresss in RTC is an operator number assigned to the instructions of RTC. In assigning true addresses this operator number will be substituted by the true addrses of the first instruction of RTC since to obtain the correct second address of CCCC it is necessary to increas it by 1'
 
   Op. 14, in accordance with the above, transers control to op. 15 if an instruction CCCC has been selected in the cell.
   -}
@@ -1138,7 +1144,7 @@ pp3_3 = do
   Op. 23 forms and carries out the instruction
     -- todo: probably a typo should be tn
     ┌────┬──────┬─────┬──────┐
-    │ ,P │ y-ΔK │     │ y-Δɣ │
+    │ ,P │ y-ΔK │     │ x-Δɣ │
     └────┴──────┴─────┴──────┘
 
   which transfers the initial value of the variable instruction located in the block K to storage in block ɣ.
@@ -1189,14 +1195,16 @@ pp3_3 = do
   Op. 27 refers to op. 33 if 0010 <= y <= V_f (y is the code of the quantity having a variable address).
   -}
   operator 27 $ do
-    comp cellC (var "V_f") (op 33) (op 28)
+    -- might need to flip this comparison around since comp is <
+    -- V_f is 0008
+    comp cellC (header `offAddr` 2) (op 33) (op 28)
 
   {-
   Op. 28 refers to op. 37 if P_1 <= y <= C_f (y is the code of a parameter or quantity from block C).
   -}
   operator 28 $ do
     -- todo: do I need to check for P_1 or is is it contiguous with V_f?
-    comp cellC (var "C_f") (op 37) (op 29)
+    comp cellC (header `offAddr` 4) (op 37) (op 29)
 
   {-
   Op. 29 refers to op. 38 if 01A0 <= y <= 01FF (y is the code of a quantity from block gamma).
