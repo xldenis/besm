@@ -36,6 +36,7 @@ counterKlast = header `offAddr` 5
 -}
 mp3 = do
   pinned "header" "programme header table" (Size 15)
+  pinned "prog" "programme" (Size 750)
   {-
     Op. 1 of MP-3 reads the programme block I-PP-3 from MD-4 and transfers
     control to it. The block I-PP-3 changes the codes of the operator numbers
@@ -614,6 +615,7 @@ pp3_1 = do
 -}
 pp3_2 = do
   pinned "header" "programme header table" (Size 15)
+  pinned "prog" "programme" (Size 750)
 
   -- Working cells and variables
   cell_03F0 <- local "03F0" Cell  -- Standard working cell
@@ -654,13 +656,20 @@ pp3_2 = do
   local "const_033B" (Raw 0x34F)  
 
   local "const_0339" Cell
+  local "const_03EE" Cell -- check where this shows up in III
+  local "const_03E6" Cell -- as far as i can tell this is *never* used again (unless its copied as part of an Ma / Mb???)
+  local "const_03EF" Cell 
+  local "const_03E7" Cell -- as far as i can tell this is never used again... highly sus 
 
   -- 0334: ,TN 0010 03F0
-  fetchTemplate <- local "fetchTemplate" (Template $ TN (var "unknown_op") cell_03F0 UnNormalized)
+  fetchTemplate <- local "fetchTemplate" (Template $ TN (var "programme") cell_03F0 UnNormalized)
   -- 0334: ,TN 0010 03F0
-  returnTemplate <- local "returnTemplate" (Template (TN cell_03F0 (var "unknown_op") UnNormalized))
+  returnTemplate <- local "returnTemplate" (Template (TN cell_03F0 (var "programme") UnNormalized))
   counterTemplate <- local "counterTemplate" (Raw 0xF)
 
+
+  global "printEntry_039c" Cell -- actually a program
+  global "printSubroutine_03a4" Cell -- actually a program
 
   {-
     Op 1. calculates Pbar, Cbar, Kbar, ɣbar Obar and C_0*, K_0*, ɣ_0*, O_0*, M_0*
@@ -799,7 +808,7 @@ pp3_2 = do
   operator 12 $ do
     -- Print information about array :М⁽ⁱ⁾
     -- part of mp-3
-    callRtc (var "const_03A4") (var "const_038C")
+    callRtc (var "printSubroutine_03a4") (var "printEntry_039c")
     empty
     chain (op 13)
 
@@ -1385,6 +1394,9 @@ pp3_4 = do
 
   -- this makes no sense?
   aiTemplate <- local "const_03ea" (Template $ AI (var "??") one (var "??"))
+
+  global "printEntry_039c" Cell -- actually a program
+  global "printSubroutine_03a4" Cell -- actually a program
 
   local "const_03d2" (Template $ TN (Absolute 0b1_11_1111_1111) (var "const_03F1") UnNormalized)
   {-
