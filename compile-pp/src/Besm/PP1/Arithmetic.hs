@@ -934,7 +934,7 @@ arithCoder = do
 
     stop <- block checkStop
 
-    jcc' <- block (jcc >> chain (op 2))
+    jcc' <- block jcc
 
     return ()
   {-

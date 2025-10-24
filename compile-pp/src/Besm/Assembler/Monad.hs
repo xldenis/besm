@@ -295,7 +295,7 @@ clcc addr = emitInstr $ CLCC addr
 
 -- | Jump to Control. Transfers control to the global control system.
 jcc :: Builder Address
-jcc = emitInstr JCC
+jcc = emitTerm JCC
 
 {- |
   @chain@ is not an actual instruction. It is a meta-linguistic addition that is

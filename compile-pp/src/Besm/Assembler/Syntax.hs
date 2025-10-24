@@ -182,6 +182,7 @@ blockLen bb = length (instrs bb) + termLen (terminator bb)
  where
   termLen (RetRTC _) = 2
   termLen (Chain _) = 0
+  termLen JCC = 1
   termLen _ = 1
 
 {- |
@@ -241,8 +242,6 @@ data Instr a
     CallRTC a a
   | -- | Call a subroutine using a jump to local control
     CLCC a
-  | -- | Return to global control
-    JCC
   | -- | Empty cell
     Empty
   deriving (Show, Eq, Functor, Foldable, Traversable)
@@ -263,6 +262,8 @@ data Term a
     CCCCSnd a a
   | Stop
   | SwitchStop
+  | -- | Return to global control counter (from local control counter)
+    JCC
   | -- |  meta-linguistic, will be eliminated entirely before codegen.
     Chain a
   | -- | Insert the return-to-control instructions
@@ -302,7 +303,6 @@ instToCell (Ma a b c) = buildInstruction (bitVector 0x016) (bitVector a) (bitVec
 instToCell (Mb b) = buildInstruction (bitVector 0x017) (bitVector 0) (bitVector b) (bitVector 0)
 instToCell (LogMult a b c) = buildInstruction (bitVector 0x01D) (bitVector a) (bitVector b) (bitVector c)
 instToCell (CallRTC b c) = buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector b) (bitVector c)
-instToCell JCC = buildInstruction (bitVector 0x019) (bitVector 0) (bitVector 0) (bitVector 0)
 instToCell (CLCC c) = buildInstruction (bitVector 0x01A) (bitVector 0) (bitVector 0) (bitVector c)
 instToCell Empty = bitVector 0
 
@@ -314,5 +314,6 @@ termToCell (CCCC c) = pure $ buildInstruction (bitVector 0x01B) (bitVector 0) (b
 termToCell (CCCCSnd b c) = pure $ buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector b) (bitVector c)
 termToCell Stop = pure $ buildInstruction (bitVector 0x01F) (bitVector 0) (bitVector 0) (bitVector 0)
 termToCell SwitchStop = pure $ buildInstruction (bitVector 0x01C) (bitVector 0) (bitVector 0) (bitVector 0)
+termToCell JCC = pure $ buildInstruction (bitVector 0x019) (bitVector 0) (bitVector 0) (bitVector 0)
 termToCell (RetRTC a) = [instToCell (AI 0b10100001111 (a + 1) (a + 1)), bitVector 0]
 termToCell (Chain _) = []

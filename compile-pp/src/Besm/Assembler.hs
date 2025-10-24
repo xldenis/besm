@@ -694,6 +694,7 @@ directJumps (CCCC _) = Nothing
 directJumps (CCCCSnd _ a) = Just a
 directJumps Stop = Nothing
 directJumps SwitchStop = Nothing
+directJumps JCC = Nothing
 directJumps (Chain _) = Nothing
 directJumps (RetRTC _) = Nothing
 
@@ -706,5 +707,6 @@ implicitJumps (CCCC a) = Just a
 implicitJumps (CCCCSnd _ _) = Nothing
 implicitJumps Stop = Nothing
 implicitJumps SwitchStop = Nothing
+implicitJumps JCC = Nothing
 implicitJumps (Chain a) = Just a
 implicitJumps (RetRTC _) = Nothing

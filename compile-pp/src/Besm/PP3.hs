@@ -12,6 +12,7 @@ header = Unknown "programme header table" `offAddr` 6 -- This should be cell 7
 
 counterKlast = header `offAddr` 5
 
+
 {-
 
   The third part of the programming programme contains approximately 450
@@ -83,6 +84,17 @@ mp3 = do
     readMD 4 (ProcStart "IV-PP-3") (ProcEnd "IV-PP-3") (ProcStart "IV-PP-3")
     cccc (Procedure "IV-PP-3" (op 1))
     stop
+
+  -- print routine
+  operator 5 $ do
+    chain (op 6)
+  operator 6 $ do
+    retRTC
+
+printEntry_039c = Procedure "MP-3" (op 6) -- should be op 5
+printSubroutine_03a4 = Procedure "MP-3" (op 6)
+
+
 {-
   In the description of the functioning of PP-3 it is necessary to consider the two positions of blocks in the store: standard and "final", ie that which they are to have in correspondence with which position is under consiteration the characteristics of the block locations in their final positions will be denoted by an asterisk. Thus for example 𝜎*f denotes the last cell of block 𝜎 in its final position in the store in distinction to 𝜎f, denoting hte same characteristic in the standard position of block 𝜎.
 -}
@@ -290,6 +302,10 @@ pp3_1 = do
   Op. 16, in the case of selection of instructions Ma and Mb transfers control to op. 22 since in these instructions the relative addresses may be located only in the third address.
 
   -}
+  operator 16 $ mdo 
+    comp currentInstr mbTemplate (op 17) next
+    next <- comp currentInstr maTemplate (op 22) (op 17)
+    pure ()
   {-
 
   Op. 17 extracts the first address of the instruction and sends it to the third address of the standard cell A.
@@ -343,15 +359,15 @@ pp3_1 = do
   Op. 22 extracts the third address of the instruction, sending it to cell A.
 
   -}
-  operator 10 $ do
+  operator 22 $ do
     bitAnd currentInstr thirdAddr cellA
-    chain (op 11)
+    chain (op 23)
   {-
 
   Op. 23 tests the extracted address.
 
   -}
-  operator 20 $ do
+  operator 23 $ do
     clcc (op 39)
     chain (op 24)
   {-
@@ -573,6 +589,7 @@ pp3_1 = do
   -}
   operator 44 $ do
     comp zero counterK' (op 41) (op 45)
+
   {-
 
   Op. 45 forms the new value of the absolute magnitude of the relative address, equal to Δ - (B).
@@ -583,6 +600,7 @@ pp3_1 = do
     -- maybe the delta logic used in op 40 i actually incorrect?
     tN' cellB cellA
     jcc
+    chain (op 46)
   {-
 
   Op. 46 is the sub-routine for selecting instructions from block K.
@@ -666,10 +684,6 @@ pp3_2 = do
   -- 0334: ,TN 0010 03F0
   returnTemplate <- local "returnTemplate" (Template (TN cell_03F0 (var "programme") UnNormalized))
   counterTemplate <- local "counterTemplate" (Raw 0xF)
-
-
-  global "printEntry_039c" Cell -- actually a program
-  global "printSubroutine_03a4" Cell -- actually a program
 
   {-
     Op 1. calculates Pbar, Cbar, Kbar, ɣbar Obar and C_0*, K_0*, ɣ_0*, O_0*, M_0*
@@ -808,7 +822,7 @@ pp3_2 = do
   operator 12 $ do
     -- Print information about array :М⁽ⁱ⁾
     -- part of mp-3
-    callRtc (var "printSubroutine_03a4") (var "printEntry_039c")
+    callRtc printSubroutine_03a4 printEntry_039c
     empty
     chain (op 13)
 
@@ -1274,7 +1288,7 @@ pp3_3 = do
     shift cellC (right 22) cellC
     add' cellC one cellC
     sub'  cellZ cellC cellZ
-    chain (op 50)
+    chain (op 36)
 
   {-
   Op. 36 obtains the initial value of the variable address Y = m_sigma + delta, where m_sigma is equal to m_1 or m_f.
@@ -1410,9 +1424,6 @@ pp3_4 = do
   local "const_03eb" Cell -- filled in by II-PP-3
   local "const_03ec" Cell -- filled in by II-PP-3
 
-  global "printEntry_039c" Cell -- actually a program
-  global "printSubroutine_03a4" Cell -- actually a program
-
   local "const_03d2" (Template $ TN (Absolute 0b1_11_1111_1111) (var "cell_03f1") UnNormalized)
   {-
   Op. 1 carries out the prepatory instructions.
@@ -1440,7 +1451,7 @@ pp3_4 = do
   Op. 3 prints the line of information.
   -}
   operator 3 $ do
-    callRtc (var "printSubroutine_03a4") (var "printEntry_039c")
+    callRtc printSubroutine_03a4 printEntry_039c
     chain (op 4)
 
 
@@ -1492,7 +1503,7 @@ pp3_4 = do
   Op. 9 prints the instruction.
   -}
   operator 9 $ do
-    callRtc (var "printSubroutine_03a4") (var "printEntry_039c")
+    callRtc printSubroutine_03a4 printEntry_039c
     chain (op 10)
 
   {-
@@ -1536,7 +1547,7 @@ pp3_4 = do
   Op. 15 prints the constant sfrom block gamma.
   -}
   operator 15 $ do
-    callRtc (var "printSubroutine_03a4") (var "printEntry_039c")
+    callRtc printSubroutine_03a4 printEntry_039c
     chain (op 16)
 
   {-
