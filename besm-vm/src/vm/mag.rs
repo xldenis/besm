@@ -70,7 +70,7 @@ pub struct MagSystem<'a> {
     pub mag_tapes: &'a mut [MagTape; 4],
 }
 
-use vm::Memory;
+use crate::vm::Memory;
 
 impl<'a> MagSystem<'a> {
     pub fn perform_operation(
@@ -78,7 +78,7 @@ impl<'a> MagSystem<'a> {
         op: &DriveOperation,
         memory: &mut Memory,
     ) -> Result<(), DriveError> {
-        use vm::DriveOperation::*;
+        use crate::vm::DriveOperation::*;
 
         match op {
             WriteMD(id, n1, c, n2) => {
@@ -196,7 +196,7 @@ pub enum DriveOperation {
 
 impl DriveOperation {
     pub fn from_ma(a: u16, b: u16, c: u16, b2: u16) -> Result<DriveOperation, DriveError> {
-        use vm::DriveOperation::*;
+        use crate::vm::DriveOperation::*;
         match a {
             0x0300..=0x0304 => Ok(WriteMD(drum_id_from_num(a - 0x0300), b, c, b2)),
             0x0100..=0x0104 => Ok(ReadMD(drum_id_from_num(a - 0x0100), b, c, b2)),

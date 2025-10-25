@@ -52,7 +52,7 @@ pub struct Opts {
     pub md4_out: Option<PathBuf>,
 }
 
-use vm::mag::MagDrive;
+use crate::vm::mag::MagDrive;
 
 pub fn md_from_file(file: Option<PathBuf>) -> MagDrive {
     let mut buf = [0; 1024];

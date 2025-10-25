@@ -12,9 +12,9 @@ extern crate num;
 extern crate tui;
 extern crate tui_logger;
 
-use interface::*;
+use crate::interface::*;
 use structopt::StructOpt;
-use vm::*;
+use crate::vm::*;
 
 use std::io;
 use termion::{input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
@@ -70,7 +70,7 @@ fn trace_execution(vm: &mut VM) {
 extern crate termion;
 
 use log::LevelFilter;
-use opt::*;
+use crate::opt::*;
 use tui_logger::*;
 
 fn main() {
@@ -98,7 +98,7 @@ fn main() {
         md_from_file(opt.md4),
     ];
 
-    use vm::mag::MagTape;
+    use crate::vm::mag::MagTape;
     let mut y = [MagTape::new(), MagTape::new(), MagTape::new(), MagTape::new()];
 
     let mut mem = Memory::new_with_bootloader(&mut is_buf, &bootloader);

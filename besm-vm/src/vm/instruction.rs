@@ -1,9 +1,9 @@
 use bit_field::BitField;
-use vm::instruction::Instruction::*;
+use crate::vm::instruction::Instruction::*;
 
 type Address = u16;
 
-use vm::VMError;
+use crate::vm::VMError;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Instruction {

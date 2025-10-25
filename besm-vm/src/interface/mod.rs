@@ -1,12 +1,12 @@
 pub mod input;
 pub mod tui;
 
-use interface::input::*;
-pub use interface::tui::*;
+use crate::interface::input::*;
+pub use crate::interface::tui::*;
 
 use arraydeque::{behavior::Wrapping, *};
 use tui::{layout::Rect, terminal::Terminal};
-use vm::{instruction::Instruction, VM};
+use crate::vm::{instruction::Instruction, VM};
 
 use std::sync::mpsc::*;
 use tui::backend::Backend;
@@ -34,7 +34,7 @@ impl Interface {
     }
 
     pub fn toggle_step(&mut self) {
-        use StepMode::*;
+        use crate::StepMode::*;
         self.step_mode = match self.step_mode {
             Run => Step,
             Step => Run,

@@ -7,7 +7,7 @@ use tui::{
 };
 
 use bit_field::BitField;
-use vm::{
+use crate::vm::{
     instruction::{first_addr, second_addr, third_addr, Instruction},
     VM,
 };
@@ -21,7 +21,7 @@ pub enum StepMode {
     Step,
 }
 
-use interface::Interface;
+use crate::interface::Interface;
 
 pub struct TabInfo {
     titles: Vec<&'static str>,
@@ -118,7 +118,7 @@ fn render_memory_panel<T: Backend>(t: &mut Frame<T>, tabs: &TabInfo, vm: &VM, re
             .map(|s| format!("{} ", s))
             .unwrap_or_else(|_| "ERROR".to_string());
 
-        use float::Float;
+        use crate::float::Float;
         let float = Float::from_bytes(instr);
         let active_bits = instr.get_bits(0..39);
         let style = if vm.next_instr() - 1 == addr as u16 && tabs.selection == 1 {
@@ -148,7 +148,7 @@ fn render_memory_panel<T: Backend>(t: &mut Frame<T>, tabs: &TabInfo, vm: &VM, re
         .render(t, rect)
 }
 
-use vm::ActiveIC;
+use crate::vm::ActiveIC;
 fn render_status_line<T: Backend>(
     t: &mut Frame<T>,
     app: &Interface,

@@ -1,10 +1,10 @@
 use bit_field::BitField;
-use float::*;
+use crate::float::*;
 
 mod ds;
 pub mod instruction;
 pub mod mag;
-use vm::mag::*;
+use crate::vm::mag::*;
 
 pub struct VM<'a> {
     pub memory: &'a mut Memory<'a>,
@@ -116,7 +116,7 @@ pub enum VMError {
     DriveErr(mag::DriveError),
 }
 
-use vm::instruction::{Instruction::*, *};
+use crate::vm::instruction::{Instruction::*, *};
 
 impl<'a> VM<'a> {
     pub fn new(
