@@ -19,15 +19,11 @@ macro_rules! equalize_exponents_shift_mant {
 
         let $exp = match left_exp.cmp(&right_exp) {
             Ordering::Less => {
-                $left_mant = $left_mant
-                    .checked_shr((right_exp - left_exp) as u32)
-                    .unwrap_or(0);
+                $left_mant = $left_mant.checked_shr((right_exp - left_exp) as u32).unwrap_or(0);
                 right_exp
             }
             Ordering::Greater => {
-                $right_mant = $right_mant
-                    .checked_shr((left_exp - right_exp) as u32)
-                    .unwrap_or(0);
+                $right_mant = $right_mant.checked_shr((left_exp - right_exp) as u32).unwrap_or(0);
                 left_exp
             }
             Ordering::Equal => left_exp,
@@ -40,21 +36,11 @@ impl Float {
         let exp = (0xFF & word.get_bits(33..39)) as i8;
         let mant = word.get_bits(0..33) as u32;
         let sign = word.get_bit(32);
-        Float {
-            mant,
-            exp,
-            sign: sign,
-            overflow: false,
-        }
+        Float { mant, exp, sign: sign, overflow: false }
     }
 
     pub fn new(mant: u32, exp: i8) -> Float {
-        Float {
-            mant,
-            exp,
-            overflow: false,
-            sign: false,
-        }
+        Float { mant, exp, overflow: false, sign: false }
     }
 
     // For now lets not worry about negative numbers
@@ -113,12 +99,7 @@ impl Float {
             Ordering::Equal => false,
         };
 
-        Float {
-            mant: res_mant,
-            overflow: overflow,
-            sign: res_sign,
-            exp,
-        }
+        Float { mant: res_mant, overflow: overflow, sign: res_sign, exp }
     }
 
     pub fn sub_unnormalized(&self, other: &Float) -> Float {
@@ -130,12 +111,7 @@ impl Float {
             false => self.sign,
         };
 
-        Float {
-            mant: res_mant,
-            overflow: false,
-            sign: res_sign,
-            exp,
-        }
+        Float { mant: res_mant, overflow: false, sign: res_sign, exp }
     }
 
     // what is un normalized floating point multiplication?
@@ -184,7 +160,7 @@ mod tests {
     #[test]
     fn add_one_and_two() {
         let one = Float::new(1 << 31, 1);
-        let two = Float::new( 1 << 31,  2);
+        let two = Float::new(1 << 31, 2);
         let three = Float::new(0b11 << 30, 2);
         let mut added = one.add_unnormalized(&two);
         added.normalize();
@@ -193,7 +169,7 @@ mod tests {
 
     #[test]
     fn add_two_and_two() {
-        let two = Float::new( 1 << 31, 2);
+        let two = Float::new(1 << 31, 2);
         let four = Float::new(1 << 31, 3);
         let mut added = two.add_unnormalized(&two);
         added.normalize();

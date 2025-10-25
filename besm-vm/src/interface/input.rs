@@ -1,20 +1,17 @@
-use termion::event;
 use std::sync::mpsc::*;
-
+use termion::event;
 
 #[derive(Debug)]
 pub enum Event {
     Key(event::Key),
     Tick,
-    Command(char, usize)
+    Command(char, usize),
 }
 
 pub use self::Event::*;
 
-
 pub fn setup_input_stream() -> Receiver<Event> {
-    use std::{thread, time};
-    use std::io;
+    use std::{io, thread, time};
 
     let (tx, rx) = channel();
 
@@ -28,20 +25,19 @@ pub fn setup_input_stream() -> Receiver<Event> {
     });
 
     thread::spawn(move || {
-        use termion::input::TermRead;
-        use termion::event::Key::*;
+        use termion::{event::Key::*, input::TermRead};
 
         let stdin = io::stdin();
 
         for e in stdin.keys() {
             let evt = e.unwrap();
             match evt {
-                Char(x@'g') | Char(x@'b') => {
+                Char(x @ 'g') | Char(x @ 'b') => {
                     if let Ok(off) = read_address() {
                         tx.send(Event::Command(x, off as usize)).unwrap();
                     };
-                },
-                e => { tx.send(Event::Key(e)).unwrap() }
+                }
+                e => tx.send(Event::Key(e)).unwrap(),
             }
         }
     });
@@ -51,21 +47,20 @@ pub fn setup_input_stream() -> Receiver<Event> {
 use std::num::ParseIntError;
 
 fn read_address() -> Result<u16, ParseIntError> {
-    use termion::event::Key::*;
-    use termion::input::TermRead;
     use std::io;
+    use termion::{event::Key::*, input::TermRead};
 
-    let key_evs : String = io::stdin().keys().take_while(|ev| {
-        match ev {
+    let key_evs: String = io::stdin()
+        .keys()
+        .take_while(|ev| match ev {
             Ok(Char('\n')) => false,
             Ok(Char(_)) => true,
-            _           => false,
-        }
-    }).map(|ev| {
-        match ev.unwrap() {
+            _ => false,
+        })
+        .map(|ev| match ev.unwrap() {
             Char(c) => c,
             _ => panic!("found non-char in series of chars"),
-        }
-    }).collect();
+        })
+        .collect();
     key_evs.parse::<u16>()
 }

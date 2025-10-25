@@ -17,9 +17,7 @@ use structopt::StructOpt;
 use vm::*;
 
 use std::io;
-use termion::input::MouseTerminal;
-use termion::raw::IntoRawMode;
-use termion::screen::AlternateScreen;
+use termion::{input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::backend::TermionBackend;
 
 use tui::Terminal;
@@ -62,13 +60,7 @@ fn trace_execution(vm: &mut VM) {
             let pass = current_operator.get_bits(14..16);
             let procedure = current_operator.get_bits(10..14);
             let operator = current_operator.get_bits(0..10);
-            println!(
-                "PP{} {} {:3} {}",
-                pass,
-                procedure,
-                operator,
-                vm.next_instr()
-            );
+            println!("PP{} {} {:3} {}", pass, procedure, operator, vm.next_instr());
         }
 
         vm.step().unwrap();
@@ -107,12 +99,7 @@ fn main() {
     ];
 
     use vm::mag::MagTape;
-    let mut y = [
-        MagTape::new(),
-        MagTape::new(),
-        MagTape::new(),
-        MagTape::new(),
-    ];
+    let mut y = [MagTape::new(), MagTape::new(), MagTape::new(), MagTape::new()];
 
     let mut mem = Memory::new_with_bootloader(&mut is_buf, &bootloader);
     let mut vm = VM::new(&mut mem, &mut x, &mut y, opt.start_address as u16);

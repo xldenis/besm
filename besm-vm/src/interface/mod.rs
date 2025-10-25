@@ -1,15 +1,12 @@
-pub mod tui;
 pub mod input;
+pub mod tui;
 
-pub use interface::tui::*;
 use interface::input::*;
+pub use interface::tui::*;
 
-use arraydeque::behavior::Wrapping;
-use arraydeque::*;
-use vm::instruction::Instruction;
-use tui::layout::Rect;
-use vm::VM;
-use tui::terminal::Terminal;
+use arraydeque::{behavior::Wrapping, *};
+use tui::{layout::Rect, terminal::Terminal};
+use vm::{instruction::Instruction, VM};
 
 use std::sync::mpsc::*;
 use tui::backend::Backend;
@@ -39,7 +36,7 @@ impl Interface {
     pub fn toggle_step(&mut self) {
         use StepMode::*;
         self.step_mode = match self.step_mode {
-            Run  => Step,
+            Run => Step,
             Step => Run,
             Stop => Stop,
         };
@@ -53,7 +50,7 @@ impl Interface {
         self.step_mode = StepMode::Step;
     }
 
-    pub fn run<T : Backend >(&mut self, terminal: &mut Terminal<T>, vm: &mut VM) {
+    pub fn run<T: Backend>(&mut self, terminal: &mut Terminal<T>, vm: &mut VM) {
         let rx = setup_input_stream();
 
         terminal.clear().unwrap();
@@ -81,11 +78,14 @@ impl Interface {
     }
 
     fn handle_input(&mut self, vm: &mut VM, rx: &Receiver<Event>) -> bool {
-        use termion::event::Key::*;
         use self::StepMode::*;
+        use termion::event::Key::*;
 
         let evt = match rx.recv() {
-            Err(_) => { self.exiting = true; return false },
+            Err(_) => {
+                self.exiting = true;
+                return false;
+            }
             Ok(e) => e,
         };
 
@@ -97,7 +97,7 @@ impl Interface {
                 self.toggle_step();
                 step_vm(vm, self);
             }
-            Key(Char(' ')) => { self.toggle_step() }
+            Key(Char(' ')) => self.toggle_step(),
             Key(Char('<')) | Key(Char(',')) => {
                 if self.tabs.prev_tab() {
                     self.pause();
@@ -143,10 +143,10 @@ impl Interface {
                     }
                 }
             }
-            _ => { return false }
+            _ => return false,
         }
 
-        return true
+        return true;
     }
 }
 
@@ -167,7 +167,7 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
         }
     }
 
-    if vm.stopped { app.halt(); }
+    if vm.stopped {
+        app.halt();
+    }
 }
-
-
