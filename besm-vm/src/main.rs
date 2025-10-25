@@ -13,26 +13,26 @@ extern crate tui;
 extern crate tui_logger;
 
 use interface::*;
-use vm::*;
 use structopt::StructOpt;
+use vm::*;
 
+use std::io;
 use termion::input::MouseTerminal;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
-use std::io;
 
 use tui::Terminal;
 
 mod float;
 mod interface;
-mod vm;
 mod opt;
+mod vm;
 
-fn runner_from_command(command: Command) -> impl for <'a> FnOnce(&mut VM<'a>) -> () {
+fn runner_from_command(command: Command) -> impl for<'a> FnOnce(&mut VM<'a>) -> () {
     match command {
-        Command::Run   => run_with_interface,
-        Command::Trace => trace_execution
+        Command::Run => run_with_interface,
+        Command::Trace => trace_execution,
     }
 }
 
@@ -51,7 +51,9 @@ fn run_with_interface(vm: &mut VM) {
 fn trace_execution(vm: &mut VM) {
     let mut previous_operator = 0;
     loop {
-        if vm.stopped { break; }
+        if vm.stopped {
+            break;
+        }
         use bit_field::BitField;
         let current_operator = vm.memory.get(vm.next_instr()).unwrap().get_bits(48..64);
 
@@ -60,19 +62,24 @@ fn trace_execution(vm: &mut VM) {
             let pass = current_operator.get_bits(14..16);
             let procedure = current_operator.get_bits(10..14);
             let operator = current_operator.get_bits(0..10);
-            println!("PP{} {} {:3} {}", pass + 1, procedure, operator, vm.next_instr());
+            println!(
+                "PP{} {} {:3} {}",
+                pass,
+                procedure,
+                operator,
+                vm.next_instr()
+            );
         }
 
         vm.step().unwrap();
     }
 }
 
-
 extern crate termion;
 
 use log::LevelFilter;
-use tui_logger::*;
 use opt::*;
+use tui_logger::*;
 
 fn main() {
     init_logger(LevelFilter::Info).unwrap();
@@ -87,7 +94,7 @@ fn main() {
 
     let mut bootloader: [u64; 9] = [0u64; 9];
     if let Some(boot) = opt.bootloader {
-        let words : Vec<u64> = read_file(&boot).take(9).collect();
+        let words: Vec<u64> = read_file(&boot).take(9).collect();
         bootloader.copy_from_slice(&words[..])
     }
 
@@ -118,4 +125,3 @@ fn main() {
     file_from_md(opt.md3_out, vm.mag_system.mag_drives[3]);
     file_from_md(opt.md4_out, vm.mag_system.mag_drives[4]);
 }
-

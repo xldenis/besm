@@ -3,7 +3,8 @@
     "allow": [
       "Bash(stack build:*)",
       "Bash(stack run compile)",
-      "Bash(stack run:*)"
+      "Bash(stack run:*)",
+      "Read(//Users/xavier/Code/besm/besm-vm/src/**)"
     ],
     "deny": [],
     "ask": []

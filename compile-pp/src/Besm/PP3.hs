@@ -34,6 +34,9 @@ counterKlast = header `offAddr` 5
 
   PP-3 realizes the third stage of function of the programming algorithm(S 19)
   and functions in the following manner (Fig 15).
+
+  NOTE: Since I don't want to implement hot-swapping of drums (which would
+  likely have been performed on the real besm), I'm instead storing PP-3 on MD-3
 -}
 mp3 = do
   pinned "header" "programme header table" (Size 15)
@@ -47,7 +50,7 @@ mp3 = do
     the instructions in correspondence with these.
   -}
   operator 1 $ do
-    readMD 4 (ProcStart "I-PP-3") (ProcEnd "I-PP-3") (ProcStart "I-PP-3")
+    readMD 3 (ProcStart "I-PP-3") (ProcEnd "I-PP-3") (ProcStart "I-PP-3")
     cccc (Procedure "I-PP-3" (op 1))
     chain (op 2)
 
@@ -59,7 +62,7 @@ mp3 = do
     of quantities to obtain their true addresses.
   -}
   operator 2 $ do
-    readMD 4 (ProcStart "II-PP-3") (ProcEnd "II-PP-3") (ProcStart "II-PP-3")
+    readMD 3 (ProcStart "II-PP-3") (ProcEnd "II-PP-3") (ProcStart "II-PP-3")
     cccc (Procedure "II-PP-3" (op 1))
     chain (op 3)
 
@@ -69,7 +72,7 @@ mp3 = do
   addresses.
   -}
   operator 3 $ do
-    readMD 4 (ProcStart "III-PP-3") (ProcEnd "III-PP-3") (ProcStart "III-PP-3")
+    readMD 3 (ProcStart "III-PP-3") (ProcEnd "III-PP-3") (ProcStart "III-PP-3")
     cccc (Procedure "III-PP-3" (op 1))
     chain (op 4)
   {-
@@ -81,7 +84,7 @@ mp3 = do
   functioning of the PP.
   -}
   operator 4 $ do
-    readMD 4 (ProcStart "IV-PP-3") (ProcEnd "IV-PP-3") (ProcStart "IV-PP-3")
+    readMD 3 (ProcStart "IV-PP-3") (ProcEnd "IV-PP-3") (ProcStart "IV-PP-3")
     cccc (Procedure "IV-PP-3" (op 1))
     stop
 
@@ -272,7 +275,6 @@ pp3_1 = do
 
   -}
   operator 13 $ do
-
     comp (counterK) (counterKlast) (op 2) (op 14)
   {-
 
@@ -334,7 +336,7 @@ pp3_1 = do
     ai currentInstr cellA currentInstr
     bitAnd currentInstr secondAddr cellA
     shift cellA (left 11) cellA
-    chain (op 8)
+    chain (op 20)
   {-
 
   Op. 20 tests the extracted address.

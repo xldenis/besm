@@ -94,16 +94,16 @@ compileCommand (oDir, smDir) = do
     Right (pp1, pp2, pp3) -> do
       case oDir of
         Just o -> do
-          writeFile (o </> "mp1.txt") . unlines $ render 0 pp1 & map toHexString
-          writeFile (o </> "mp2.txt") . unlines $ render 1 pp2 & map toHexString
-          writeFile (o </> "mp3.txt") . unlines $ render 2 pp3 & map toHexString
+          writeFile (o </> "mp1.txt") . unlines $ render 1 pp1 & map toHexString
+          writeFile (o </> "mp2.txt") . unlines $ render 2 pp2 & map toHexString
+          writeFile (o </> "mp3.txt") . unlines $ render 3 pp3 & map toHexString
           writeFile (o </> "boot.txt") . unlines $ renderProc 0 0 (bootloader pp1 pp2 pp3) & map toHexString
         Nothing -> do
-          putStrLn . unlines $ render 0 pp1 & map toHexString
+          putStrLn . unlines $ render 1 pp1 & map toHexString
           putStrLn "\n\n PP-2 \n\n"
-          putStrLn . unlines $ render 1 pp2 & map toHexString
+          putStrLn . unlines $ render 2 pp2 & map toHexString
           putStrLn "\n\n PP-3 \n\n"
-          putStrLn . unlines $ render 2 pp3 & map toHexString
+          putStrLn . unlines $ render 3 pp3 & map toHexString
 
       case smDir of
         Just path -> do

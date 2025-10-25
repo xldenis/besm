@@ -225,7 +225,7 @@ renderSourceMap mod =
 render :: Integer -> ModuleAssembly Absolutized -> Output
 render passNum mod =
   let
-    textS = zip [1 ..] (procs mod) >>= uncurry (renderProc passNum)
+    textS = zip [0 ..] (procs mod) >>= uncurry (renderProc passNum)
     dataS = globals mod >>= \(_, s, c) -> map (\c -> (s, b0 <:> c)) $ renderGlobal c
     total = length dataS + length textS
     padding = replicate (1023 - total) (bitVector 0)
@@ -243,7 +243,7 @@ renderProc passNum ix proc =
     procIx = bitVector ix :: BV 4
    in
     concatMap renderLocal (constDefs proc)
-      ++ (zip [1 ..] (blocks proc) >>= uncurry (renderBlock passIx procIx))
+      ++ (zip [1..] (blocks proc) >>= uncurry (renderBlock passIx procIx))
  where
   renderLocal c = map (b0 <:>) (constantToCell $ fromDef c)
 
