@@ -4,12 +4,13 @@ pub mod tui;
 use crate::interface::input::*;
 pub use crate::interface::tui::*;
 
-use arraydeque::{behavior::Wrapping, *};
-use tui::{layout::Rect, terminal::Terminal};
 use crate::vm::{instruction::Instruction, VM};
+use ::tui::{layout::Rect, terminal::Terminal};
+use arraydeque::{behavior::Wrapping, *};
+use log::error;
 
+use ::tui::backend::Backend;
 use std::sync::mpsc::*;
-use tui::backend::Backend;
 
 // This should be split into two structures, so that input can fully happen in a separate thread.
 pub struct Interface {
@@ -34,7 +35,7 @@ impl Interface {
     }
 
     pub fn toggle_step(&mut self) {
-        use crate::StepMode::*;
+        use StepMode::*;
         self.step_mode = match self.step_mode {
             Run => Step,
             Step => Run,

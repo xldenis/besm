@@ -2,53 +2,48 @@ use std::{fs::File, path::PathBuf};
 // use std::iter;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use clap::{Parser, ValueEnum};
 
-arg_enum! {
-    #[derive(StructOpt, Debug)]
-    pub enum Command {
-        Run,
-        Trace
-    }
+#[derive(ValueEnum, Debug, Clone)]
+pub enum Command {
+    Run,
+    Trace,
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "besm-vm")]
+#[derive(Parser, Debug)]
 pub struct Opts {
-    #[structopt(
-        name = "COMMAND",
-        raw(possible_values = "&Command::variants()", case_insensitive = "true")
-    )]
+    #[arg(name = "COMMAND")]
     pub command: Command,
 
-    #[structopt(name = "FILE", parse(from_os_str))]
+    #[arg(name = "FILE")]
     pub is_file: Option<PathBuf>,
 
-    #[structopt(short = "s", long = "start-address", default_value = "1")]
+    #[arg(short = 's', long = "start-address", default_value = "1")]
     pub start_address: u64,
 
-    #[structopt(long = "bootloader", parse(from_os_str))]
+    #[arg(long = "bootloader")]
     pub bootloader: Option<PathBuf>,
 
-    #[structopt(long = "md0", parse(from_os_str))]
+    #[arg(long = "md0")]
     pub md0: Option<PathBuf>,
-    #[structopt(long = "md1", parse(from_os_str))]
+    #[arg(long = "md1")]
     pub md1: Option<PathBuf>,
-    #[structopt(long = "md2", parse(from_os_str))]
+    #[arg(long = "md2")]
     pub md2: Option<PathBuf>,
-    #[structopt(long = "md3", parse(from_os_str))]
+    #[arg(long = "md3")]
     pub md3: Option<PathBuf>,
-    #[structopt(long = "md4", parse(from_os_str))]
+    #[arg(long = "md4")]
     pub md4: Option<PathBuf>,
 
-    #[structopt(long = "md0-out", parse(from_os_str))]
+    #[arg(long = "md0-out")]
     pub md0_out: Option<PathBuf>,
-    #[structopt(long = "md1-out", parse(from_os_str))]
+    #[arg(long = "md1-out")]
     pub md1_out: Option<PathBuf>,
-    #[structopt(long = "md2-out", parse(from_os_str))]
+    #[arg(long = "md2-out")]
     pub md2_out: Option<PathBuf>,
-    #[structopt(long = "md3-out", parse(from_os_str))]
+    #[arg(long = "md3-out")]
     pub md3_out: Option<PathBuf>,
-    #[structopt(long = "md4-out", parse(from_os_str))]
+    #[arg(long = "md4-out")]
     pub md4_out: Option<PathBuf>,
 }
 

@@ -70,6 +70,8 @@ pub struct MagSystem<'a> {
     pub mag_tapes: &'a mut [MagTape; 4],
 }
 
+use log::info;
+
 use crate::vm::Memory;
 
 impl<'a> MagSystem<'a> {

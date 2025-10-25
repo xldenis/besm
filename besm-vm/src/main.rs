@@ -1,20 +1,6 @@
-extern crate bit_field;
-#[macro_use]
-extern crate structopt;
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate log;
-
-extern crate arraydeque;
-extern crate byteorder;
-extern crate num;
-extern crate tui;
-extern crate tui_logger;
-
-use crate::interface::*;
-use structopt::StructOpt;
 use crate::vm::*;
+use clap::Parser;
+use interface::Interface;
 
 use std::io;
 use termion::{input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
@@ -69,15 +55,15 @@ fn trace_execution(vm: &mut VM) {
 
 extern crate termion;
 
-use log::LevelFilter;
 use crate::opt::*;
+use log::LevelFilter;
 use tui_logger::*;
 
 fn main() {
     init_logger(LevelFilter::Info).unwrap();
     set_default_level(LevelFilter::Trace);
 
-    let opt = Opts::from_args();
+    let opt = Opts::parse();
 
     let mut is_buf = match &opt.is_file {
         Some(file) => is_from_file(file),

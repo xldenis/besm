@@ -8,11 +8,10 @@ edition = "2021"
 
 tui = "0.4.0"
 bit_field = "0.9.0"
-structopt = "*"
 byteorder = "1"
 num = "*"
 arraydeque = "0.4"
 termion = "1"
 log = "*"
-tui-logger = "*"
-clap = "*"
+tui-logger = "0.3"
+clap = { version = "4.5" , features = ["derive"] }

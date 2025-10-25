@@ -1,5 +1,6 @@
-use bit_field::BitField;
 use crate::float::*;
+use bit_field::BitField;
+use log::{info, warn};
 
 mod ds;
 pub mod instruction;
