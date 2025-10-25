@@ -96,8 +96,8 @@ simpleModule procs = Mod () () [] segs procs False
  where
   segs = map (MkSeg . pure . procName) procs
 
-assemble :: ModuleAssembly 'Input -> Either [String] Output
-assemble = compile >=> pure . render
+assemble :: Integer -> ModuleAssembly 'Input -> Either [String] Output
+assemble i = compile >=> pure . (render i)
 
 compile :: ModuleAssembly 'Input -> Either [String] (ModuleAssembly 'Absolutized)
 compile =
@@ -212,10 +212,20 @@ renderSourceMap mod =
     unlines $ map (\(v, k) -> show k ++ " " ++ formatAddr v) flippedList
 
 -- | Print the hex for a module
-render :: ModuleAssembly Absolutized -> Output
-render mod =
+-- Pass number: 0 for PP1, 1 for PP2, 2 for PP3
+{- |
+  Generate the final disk image as a sequence of 64-bit words.
+
+  Layout: [pinned sections] [padding] [default data] [procedures]
+
+  When packSize is enabled, Size constants are omitted from the output, reducing the
+  disk image size. The bootloader compensates for this by using packedCells offsets
+  when loading data into memory.
+-}
+render :: Integer -> ModuleAssembly Absolutized -> Output
+render passNum mod =
   let
-    textS = zip [1 ..] (procs mod) >>= uncurry renderProc
+    textS = zip [1 ..] (procs mod) >>= uncurry (renderProc passNum)
     dataS = globals mod >>= \(_, s, c) -> map (\c -> (s, b0 <:> c)) $ renderGlobal c
     total = length dataS + length textS
     padding = replicate (1023 - total) (bitVector 0)
@@ -226,17 +236,18 @@ render mod =
   renderGlobal (Size _) | (packSize mod) = []
   renderGlobal a = constantToCell a
 
-renderProc :: Integer -> Procedure Int -> Output
-renderProc ix proc =
+renderProc :: Integer -> Integer -> Procedure Int -> Output
+renderProc passNum ix proc =
   let
+    passIx = bitVector passNum :: BV 2
     procIx = bitVector ix :: BV 4
    in
     concatMap renderLocal (constDefs proc)
-      ++ (zip [1 ..] (blocks proc) >>= uncurry (renderBlock procIx))
+      ++ (zip [1 ..] (blocks proc) >>= uncurry (renderBlock passIx procIx))
  where
   renderLocal c = map (b0 <:>) (constantToCell $ fromDef c)
 
-  renderBlock procIx i b = map (procIx <:> bv i <:> (b0 :: BV 9) <:>) (asmToCell b)
+  renderBlock passIx procIx i b = map (passIx <:> procIx <:> (bitVector i :: BV 10) <:> (b0 :: BV 9) <:>) (asmToCell b)
 
   fromDef (Def _ _ c) = c
 
@@ -254,10 +265,20 @@ modInfo mod = void $ do
   globalInfo globals = putStrLn $ "globals: " <> show (sum $ map (\(_, _, c) -> constantSize c) globals)
 -- * Absolutization
 
+{- |
+  Memory or disk layout information for a module.
+
+  size: Total cells used (excluding padding)
+  offsets: Absolute addresses for each section
+  padding: Available space after layout. Negative values indicate the module
+           exceeds capacity and cannot be assembled.
+  packedCells: For each section, the number of cells saved by packing Size constants.
+               Used by bootloader to calculate correct load addresses.
+-}
 data MemoryLayout = MkLayout
   { size :: Int
   , offsets :: [(Section, Int)]
-  , padding :: Int -- debug: padding applied to module
+  , padding :: Int
   , packedCells :: [(Section, Int)]
   }
   deriving (Show, Eq)
@@ -320,6 +341,18 @@ globalSections (Mod{..}) = groupBy ((==) `on` (\(_, s, _) -> s)) $ sortOn (\(_, 
 globalMapSize :: (Constant a -> Int) -> [(String, Section, Constant a)] -> Int
 globalMapSize sf m = sum (map (\(_, _, c) -> sf c) m)
 
+{- |
+  Calculate the memory layout for a module at runtime.
+
+  This determines absolute memory addresses for all code and data. Unlike diskLayout,
+  all constants (including Size) consume their full memory allocation regardless of packSize.
+
+  Segments enable procedure hot-swapping: multiple procedures in a segment share the same
+  memory region, allowing PP-2 and PP-3 to load different sub-routines on demand without
+  exceeding the 256-cell limit. Segment size is the maximum of all procedures within it.
+
+  Padding spaces globals and procedures to align with the 1023-cell address space boundary.
+-}
 memoryLayout :: (Show (AddressType a), Eq (AddressType a)) => ModuleAssembly a -> MemoryLayout
 memoryLayout m@Mod{..} =
   let
@@ -347,10 +380,32 @@ memoryLayout m@Mod{..} =
  where
   getSection (_, s, _) = s
 
+{- |
+  Calculate the disk storage requirement for a constant.
+
+  Size constants declare memory regions but contain no data. When packSize is enabled,
+  they are allocated in memory but not written to disk, reducing disk image size.
+  This is critical for PP-2 and PP-3 which use large Size blocks (e.g. 750 cells) that
+  would otherwise exceed the 1023 cell limit.
+-}
 constantDiskSize :: Constant a -> Int
 constantDiskSize (Size _) = 0
 constantDiskSize a = constantSize a
 
+{- |
+  Calculate the disk layout for a module, determining where code and data reside on disk.
+
+  Unlike memoryLayout, this reflects the actual disk image written to magnetic drum storage.
+  When packSize is True, Size constants occupy zero disk space but retain their memory allocation.
+  The bootloader uses packedCells offsets to account for this discrepancy when loading modules.
+
+  Padding is calculated as available space minus used space. Negative padding indicates the
+  module exceeds the 1023 cell limit and cannot be stored on disk. This typically occurs when:
+  - Large Size constants are not packed (packSize = False)
+  - Total procedure size exceeds available space
+
+  For PP-2 and PP-3, packSize must be True to fit within disk constraints.
+-}
 diskLayout :: Eq (AddressType a) => ModuleAssembly a -> MemoryLayout
 diskLayout m@(Mod{..}) =
   let

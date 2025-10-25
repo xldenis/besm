@@ -57,9 +57,10 @@ fn trace_execution(vm: &mut VM) {
 
         if previous_operator != current_operator {
             previous_operator = current_operator;
-            let procedure = current_operator.get_bits(12..16);
-            let operator = current_operator.get_bits(0..12);
-            println!("{} {:3} {}", procedure, operator, vm.next_instr());
+            let pass = current_operator.get_bits(14..16);
+            let procedure = current_operator.get_bits(10..14);
+            let operator = current_operator.get_bits(0..10);
+            println!("PP{} {} {:3} {}", pass + 1, procedure, operator, vm.next_instr());
         }
 
         vm.step().unwrap();

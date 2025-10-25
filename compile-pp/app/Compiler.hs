@@ -83,7 +83,8 @@ compiledModules = do
   let pp1 = compile (simpleModule pp1Procedures)
   let pp2Segs = [MkSeg ["MP-2"], MkSeg ["I-PP-2", "II-PP-2", "III-PP-2"]]
   let pp2 = compile ((simpleModule pp2Procedures){segments = pp2Segs, packSize = True})
-  let pp3 = compile (simpleModule pp3Procedures)
+  let pp3Segs = [MkSeg ["MP-3"], MkSeg ["I-PP-3", "II-PP-3", "III-PP-3", "IV-PP-3"]]
+  let pp3 = compile (simpleModule pp3Procedures){segments = pp3Segs, packSize = True}
 
   (,,) <$> pp1 <*> pp2 <*> pp3
 
@@ -93,16 +94,16 @@ compileCommand (oDir, smDir) = do
     Right (pp1, pp2, pp3) -> do
       case oDir of
         Just o -> do
-          writeFile (o </> "mp1.txt") . unlines $ render pp1 & map toHexString
-          writeFile (o </> "mp2.txt") . unlines $ render pp2 & map toHexString
-          writeFile (o </> "mp3.txt") . unlines $ render pp3 & map toHexString
-          writeFile (o </> "boot.txt") . unlines $ renderProc 0 (bootloader pp1 pp2) & map toHexString
+          writeFile (o </> "mp1.txt") . unlines $ render 0 pp1 & map toHexString
+          writeFile (o </> "mp2.txt") . unlines $ render 1 pp2 & map toHexString
+          writeFile (o </> "mp3.txt") . unlines $ render 2 pp3 & map toHexString
+          writeFile (o </> "boot.txt") . unlines $ renderProc 0 0 (bootloader pp1 pp2 pp3) & map toHexString
         Nothing -> do
-          putStrLn . unlines $ render pp1 & map toHexString
+          putStrLn . unlines $ render 0 pp1 & map toHexString
           putStrLn "\n\n PP-2 \n\n"
-          putStrLn . unlines $ render pp2 & map toHexString
+          putStrLn . unlines $ render 1 pp2 & map toHexString
           putStrLn "\n\n PP-3 \n\n"
-          putStrLn . unlines $ render pp3 & map toHexString
+          putStrLn . unlines $ render 2 pp3 & map toHexString
 
       case smDir of
         Just path -> do
@@ -113,8 +114,8 @@ compileCommand (oDir, smDir) = do
 
   return ()
  where
-  bootloader :: ModuleAssembly 'Absolutized -> ModuleAssembly 'Absolutized -> Procedure Int
-  bootloader pp1 pp2 =
+  bootloader :: ModuleAssembly 'Absolutized -> ModuleAssembly 'Absolutized -> ModuleAssembly 'Absolutized -> Procedure Int
+  bootloader pp1 pp2 pp3 =
     let
       Just destAddr = DefaultData `lookup` offsets (memoryLayout pp2)
       Just packingOff = DefaultData `lookup` packedCells (diskLayout pp2)
@@ -123,6 +124,11 @@ compileCommand (oDir, smDir) = do
       -- incredible hack
       -- Just destAddr = Unknown "U" `M.lookup` (offsetMap pp2)
       Just pp2Start = Procedure "MP-2" (Operator 1) `M.lookup` offsetMap pp2
+      Just pp3Start = Procedure "MP-3" (Operator 1) `M.lookup` offsetMap pp3
+      Just srcAddr2 = DefaultData `lookup` offsets (diskLayout pp3)
+      Just destAddr2 = DefaultData `lookup` offsets (memoryLayout pp3)
+      Just packingOff2 = DefaultData `lookup` packedCells (diskLayout pp3)
+
      in
       Proc
         { procName = "bootloader"
@@ -142,6 +148,13 @@ compileCommand (oDir, smDir) = do
                     ]
                 , terminator = CCCC pp2Start
                 }
+            , BB
+                { instrs = -- todo correct this
+                    [ Ma 0x103 srcAddr2 (destAddr2 + packingOff2)
+                    , Mb 1023
+                    ]
+                , terminator = CCCC pp3Start
+                }
             ]
         }
 
@@ -150,6 +163,7 @@ debugCommand _ = do
     Right (pp1, pp2, pp3) -> do
       modInfo pp1
       modInfo pp2
+      modInfo pp3
       pure ()
     Left err -> mapM_ putStrLn err
   pure ()

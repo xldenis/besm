@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(stack build:*)",
-      "Bash(stack run compile)"
+      "Bash(stack run compile)",
+      "Bash(stack run:*)"
     ],
     "deny": [],
     "ask": []

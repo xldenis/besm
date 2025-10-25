@@ -22,7 +22,7 @@ main = hspec $ do
         Left err -> expectationFailure (show err)
         Right mod -> do
           let compiled = head $ procs mod
-              rendered = render mod
+              rendered = render 0 mod
           rendered !! (1021 - 1) `shouldBe` 10
 
           blocks compiled `shouldBe` [BB{instrs = [Add 1021 1021 1021 UnNormalized], terminator = Stop, baseAddress = 1022}]
@@ -32,7 +32,7 @@ main = hspec $ do
         Left err -> expectationFailure (show err)
         Right mod -> do
           let compiled = head $ procs mod
-              rendered = render mod
+              rendered = render 0 mod
 
           rendered !! 1019 `shouldBe` 2
     it "" $ do
@@ -48,12 +48,12 @@ main = hspec $ do
         Left err -> expectationFailure (show err)
         Right mod -> do
           let compiled = head $ procs mod
-              rendered = render mod
+              rendered = render 0 mod
               Just start = Procedure "add" (Operator 1) `M.lookup` offsetMap mod
           -- liftIO $  (debugRender mod)
           -- liftIO $ print $ relativeMap mod
 
-          let expected = (bitVector 1 :: BV 4) <:> bv 1 <:> (b0 :: BV 9) <:> instToCell (TN 1021 1010 UnNormalized)
+          let expected = (bitVector 0 :: BV 2) <:> (bitVector 1 :: BV 4) <:> (bitVector 1 :: BV 10) <:> (b0 :: BV 9) <:> instToCell (TN 1021 1010 UnNormalized)
           -- liftIO $ print rendered
           rendered !! (start - 1) `shouldBe` expected
 
@@ -62,7 +62,7 @@ main = hspec $ do
         Left err -> expectationFailure (show err)
         Right mod -> do
           let compiled = head $ procs mod
-              rendered = render mod
+              rendered = render 0 mod
           blocks compiled `shouldBe` [BB{instrs = [AI 1019 1008 1005, TN 1006 995 UnNormalized], terminator = Stop, baseAddress = 1018}]
     -- good enough for now... still needs improving to verify that it tests useful properties
     describe "segments" $ do
@@ -94,10 +94,10 @@ main = hspec $ do
 
           it "works with segments" $ do
             let compiled = head $ procs mod
-                rendered = render mod
+                rendered = render 0 mod
                 Just start = Text "loader" `lookup` offsets (diskLayout mod)
 
-            let expected = (bitVector 1 :: BV 4) <:> bv 1 <:> (b0 :: BV 9) <:> instToCell (Ma 260 1017 1021)
+            let expected = (bitVector 0 :: BV 2) <:> (bitVector 1 :: BV 4) <:> (bitVector 1 :: BV 10) <:> (b0 :: BV 9) <:> instToCell (Ma 260 1017 1021)
             -- liftIO $ print rendered
             -- liftIO $ debugRender mod
             -- liftIO $ print start
@@ -114,7 +114,7 @@ main = hspec $ do
         Right mod -> do
           let Just dataStart = DefaultData `lookup` offsets (memoryLayout mod)
 
-          render mod !! (dataStart - 1) `shouldBe` 15
+          render 0 mod !! (dataStart - 1) `shouldBe` 15
 
   describe "disk layout" $ do
     it "provides proper offsets to account for packed cells" pending
