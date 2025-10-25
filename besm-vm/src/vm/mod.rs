@@ -320,6 +320,17 @@ impl<'a> VM<'a> {
                 self.memory.set(target, val.to_bytes())?;
                 self.increment_ic();
             }
+            TMod { a: source, c: target, normalize: needs_norm } => {
+                let mut val = Float::from_bytes(self.memory.get(source)?);
+
+                if needs_norm {
+                    val.normalize()
+                };
+
+                val.sign = false;
+                self.memory.set(target, val.to_bytes())?;
+                self.increment_ic();
+            }
             CCCC { b: cell, c: addr } => {
                 if cell != 0 {
                     self.memory.set(cell, self.next_instr() as u64)?;

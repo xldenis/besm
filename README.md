@@ -34,8 +34,8 @@ PP-1 must also handle 'logical operators' (switches in modern parlance).
 At the time of writing:
 
 - [X] PP-1. As far as I can tell PP-1 is complete and correct.
-- [ ] PP-2. PP-2 is complete but there are doubtlessly several bugs still lurking.
-- [ ] PP-3. Not started.
+- [x] PP-2. PP-2 is complete but there are doubtlessly several bugs still lurking.
+- [ ] PP-3. PP-3 is complete but there are several bugs *known* bugs lurking.
 
 
 # BESM

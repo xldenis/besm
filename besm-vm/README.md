@@ -40,7 +40,7 @@ legend: ✅ = working instruction, 🐛 = instruction has known bugs, ❌ = inst
 | TN       | ✅ |
 | PN       | ❌ |
 | TMin     | ❌ |
-| TMod     | ❌ |
+| TMod     | ✅ |
 | TSign    | ✅ |
 | TExp     | ✅ |
 | Shift    | 🐛 |
