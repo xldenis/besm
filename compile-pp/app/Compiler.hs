@@ -84,7 +84,7 @@ compiledModules = do
   let pp2Segs = [MkSeg ["MP-2"], MkSeg ["I-PP-2", "II-PP-2", "III-PP-2"]]
   let pp2 = compile ((simpleModule pp2Procedures){segments = pp2Segs, packSize = True})
   let pp3Segs = [MkSeg ["MP-3"], MkSeg ["I-PP-3", "II-PP-3", "III-PP-3", "IV-PP-3"]]
-  let pp3 = compile (simpleModule pp3Procedures){segments = pp3Segs, packSize = True}
+  let pp3 = compile ((simpleModule pp3Procedures){segments = pp3Segs, packSize = True})
 
   (,,) <$> pp1 <*> pp2 <*> pp3
 

@@ -120,7 +120,7 @@ printSubroutine_03a4 = Procedure "MP-3" (op 6)
 
 -- Probably a shared counter?
 pp3_1 = do
-  pinned "header" "programme header table" (Size 15)
+  extern "programme header table"
   -- Should be shared with PP-2 (pinned)
   counterK <- global "k" Cell
   counterK' <- local "trueAddresses" Cell -- might be a global
@@ -632,8 +632,8 @@ pp3_1 = do
   the scheme of block II-PP-3 is represented in Fig. 17.
 -}
 pp3_2 = do
-  pinned "header" "programme header table" (Size 15)
-  pinned "prog" "programme" (Size 750)
+  extern "programme header table"
+  extern "programme"
 
   -- Working cells and variables
   cell_03F0 <- local "03F0" Cell  -- Standard working cell
@@ -932,8 +932,8 @@ pp3_2 = do
 -}
 
 pp3_3 = do
-  pinned "header" "programme header table" (Size 15)
-  pinned "prog" "programme" (Size 750)
+  extern "programme header table"
+  -- extern "programme"
 
   let k0 = header `offAddr` 4
 
@@ -1372,8 +1372,8 @@ pp3_3 = do
 -}
 
 pp3_4 = do
-  pinned "header" "programme header table" (Size 15)
-  pinned "prog" "programme" (Size 750)
+  extern "programme header table"
+  extern "programme"
 
   let k0 = header `offAddr` 4
 
