@@ -5,16 +5,17 @@ use crate::interface::input::*;
 pub use crate::interface::tui::*;
 
 use crate::vm::{instruction::Instruction, VM};
-use ::tui::{layout::Rect, terminal::Terminal};
+use ::ratatui::{layout::Rect, Terminal};
 use arraydeque::{behavior::Wrapping, *};
 use log::error;
+use ratatui::layout::Size;
 
-use ::tui::backend::Backend;
+use ::ratatui::backend::Backend;
 use std::sync::mpsc::*;
 
 // This should be split into two structures, so that input can fully happen in a separate thread.
 pub struct Interface {
-    pub size: Rect,
+    pub size: Size,
     pub past_instrs: ArrayDeque<[Instruction; 100], Wrapping>,
     pub step_mode: StepMode,
     pub tabs: TabInfo,
@@ -25,7 +26,7 @@ pub struct Interface {
 impl Interface {
     pub fn default() -> Interface {
         Interface {
-            size: Rect::default(),
+            size: Size::default(),
             past_instrs: ArrayDeque::new(),
             step_mode: StepMode::Step,
             tabs: TabInfo::default(),
@@ -56,14 +57,13 @@ impl Interface {
 
         terminal.clear().unwrap();
         terminal.hide_cursor().unwrap();
-
         draw(terminal, &vm, &self);
 
         while !self.exiting {
             let size = terminal.size().unwrap();
 
             if size != self.size {
-                terminal.resize(size).unwrap();
+                terminal.resize(Rect::new(0, 0, size.width, size.height)).unwrap();
                 self.size = size;
                 draw(terminal, &vm, &self);
             }
@@ -102,13 +102,11 @@ impl Interface {
             Key(Char('<')) | Key(Char(',')) => {
                 if self.tabs.prev_tab() {
                     self.pause();
-                    self.size = Rect::default();
                 }
             }
             Key(Char('>')) | Key(Char('.')) => {
                 if self.tabs.next_tab() {
                     self.pause();
-                    self.size = Rect::default();
                 }
             }
             Key(Down) => {

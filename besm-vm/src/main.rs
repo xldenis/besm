@@ -2,11 +2,11 @@ use crate::vm::*;
 use clap::Parser;
 use interface::Interface;
 
+use ratatui::backend::TermionBackend;
 use std::io;
 use termion::{input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
-use tui::backend::TermionBackend;
 
-use tui::Terminal;
+use ratatui::Terminal;
 
 mod float;
 mod interface;
