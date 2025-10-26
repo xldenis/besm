@@ -21,6 +21,7 @@ pub struct Memory<'a> {
     ds: &'a [u64; 384],
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub struct MemoryWrite {
     pub address: u16,
@@ -188,11 +189,7 @@ impl<'a> VM<'a> {
 
                 let new_value = val.to_bytes();
                 let old_value = self.memory.set(res, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: res,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: res, old_value, new_value });
                 self.increment_ic();
             }
             Sub { a: l, b: r, c: res, normalize: needs_norm } => {
@@ -206,11 +203,7 @@ impl<'a> VM<'a> {
 
                 let new_value = val.to_bytes();
                 let old_value = self.memory.set(res, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: res,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: res, old_value, new_value });
                 self.increment_ic();
             }
             Mult { a: l, b: r, c: res, normalize: needs_norm } => {
@@ -224,11 +217,7 @@ impl<'a> VM<'a> {
 
                 let new_value = val.to_bytes();
                 let old_value = self.memory.set(res, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: res,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: res, old_value, new_value });
                 self.increment_ic();
             }
             AddE { a: x, b: y, c: z, normalize: needs_norm } => {
@@ -245,11 +234,7 @@ impl<'a> VM<'a> {
 
                 let new_value = result.to_bytes();
                 let old_value = self.memory.set(z, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: z,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: z, old_value, new_value });
                 self.increment_ic();
             }
             SubE { a: x, b: y, c: z, normalize: needs_norm } => {
@@ -266,11 +251,7 @@ impl<'a> VM<'a> {
 
                 let new_value = result.to_bytes();
                 let old_value = self.memory.set(z, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: z,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: z, old_value, new_value });
                 self.increment_ic();
             }
             Ce { a: source, b: new_exp, c: target, normalize } => {
@@ -293,11 +274,7 @@ impl<'a> VM<'a> {
 
                 let new_value = float.to_bytes();
                 let old_value = self.memory.set(target, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: target,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: target, old_value, new_value });
                 self.increment_ic();
             }
             I { a, b, c } => {
@@ -311,11 +288,7 @@ impl<'a> VM<'a> {
                 self.memory.set(b, mant.to_bytes())?;
                 let new_value = exp.to_bytes();
                 let old_value = self.memory.set(c, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: c,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: c, old_value, new_value });
                 self.increment_ic();
             }
             // TODO: Fix offset since right shift is _negative_
@@ -325,11 +298,7 @@ impl<'a> VM<'a> {
 
                 let new_value = shifted;
                 let old_value = self.memory.set(c, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: c,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: c, old_value, new_value });
                 self.increment_ic();
             }
             Shift { a, b, c } => {
@@ -345,11 +314,7 @@ impl<'a> VM<'a> {
                 float.exp = 0;
                 let new_value = float.to_bytes();
                 let old_value = self.memory.set(c, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: c,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: c, old_value, new_value });
                 self.increment_ic();
             }
             TN { a: source, c: target, normalize: needs_norm } => {
@@ -361,11 +326,7 @@ impl<'a> VM<'a> {
 
                 let new_value = val.to_bytes();
                 let old_value = self.memory.set(target, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: target,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: target, old_value, new_value });
                 self.increment_ic();
             }
             TExp { a: source, c: target, normalize: needs_norm } => {
@@ -381,11 +342,7 @@ impl<'a> VM<'a> {
 
                 let new_value = res.to_bytes();
                 let old_value = self.memory.set(target, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: target,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: target, old_value, new_value });
                 self.increment_ic();
             }
             TSign { a: source, b: sign, c: target, normalize: needs_norm } => {
@@ -400,11 +357,7 @@ impl<'a> VM<'a> {
 
                 let new_value = val.to_bytes();
                 let old_value = self.memory.set(target, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: target,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: target, old_value, new_value });
                 self.increment_ic();
             }
             TMod { a: source, c: target, normalize: needs_norm } => {
@@ -417,22 +370,14 @@ impl<'a> VM<'a> {
                 val.sign = false;
                 let new_value = val.to_bytes();
                 let old_value = self.memory.set(target, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: target,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: target, old_value, new_value });
                 self.increment_ic();
             }
             CCCC { b: cell, c: addr } => {
                 if cell != 0 {
                     let new_value = self.next_instr() as u64;
                     let old_value = self.memory.set(cell, new_value)?;
-                    memory_write = Some(MemoryWrite {
-                        address: cell,
-                        old_value,
-                        new_value,
-                    });
+                    memory_write = Some(MemoryWrite { address: cell, old_value, new_value });
                 }
                 self.global_ic = addr as u16;
                 self.active_ic = ActiveIC::Global;
@@ -457,11 +402,7 @@ impl<'a> VM<'a> {
 
                 let new_value = result;
                 let old_value = self.memory.set(r, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: r,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: r, old_value, new_value });
                 self.increment_ic();
             }
             AI { a: p, b: q, c: r } => {
@@ -478,11 +419,7 @@ impl<'a> VM<'a> {
 
                 let new_value = result;
                 let old_value = self.memory.set(r, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: r,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: r, old_value, new_value });
                 self.increment_ic();
             }
             LogMult { a, b, c } => {
@@ -492,11 +429,7 @@ impl<'a> VM<'a> {
 
                 let new_value = result;
                 let old_value = self.memory.set(c, new_value)?;
-                memory_write = Some(MemoryWrite {
-                    address: c,
-                    old_value,
-                    new_value,
-                });
+                memory_write = Some(MemoryWrite { address: c, old_value, new_value });
                 self.increment_ic();
             }
             Comp { a, b, c } => {
@@ -571,10 +504,7 @@ impl<'a> VM<'a> {
             }
         }
 
-        Ok(StepResult {
-            instruction: instr,
-            write: memory_write,
-        })
+        Ok(StepResult { instruction: instr, write: memory_write })
     }
 
     pub fn next_instr(&self) -> u16 {

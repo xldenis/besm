@@ -186,6 +186,7 @@ fn tape_id_from_num(ix: u16) -> TapeId {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum DriveOperation {
     WriteMD(DrumId, u16, u16, u16),
