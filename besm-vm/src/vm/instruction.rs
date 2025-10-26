@@ -1,5 +1,5 @@
-use bit_field::BitField;
 use crate::vm::instruction::Instruction::*;
+use bit_field::BitField;
 
 type Address = u16;
 
@@ -114,8 +114,15 @@ impl Instruction {
                 c: third_addr(word),
             },
             0x0B => DivB { normalize: !word.get_bit(38), c: third_addr(word) },
-            0x0C => TN { normalize: !word.get_bit(38), a: first_addr(word), c: third_addr(word) },
-            0x2C => PN { a: first_addr(word) },
+            0x0C => {
+                let second_addr = second_addr(word);
+
+                if second_addr == 0x200 {
+                    PN { a: first_addr(word) }
+                } else {
+                    TN { normalize: !word.get_bit(38), a: first_addr(word), c: third_addr(word) }
+                }
+            }
             0x0D => TMin { normalize: !word.get_bit(38), a: first_addr(word), c: third_addr(word) },
             0x0E => TMod { normalize: !word.get_bit(38), a: first_addr(word), c: third_addr(word) },
             0x0F => TSign {

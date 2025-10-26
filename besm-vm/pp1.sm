@@ -1,0 +1,366 @@
+568 proc. "MP-1" op. 9 + 2
+566 proc. "MP-1" op. 10 + 2
+571 proc. "MP-1" op. 11 + 3
+580 proc. "MP-1" op. 16 + 5
+634 proc. "PP-1-1" op. 7 + 2
+632 proc. "PP-1-1" op. 11 + 2
+668 proc. "PP-1-1" op. 18 + 2
+672 proc. "PP-1-1" op. 29 + 4
+663 proc. "PP-1-1" op. 34 + 1
+691 proc. "PP-1-1" op. 40 + 3
+693 proc. "PP-1-1" blk. op. 11 + 2
+767 proc. "PP-1-2" op. 11 + 2
+779 proc. "PP-1-2" op. 17 + 2
+776 proc. "PP-1-2" op. 18 + 2
+795 proc. "PP-1-2" op. 30 + 2
+797 proc. "PP-1-2" op. 37 + 2
+800 proc. "PP-1-2" op. 46 + 2
+802 proc. "PP-1-2" op. 53 + 2
+954 proc. "PP-1-2" op. 54 + 2
+819 proc. "PP-1-2" op. 67 + 2
+822 proc. "PP-1-2" op. 68 + 3
+833 proc. "PP-1-2" op. 73 + 2
+844 proc. "PP-1-2" op. 78 + 2
+861 proc. "PP-1-2" op. 88 + 2
+917 proc. "PP-1-2" op. 110 + 2
+906 proc. "PP-1-2" op. 119 + 2
+914 proc. "PP-1-2" op. 121 + 7
+782 proc. "PP-1-2" blk. op. 21 + 2
+920 proc. "PP-1-2" blk. op. 114 + 3
+922 proc. "PP-1-2" blk. op. 120 + 2
+1023 proc. "PP-1-3" op. 18 + 7
+1014 proc. "PP-1-3" op. 22 + 3
+281 uk. &completedOperator
+711 uk. &partial-programme
+712 uk. ,< 0001 builder 112
+702 uk. ,CE _ -2 _
+965 uk. ,TN 116F _
+703 uk. ,TN _ cellD
+704 uk. ,TN _ cellE
+964 uk. ,TN buffer _
+963 uk. ,TN β₀ βᵢ
+707 uk. - 1101 _ 0001
+523 uk. -144
+524 uk. -96-shifted
+966 uk. 0005
+713 uk. 0200 0000
+617 uk. 0202
+525 uk. 0x18
+714 uk. 0x1C
+715 uk. 0x800000
+716 uk. 0xb
+717 uk. 0xd
+718 uk. 0xf0
+719 uk. 0xfd
+720 uk. 0xff
+526 uk. 144
+527 uk. 144 shifted 2nd addr
+721 uk. 15
+722 uk. 2
+723 uk. 3
+724 uk. 32
+725 uk. 4
+726 uk. 5
+727 uk. 6
+728 uk. 7
+729 uk. 8
+730 uk. 9
+528 uk. 96
+529 uk. 96 shifted
+273 uk. A
+274 uk. A + 1
+709 uk. AI _ _ 0001
+275 uk. B
+731 uk. B1
+699 uk. B2
+698 uk. B3
+276 uk. C
+732 uk. CLCC
+277 uk. D
+701 uk. E
+700 uk. F
+282 uk. K
+958 uk. S
+708 uk. TN 0002 _ _
+614 uk. Y
+613 uk. Y'
+961 uk. ai _ cellS _
+960 uk. and-template
+33 uk. arith-buffer
+530 uk. arrangement counter
+283 uk. buffer
+733 uk. comparison value
+618 uk. concluding transfers
+615 uk. constant-n
+616 uk. constant-x
+967 uk. copy of working
+968 uk. end-of-arith-op
+959 uk. final-store
+734 uk. first-k-cell
+619 uk. firstAndSndAddr
+694 uk. fixed K
+735 uk. initializer
+969 uk. k'
+736 uk. max K
+531 uk. max-selected
+532 uk. max-written
+705 uk. pp-template
+0 uk. programme header table
+970 uk. recall-arg
+695 uk. result-code
+278 uk. scratch-cell-1
+279 uk. scratch-cell-2
+280 uk. scratch-cell-3
+533 uk. selection counter
+534 uk. snd and third addr mask
+535 uk. start of 144 block
+737 uk. symbol counter
+738 uk. template-table
+710 uk. templateDispatch
+962 uk. tn
+697 uk. trans-opcode
+696 uk. transfer cell
+706 uk. transfer template
+971 uk. upperBound
+972 uk. working-code
+609 uk. α
+973 uk. βᵢ
+536 proc. "MP-1" op. 1
+557 proc. "MP-1" op. 2
+558 proc. "MP-1" op. 3
+559 proc. "MP-1" op. 4
+560 proc. "MP-1" op. 5
+561 proc. "MP-1" op. 6
+562 proc. "MP-1" op. 7
+564 proc. "MP-1" op. 8
+567 proc. "MP-1" op. 9
+565 proc. "MP-1" op. 10
+569 proc. "MP-1" op. 11
+582 proc. "MP-1" op. 12
+583 proc. "MP-1" op. 13
+584 proc. "MP-1" op. 14
+572 proc. "MP-1" op. 15
+576 proc. "MP-1" op. 16
+581 proc. "MP-1" op. 17
+585 proc. "MP-1" op. 18
+586 proc. "MP-1" op. 19
+592 proc. "MP-1" op. 20
+597 proc. "MP-1" op. 21
+598 proc. "MP-1" op. 22
+604 proc. "MP-1" op. 23
+620 proc. "PP-1-1" op. 1
+622 proc. "PP-1-1" op. 2
+623 proc. "PP-1-1" op. 3
+624 proc. "PP-1-1" op. 4
+625 proc. "PP-1-1" op. 5
+626 proc. "PP-1-1" op. 6
+633 proc. "PP-1-1" op. 7
+627 proc. "PP-1-1" op. 8
+629 proc. "PP-1-1" op. 9
+630 proc. "PP-1-1" op. 10
+631 proc. "PP-1-1" op. 11
+635 proc. "PP-1-1" op. 12
+639 proc. "PP-1-1" op. 13
+640 proc. "PP-1-1" op. 14
+642 proc. "PP-1-1" op. 15
+664 proc. "PP-1-1" op. 16
+666 proc. "PP-1-1" op. 17
+667 proc. "PP-1-1" op. 18
+643 proc. "PP-1-1" op. 19
+645 proc. "PP-1-1" op. 20
+646 proc. "PP-1-1" op. 21
+647 proc. "PP-1-1" op. 22
+648 proc. "PP-1-1" op. 23
+649 proc. "PP-1-1" op. 24
+651 proc. "PP-1-1" op. 25
+652 proc. "PP-1-1" op. 26
+653 proc. "PP-1-1" op. 27
+656 proc. "PP-1-1" op. 28
+669 proc. "PP-1-1" op. 29
+657 proc. "PP-1-1" op. 30
+660 proc. "PP-1-1" op. 31
+661 proc. "PP-1-1" op. 32
+662 proc. "PP-1-1" op. 33
+663 proc. "PP-1-1" op. 34
+673 proc. "PP-1-1" op. 35
+676 proc. "PP-1-1" op. 36
+677 proc. "PP-1-1" op. 37
+688 proc. "PP-1-1" op. 39
+689 proc. "PP-1-1" op. 40
+678 proc. "PP-1-1" op. 41
+679 proc. "PP-1-1" op. 42
+680 proc. "PP-1-1" op. 43
+682 proc. "PP-1-1" op. 45
+692 proc. "PP-1-1" blk. op. 11
+641 proc. "PP-1-1" blk. op. 14
+754 proc. "PP-1-2" op. 1
+757 proc. "PP-1-2" op. 2
+758 proc. "PP-1-2" op. 3
+759 proc. "PP-1-2" op. 4
+762 proc. "PP-1-2" op. 5
+763 proc. "PP-1-2" op. 6
+764 proc. "PP-1-2" op. 7
+923 proc. "PP-1-2" op. 8
+924 proc. "PP-1-2" op. 9
+925 proc. "PP-1-2" op. 10
+766 proc. "PP-1-2" op. 11
+768 proc. "PP-1-2" op. 12
+769 proc. "PP-1-2" op. 13
+773 proc. "PP-1-2" op. 14
+774 proc. "PP-1-2" op. 15
+777 proc. "PP-1-2" op. 16
+778 proc. "PP-1-2" op. 17
+775 proc. "PP-1-2" op. 18
+927 proc. "PP-1-2" op. 19
+928 proc. "PP-1-2" op. 20
+780 proc. "PP-1-2" op. 21
+784 proc. "PP-1-2" op. 22
+786 proc. "PP-1-2" op. 24
+929 proc. "PP-1-2" op. 25
+930 proc. "PP-1-2" op. 26
+783 proc. "PP-1-2" op. 27
+931 proc. "PP-1-2" op. 28
+793 proc. "PP-1-2" op. 29
+794 proc. "PP-1-2" op. 30
+932 proc. "PP-1-2" op. 31
+933 proc. "PP-1-2" op. 32
+934 proc. "PP-1-2" op. 33
+935 proc. "PP-1-2" op. 34
+936 proc. "PP-1-2" op. 35
+937 proc. "PP-1-2" op. 36
+796 proc. "PP-1-2" op. 37
+939 proc. "PP-1-2" op. 38
+940 proc. "PP-1-2" op. 39
+941 proc. "PP-1-2" op. 40
+942 proc. "PP-1-2" op. 41
+943 proc. "PP-1-2" op. 42
+944 proc. "PP-1-2" op. 43
+945 proc. "PP-1-2" op. 44
+798 proc. "PP-1-2" op. 45
+799 proc. "PP-1-2" op. 46
+946 proc. "PP-1-2" op. 47
+948 proc. "PP-1-2" op. 48
+949 proc. "PP-1-2" op. 49
+950 proc. "PP-1-2" op. 50
+951 proc. "PP-1-2" op. 51
+952 proc. "PP-1-2" op. 52
+801 proc. "PP-1-2" op. 53
+953 proc. "PP-1-2" op. 54
+803 proc. "PP-1-2" op. 55
+804 proc. "PP-1-2" op. 56
+805 proc. "PP-1-2" op. 57
+808 proc. "PP-1-2" op. 58
+809 proc. "PP-1-2" op. 59
+810 proc. "PP-1-2" op. 60
+811 proc. "PP-1-2" op. 61
+812 proc. "PP-1-2" op. 62
+813 proc. "PP-1-2" op. 63
+815 proc. "PP-1-2" op. 64
+816 proc. "PP-1-2" op. 65
+817 proc. "PP-1-2" op. 66
+818 proc. "PP-1-2" op. 67
+820 proc. "PP-1-2" op. 68
+787 proc. "PP-1-2" op. 69
+791 proc. "PP-1-2" op. 70
+823 proc. "PP-1-2" op. 71
+828 proc. "PP-1-2" op. 72
+832 proc. "PP-1-2" op. 73
+834 proc. "PP-1-2" op. 74
+836 proc. "PP-1-2" op. 75
+837 proc. "PP-1-2" op. 76
+842 proc. "PP-1-2" op. 77
+843 proc. "PP-1-2" op. 78
+838 proc. "PP-1-2" op. 79
+845 proc. "PP-1-2" op. 80
+846 proc. "PP-1-2" op. 81
+847 proc. "PP-1-2" op. 82
+852 proc. "PP-1-2" op. 83
+853 proc. "PP-1-2" op. 84
+856 proc. "PP-1-2" op. 85
+857 proc. "PP-1-2" op. 86
+859 proc. "PP-1-2" op. 87
+860 proc. "PP-1-2" op. 88
+848 proc. "PP-1-2" op. 89
+849 proc. "PP-1-2" op. 90
+862 proc. "PP-1-2" op. 91
+866 proc. "PP-1-2" op. 92
+867 proc. "PP-1-2" op. 93
+868 proc. "PP-1-2" op. 94
+872 proc. "PP-1-2" op. 95
+873 proc. "PP-1-2" op. 96
+874 proc. "PP-1-2" op. 97
+875 proc. "PP-1-2" op. 98
+877 proc. "PP-1-2" op. 99
+878 proc. "PP-1-2" op. 100
+880 proc. "PP-1-2" op. 102
+881 proc. "PP-1-2" op. 103
+882 proc. "PP-1-2" op. 104
+883 proc. "PP-1-2" op. 105
+897 proc. "PP-1-2" op. 106
+898 proc. "PP-1-2" op. 107
+899 proc. "PP-1-2" op. 108
+955 proc. "PP-1-2" op. 109
+916 proc. "PP-1-2" op. 110
+884 proc. "PP-1-2" op. 111
+887 proc. "PP-1-2" op. 112
+888 proc. "PP-1-2" op. 113
+889 proc. "PP-1-2" op. 114
+901 proc. "PP-1-2" op. 115
+902 proc. "PP-1-2" op. 116
+903 proc. "PP-1-2" op. 117
+904 proc. "PP-1-2" op. 118
+905 proc. "PP-1-2" op. 119
+907 proc. "PP-1-2" op. 120
+908 proc. "PP-1-2" op. 121
+894 proc. "PP-1-2" op. 122
+765 proc. "PP-1-2" blk. op. 7
+926 proc. "PP-1-2" blk. op. 10
+781 proc. "PP-1-2" blk. op. 21
+938 proc. "PP-1-2" blk. op. 36
+915 proc. "PP-1-2" blk. op. 70
+900 proc. "PP-1-2" blk. op. 108
+916 proc. "PP-1-2" blk. op. 109
+918 proc. "PP-1-2" blk. op. 114
+921 proc. "PP-1-2" blk. op. 120
+923 proc. "PP-1-2" blk. blk. op. 7
+792 proc. "PP-1-2" blk. blk. op. 70
+955 proc. "PP-1-2" blk. blk. op. 108
+974 proc. "PP-1-3" op. 1
+979 proc. "PP-1-3" op. 2
+981 proc. "PP-1-3" op. 3
+982 proc. "PP-1-3" op. 4
+984 proc. "PP-1-3" op. 5
+986 proc. "PP-1-3" op. 6
+988 proc. "PP-1-3" op. 7
+989 proc. "PP-1-3" op. 8
+990 proc. "PP-1-3" op. 9
+992 proc. "PP-1-3" op. 10
+994 proc. "PP-1-3" op. 11
+998 proc. "PP-1-3" op. 12
+999 proc. "PP-1-3" op. 13
+1000 proc. "PP-1-3" op. 14
+1002 proc. "PP-1-3" op. 15
+1003 proc. "PP-1-3" op. 16
+1008 proc. "PP-1-3" op. 17
+1017 proc. "PP-1-3" op. 18
+1009 proc. "PP-1-3" op. 19
+1011 proc. "PP-1-3" op. 20
+1012 proc. "PP-1-3" op. 21
+1013 proc. "PP-1-3" op. 22
+985 proc. "PP-1-3" blk. op. 5
+993 proc. "PP-1-3" blk. op. 10
+1015 proc. "PP-1-3" blk. op. 17
+596 rtc. proc. "MP-1" op. 20
+608 rtc. proc. "MP-1" op. 23
+687 rtc. proc. "PP-1-1" op. 45
+841 rtc. proc. "PP-1-2" op. 79
+851 rtc. proc. "PP-1-2" op. 90
+896 rtc. proc. "PP-1-2" op. 122
+283 proc start. MP-1
+609 proc start. PP-1-1
+694 proc start. PP-1-2
+958 proc start. PP-1-3
+608 proc end. MP-1
+693 proc end. PP-1-1
+957 proc end. PP-1-2
+1023 proc end. PP-1-3

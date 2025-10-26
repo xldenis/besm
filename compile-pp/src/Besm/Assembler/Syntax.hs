@@ -289,7 +289,9 @@ instToCell (Xb c n) = buildInstruction (bitVector $ normToBit n .|. 0x009) (bitV
 instToCell (DivA a b c n) = buildInstruction (bitVector $ normToBit n .|. 0x00A) (bitVector a) (bitVector b) (bitVector c)
 instToCell (DivB c n) = buildInstruction (bitVector $ normToBit n .|. 0x00B) (bitVector 0) (bitVector 0) (bitVector c)
 instToCell (TN a c n) = buildInstruction (bitVector $ normToBit n .|. 0x00C) (bitVector a) (bitVector 0) (bitVector c)
-instToCell (PN a) = buildInstruction (bitVector 0x02C) (bitVector a) (bitVector 0) (bitVector 0)
+-- The book documents this opcode as 0x2c but that would be the same as an un-nomralized transfer.
+-- Instead, we write 0200 in the second address (as is done in the assembly in the book / sources)
+instToCell (PN a) = buildInstruction (bitVector 0x0C) (bitVector a) (bitVector 0x200) (bitVector 0)
 instToCell (TMin a c n) = buildInstruction (bitVector $ normToBit n .|. 0x00D) (bitVector a) (bitVector 0) (bitVector c)
 instToCell (TMod a c n) = buildInstruction (bitVector $ normToBit n .|. 0x00E) (bitVector a) (bitVector 0) (bitVector c)
 instToCell (TSign a b c n) = buildInstruction (bitVector $ normToBit n .|. 0x00F) (bitVector a) (bitVector b) (bitVector c)

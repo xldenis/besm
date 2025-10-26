@@ -719,7 +719,7 @@ pp3_2 = do
   {-
     Op. 2 calculates the correction Δ C, forms the instructions for processing the block V
     and prints a number of special form, which denotes that immediately after it on the tape
-    will be printed information on the strange blocks.
+    will be printed information on the storage blocks.
   -}
   operator 2 $ do
     -- ΔС = -Пₖ
