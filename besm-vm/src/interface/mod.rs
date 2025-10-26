@@ -11,8 +11,7 @@ use log::error;
 use ratatui::layout::Size;
 
 use ::ratatui::backend::Backend;
-use std::sync::mpsc::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::mpsc::*};
 
 const WRITE_DECAY_STEPS: u32 = 5;
 
@@ -23,9 +22,10 @@ pub struct Interface {
     pub step_mode: StepMode,
     pub tabs: TabInfo,
     pub breakpoint: Option<u16>,
-    pub recent_writes: HashMap<u16, (u32, u64)>,  // address -> (age, old_value)
+    pub recent_writes: HashMap<u16, (u32, u64)>, // address -> (age, old_value)
     pub printer_output: Vec<String>,
     exiting: bool,
+    mem_breakpoint: Option<u16>,
 }
 
 impl Interface {
@@ -39,6 +39,7 @@ impl Interface {
             recent_writes: HashMap::new(),
             printer_output: Vec::new(),
             exiting: false,
+            mem_breakpoint: None,
         }
     }
 
@@ -134,6 +135,13 @@ impl Interface {
                     self.breakpoint = Some(off as u16);
                 }
             }
+            Command('m', off) => {
+                if off == 0 {
+                    self.mem_breakpoint = None;
+                } else {
+                    self.mem_breakpoint = Some(off as u16);
+                }
+            }
             Tick if self.step_mode == Run => {
                 step_vm(vm, self);
             }
@@ -157,29 +165,38 @@ impl Interface {
 }
 
 fn step_vm(vm: &mut VM, app: &mut Interface) {
-    match vm.step() {
+    let step_result = match vm.step() {
+        Ok(res) => res,
         Err(e) => {
             error!("{:?}", e);
             vm.stopped = true; // vm should handle this internally
+            return;
         }
-        Ok(step_result) => {
-            app.past_instrs.push_front(step_result.instruction);
+    };
 
-            // Update write tracking
-            if let Some(write) = step_result.write {
-                app.recent_writes.insert(write.address, (0, write.old_value));
-            }
+    app.past_instrs.push_front(step_result.instruction);
 
-            // Capture printer output
-            if let Some(output) = step_result.printer_output {
-                app.printer_output.push(output);
-            }
+    // Update write tracking
+    if let Some(write) = step_result.write {
+        app.recent_writes.insert(write.address, (0, write.old_value));
+    }
 
-            // Age existing writes and remove old ones
-            app.recent_writes.retain(|_, (age, _)| {
-                *age += 1;
-                *age <= WRITE_DECAY_STEPS
-            });
+    // Capture printer output
+    if let Some(output) = step_result.printer_output {
+        app.printer_output.push(output);
+    }
+
+    // Age existing writes and remove old ones
+    app.recent_writes.retain(|_, (age, _)| {
+        *age += 1;
+        *age <= WRITE_DECAY_STEPS
+    });
+
+    if let Some(b) = app.mem_breakpoint {
+        if let Some(out) = step_result.write
+            && out.address == b
+        {
+            app.pause();
         }
     }
 

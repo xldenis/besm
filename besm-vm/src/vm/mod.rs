@@ -64,11 +64,7 @@ impl<'a> Memory<'a> {
     }
 
     pub fn get_mut(&mut self, ix: u16) -> Result<&mut u64, VMError> {
-        if ix <= 1023 {
-            Ok(&mut self.is[(ix - 1) as usize])
-        } else {
-            Err(VMError::OutOfBounds {})
-        }
+        if ix <= 1023 { Ok(&mut self.is[(ix - 1) as usize]) } else { Err(VMError::OutOfBounds {}) }
     }
 
     fn set(&mut self, ix: u16, val: u64) -> Result<u64, VMError> {
@@ -199,6 +195,7 @@ impl<'a> VM<'a> {
                 let rfloat = Float::from_bytes(self.memory.get(r)?);
                 let mut val = lfloat.sub_unnormalized(&rfloat);
 
+                info!("{lfloat} - {rfloat} = {val}");
                 if needs_norm {
                     val.normalize()
                 };

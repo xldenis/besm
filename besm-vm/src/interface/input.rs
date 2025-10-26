@@ -32,7 +32,7 @@ pub fn setup_input_stream() -> Receiver<Event> {
         for e in stdin.keys() {
             let evt = e.unwrap();
             match evt {
-                Char(x @ 'g') | Char(x @ 'b') => {
+                Char(x @ 'g') | Char(x @ 'b') | Char(x @ 'm') => {
                     if let Ok(off) = read_address() {
                         tx.send(Event::Command(x, off as usize)).unwrap();
                     };

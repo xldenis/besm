@@ -1,16 +1,16 @@
 use ratatui::{
+    Terminal,
     backend::*,
     buffer::Buffer,
     layout::{Alignment, Constraint::*, Direction::*, Layout, Rect},
     style::{Color, Modifier, Style, Styled as _, Stylize},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Cell, Paragraph, Table, Tabs, Widget, Wrap},
-    Terminal,
 };
 
 use crate::vm::{
-    instruction::{first_addr, get_instruction_parts, second_addr, third_addr, Instruction},
     VM,
+    instruction::{Instruction, first_addr, get_instruction_parts, second_addr, third_addr},
 };
 use bit_field::BitField;
 
@@ -187,11 +187,8 @@ fn build_binary_cell(new_value: u64, old_value: u64, highlight_style: Style) -> 
 fn render_printer_panel(t: &mut Buffer, app: &Interface, _vm: &VM, rect: Rect) {
     let offset = app.tabs.offsets[2];
 
-    let lines: Vec<Line> = app.printer_output
-        .iter()
-        .skip(offset)
-        .map(|s| Line::from(s.as_str()))
-        .collect();
+    let lines: Vec<Line> =
+        app.printer_output.iter().skip(offset).map(|s| Line::from(s.as_str())).collect();
 
     let text = Text::from(lines);
 
@@ -324,6 +321,11 @@ fn render_status_line(t: &mut Buffer, app: &Interface, active_ic: &ActiveIC, rec
             Style::default().fg(Color::Yellow),
         ))
         .render(chunks[3], t);
+    }
+
+    if let Some(b) = app.mem_breakpoint {
+        Paragraph::new(Text::styled(format!("MEM {:04} ", b), Style::default().fg(Color::Yellow)))
+            .render(chunks[3], t);
     }
 }
 
