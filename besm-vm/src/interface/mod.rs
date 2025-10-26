@@ -12,6 +12,9 @@ use ratatui::layout::Size;
 
 use ::ratatui::backend::Backend;
 use std::sync::mpsc::*;
+use std::collections::HashMap;
+
+const WRITE_DECAY_STEPS: u32 = 5;
 
 // This should be split into two structures, so that input can fully happen in a separate thread.
 pub struct Interface {
@@ -20,6 +23,7 @@ pub struct Interface {
     pub step_mode: StepMode,
     pub tabs: TabInfo,
     pub breakpoint: Option<u16>,
+    pub recent_writes: HashMap<u16, (u32, u64)>,  // address -> (age, old_value)
     exiting: bool,
 }
 
@@ -31,6 +35,7 @@ impl Interface {
             step_mode: StepMode::Step,
             tabs: TabInfo::default(),
             breakpoint: None,
+            recent_writes: HashMap::new(),
             exiting: false,
         }
     }
@@ -155,8 +160,19 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
             error!("{:?}", e);
             vm.stopped = true; // vm should handle this internally
         }
-        Ok(i) => {
-            app.past_instrs.push_front(i);
+        Ok(step_result) => {
+            app.past_instrs.push_front(step_result.instruction);
+
+            // Update write tracking
+            if let Some(write) = step_result.write {
+                app.recent_writes.insert(write.address, (0, write.old_value));
+            }
+
+            // Age existing writes and remove old ones
+            app.recent_writes.retain(|_, (age, _)| {
+                *age += 1;
+                *age <= WRITE_DECAY_STEPS
+            });
         }
     }
 

@@ -163,92 +163,83 @@ impl Instruction {
 
 use std::fmt;
 
+macro_rules! denormed {
+    ($normed:expr, $nm:expr) => {
+        format!("{}{}", if $normed { "" } else { "," }, $nm)
+    };
+}
+
+pub fn get_instruction_parts(
+    instr: &Instruction,
+) -> (String, Option<u16>, Option<u16>, Option<u16>) {
+    use Instruction::*;
+    match instr {
+        Add { a, b, c, normalize } => (denormed!(*normalize, "Add"), Some(*a), Some(*b), Some(*c)),
+        Sub { a, b, c, normalize } => (denormed!(*normalize, "Sub"), Some(*a), Some(*b), Some(*c)),
+        Mult { a, b, c, normalize } => {
+            (denormed!(*normalize, "Mult"), Some(*a), Some(*b), Some(*c))
+        }
+        Div { a, b, c, normalize } => (denormed!(*normalize, "Div"), Some(*a), Some(*b), Some(*c)),
+        AddE { a, b, c, normalize } => {
+            (denormed!(*normalize, "AddE"), Some(*a), Some(*b), Some(*c))
+        }
+        SubE { a, b, c, normalize } => {
+            (denormed!(*normalize, "SubE"), Some(*a), Some(*b), Some(*c))
+        }
+        Ce { a, b, c, normalize } => (denormed!(*normalize, "Ce"), Some(*a), Some(*b), Some(*c)),
+        Xa { a, b, c, normalize } => (denormed!(*normalize, "Xa"), Some(*a), Some(*b), Some(*c)),
+        Xb { c, normalize } => (denormed!(*normalize, "Xb"), None, None, Some(*c)),
+        DivA { a, b, c, normalize } => {
+            (denormed!(*normalize, "DivA"), Some(*a), Some(*b), Some(*c))
+        }
+        DivB { c, normalize } => (denormed!(*normalize, "DivB"), None, None, Some(*c)),
+        TN { a, c, normalize } => (denormed!(*normalize, "TN"), Some(*a), None, Some(*c)),
+        PN { a } => (denormed!(true, "PN"), Some(*a), None, None),
+        TMin { a, c, normalize } => (denormed!(*normalize, "TMin"), Some(*a), None, Some(*c)),
+        TMod { a, c, normalize } => (denormed!(*normalize, "TMod"), Some(*a), None, Some(*c)),
+        TSign { a, b, c, normalize } => {
+            (denormed!(*normalize, "TSgn"), Some(*a), Some(*b), Some(*c))
+        }
+        TExp { a, c, normalize } => (denormed!(*normalize, "TExp"), Some(*a), None, Some(*c)),
+        Shift { a, b, c } => (denormed!(true, "Shft"), Some(*a), Some(*b), Some(*c)),
+        ShiftAll { a, b, c } => (denormed!(false, "Shft"), Some(*a), Some(*b), Some(*c)),
+        AI { a, b, c } => (denormed!(true, "AI"), Some(*a), Some(*b), Some(*c)),
+        AICarry { a, b, c } => (denormed!(false, "AI"), Some(*a), Some(*b), Some(*c)),
+        I { a, b, c } => (denormed!(true, "I"), Some(*a), Some(*b), Some(*c)),
+        Comp { a, b, c } => (denormed!(true, "Cmp"), Some(*a), Some(*b), Some(*c)),
+        CompWord { a, b, c } => (denormed!(true, "CmpWd"), Some(*a), Some(*b), Some(*c)),
+        CompMod { a, b, c } => (denormed!(true, "CmpMd"), Some(*a), Some(*b), Some(*c)),
+        Ma { a, b, c } => (denormed!(true, "Ma"), Some(*a), Some(*b), Some(*c)),
+        Mb { b } => (denormed!(true, "Mb"), None, Some(*b), None),
+        JCC => (denormed!(true, "JCC"), None, None, None),
+        CLCC { c } => (denormed!(true, "CLCC"), None, None, Some(*c)),
+        CCCC { b, c } => (denormed!(true, "CCCC"), None, Some(*b), Some(*c)),
+        Stop28 => (denormed!(true, "Stp28"), None, None, None),
+        LogMult { a, b, c } => (denormed!(true, "BitMl"), Some(*a), Some(*b), Some(*c)),
+        Stop => (denormed!(true, "Stop"), None, None, None),
+    }
+}
+
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        macro_rules! denormed {
-            ($normed:expr, $nm:expr) => {
-                format!("{}{}", if $normed { "" } else { "," }, $nm)
-            };
-        }
+        let (op, a, b, c) = get_instruction_parts(self);
 
-        match self {
-            Add { a, b, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Add"), a, b, c)
-            }
-            Sub { a, b, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Sub"), a, b, c)
-            }
-            Mult { a, b, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Mult"), a, b, c)
-            }
-            Div { a, b, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Div"), a, b, c)
-            }
-            AddE { a, b, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "AddE"), a, b, c)
-            }
-            SubE { a, b, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "SubE"), a, b, c)
-            }
-            Ce { a, b, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Ce"), a, b, c)
-            }
-            Xa { a, b, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Xa"), a, b, c)
-            }
-            Xb { c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "Xb"), "", "", c)
-            }
-            DivA { a, b, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "DivA"), a, b, c)
-            }
-            DivB { c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "DivB"), "", "", c)
-            }
-            TN { a, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TN"), a, "", c)
-            }
-            PN { a } => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "PN"), a, "", ""),
-            TMin { a, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TMin"), a, "", c)
-            }
-            TMod { a, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TMod"), a, "", c)
-            }
-            TSign { a, b, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TSgn"), a, b, c)
-            }
-            TExp { a, c, normalize: norm } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(*norm, "TExp"), a, "", c)
-            }
-            Shift { a, b, c } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "Shft"), a, b, c)
-            }
-            ShiftAll { a, b, c } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "Shft"), a, b, c)
-            }
-            AI { a, b, c } => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "AI"), a, b, c),
-            AICarry { a, b, c } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(false, "AI"), a, b, c)
-            }
-            I { a, b, c } => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "I"), a, b, c),
-            Comp { a, b, c } => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "Cmp"), a, b, c),
-            CompWord { a, b, c } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "CmpWd"), a, b, c)
-            }
-            CompMod { a, b, c } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "CmpMd"), a, b, c)
-            }
-            Ma { a, b, c } => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "Ma"), a, b, c),
-            Mb { b } => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "Mb"), "", b, ""),
-            JCC => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "JCC"), "", "", ""),
-            CLCC { c } => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "CLCC"), "", "", c),
-            CCCC { b, c } => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "CCCC"), "", b, c),
-            Stop28 => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "Stp28"), "", "", ""),
-            LogMult { a, b, c } => {
-                write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "BitMl"), a, b, c)
-            }
-            Stop => write!(f, "{:<5} {:4} {:4} {:4}", denormed!(true, "Stop"), "", "", ""),
-        }
+        write!(f, "{op:<5} ")?;
+        match a {
+            Some(a) => write!(f, "{a:4} ")?,
+            None => write!(f, "{:4} ", "")?,
+        };
+
+        match b {
+            Some(a) => write!(f, "{a:4} ")?,
+            None => write!(f, "{:4} ", "")?,
+        };
+
+        match c {
+            Some(a) => write!(f, "{a:4}")?,
+            None => write!(f, "{:4}", "")?,
+        };
+
+        Ok(())
     }
 }

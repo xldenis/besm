@@ -1,15 +1,16 @@
+use log::{info, warn};
 use ratatui::{
     backend::*,
     buffer::Buffer,
     layout::{Alignment, Constraint::*, Direction::*, Layout, Rect},
-    style::{Color, Style},
-    text::Text,
-    widgets::{Block, Borders, Paragraph, Table, Tabs, Widget, Wrap},
+    style::{Color, Modifier, Style, Stylize},
+    text::{Line, Span, Text},
+    widgets::{Block, Borders, Cell, Paragraph, Table, Tabs, Widget, Wrap},
     Terminal,
 };
 
 use crate::vm::{
-    instruction::{first_addr, second_addr, third_addr, Instruction},
+    instruction::{first_addr, get_instruction_parts, second_addr, third_addr, Instruction},
     VM,
 };
 use bit_field::BitField;
@@ -68,12 +69,12 @@ pub fn draw<T: Backend>(t: &mut Terminal<T>, vm: &VM, app: &Interface) {
 
         match app.tabs.selection {
             0 => render_main_panel(f.buffer_mut(), app, vm, chunks[0]),
-            1 => render_memory_panel(f.buffer_mut(), &app.tabs, vm, chunks[0]),
-            2 => render_memory_panel(f.buffer_mut(), &app.tabs, vm, chunks[0]),
-            3 => render_memory_panel(f.buffer_mut(), &app.tabs, vm, chunks[0]),
-            4 => render_memory_panel(f.buffer_mut(), &app.tabs, vm, chunks[0]),
-            5 => render_memory_panel(f.buffer_mut(), &app.tabs, vm, chunks[0]),
-            6 => render_memory_panel(f.buffer_mut(), &app.tabs, vm, chunks[0]),
+            1 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
+            2 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
+            3 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
+            4 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
+            5 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
+            6 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
             _ => {}
         }
         render_status_line(f.buffer_mut(), app, &vm.active_ic, chunks[1]);
@@ -104,9 +105,52 @@ fn render_main_panel(t: &mut Buffer, app: &Interface, vm: &VM, rect: Rect) {
     render_past_instructions(t, app.past_instrs.iter(), inner_chunks[1]);
 }
 
-fn render_memory_panel(t: &mut Buffer, tabs: &TabInfo, vm: &VM, rect: Rect) {
+// Highlights the diff between two instructions
+fn build_instruction_cell(
+    new_instr: &Instruction,
+    old_instr: Option<&Instruction>,
+    highlight_style: Style,
+) -> Line<'static> {
+    let normal_style = Style::default();
+
+    let Some(old) = old_instr else {
+        return Line::from(format!("{}", new_instr));
+    };
+
+    let (new_op, new_a, new_b, new_c) = get_instruction_parts(new_instr);
+    let (old_op, old_a, old_b, old_c) = get_instruction_parts(old);
+
+    let mut spans = Vec::new();
+
+    let opcode_changed = new_op != old_op;
+    let opcode_text = format!("{:<5}", new_op);
+    spans.push(Span::styled(
+        opcode_text,
+        if opcode_changed { highlight_style } else { normal_style },
+    ));
+
+    let add_operand = |spans: &mut Vec<Span<'_>>, new_val, old_val| {
+        let text = match new_val {
+            Some(v) => format!(" {:4}", v),
+            None => " ".repeat(5),
+        };
+        let changed = new_val != old_val;
+        spans.push(Span::styled(text, if changed { highlight_style } else { normal_style }));
+    };
+
+    add_operand(&mut spans, new_a, old_a);
+    add_operand(&mut spans, new_b, old_b);
+    add_operand(&mut spans, new_c, old_c);
+
+    // spans.push(Span::raw(" "));
+
+    Line::from(spans)
+}
+
+fn render_memory_panel(t: &mut Buffer, app: &Interface, vm: &VM, rect: Rect) {
     use ratatui::widgets::Row;
 
+    let tabs = &app.tabs;
     let (mem_vec, addr_offset): (Box<dyn Iterator<Item = u64>>, usize) = match tabs.selection {
         1 => (Box::new(vm.memory.into_iter()) as Box<_>, 1),
         i => (Box::new(vm.mag_system.mag_drives[i - 2].into_iter()) as Box<_>, 0),
@@ -114,27 +158,72 @@ fn render_memory_panel(t: &mut Buffer, tabs: &TabInfo, vm: &VM, rect: Rect) {
     let tab_offset = tabs.offsets[tabs.selection].saturating_sub(addr_offset);
 
     let rows = mem_vec.enumerate().skip(tab_offset).map(|(addr, instr)| {
-        let instr_string = Instruction::from_bytes(instr)
-            .map(|s| format!("{} ", s))
-            .unwrap_or_else(|_| "ERROR".to_string());
-
         use crate::float::Float;
+
+        let current_addr = addr as u16 + addr_offset as u16;
         let float = Float::from_bytes(instr);
         let active_bits = instr.get_bits(0..39);
-        let style = if vm.next_instr() - 1 == addr as u16 && tabs.selection == 1 {
-            Style::default().fg(Color::Yellow)
+
+        let write_info = if tabs.selection == 1 {
+            app.recent_writes.get(&current_addr).map(|(age, old_value)| (*age, *old_value))
+        } else {
+            None
+        };
+
+        let row_style = if vm.next_instr() - 1 == addr as u16 && tabs.selection == 1 {
+            Style::default().add_modifier(Modifier::BOLD).fg(Color::Yellow)
         } else {
             Style::default()
         };
 
-        Row::new(vec![
-            format!("{:04}", addr + addr_offset),
-            instr_string,
-            format!("{}", float),
-            format!("{:010x}", active_bits),
-            format!("{:039b}", active_bits),
-        ])
-        .style(style)
+        let (instr_cell, float, hex, bits) = if let Some((age, old_value)) = write_info {
+            let color = match age {
+                0 => Color::Indexed(196), // Bright red
+                1 => Color::Indexed(203), // Red-orange
+                2 => Color::Indexed(210), // Pink
+                3 => Color::Indexed(217), // Light pink
+                _ => Color::Reset,        // Default
+            };
+            let color = match age {
+                0 => Color::Rgb(255, 0, 0),     // Bright red
+                1 => Color::Rgb(255, 100, 100), // Medium red
+                2 => Color::Rgb(255, 150, 150), // Light red/pink
+                3 => Color::Rgb(200, 180, 180), // Very light pink
+                _ => Color::Reset,              // Light gray (age 4)
+            };
+
+            let style = row_style.fg(color).bold();
+
+            let instr_cell =
+                match (Instruction::from_bytes(instr), Instruction::from_bytes(old_value).ok()) {
+                    (Ok(new_instr), old_instr) => {
+                        build_instruction_cell(&new_instr, old_instr.as_ref(), style)
+                    }
+                    (Err(_), _) => Line::from("ERROR"),
+                };
+
+            (
+                Cell::from(instr_cell),
+                Cell::from(format!("{}", float)),
+                Cell::from(format!("{:010x}", active_bits)),
+                Cell::from(format!("{:039b}", active_bits)),
+            )
+        } else {
+            let instr_cell = Line::from(
+                Instruction::from_bytes(instr)
+                    .map(|s| format!("{} ", s))
+                    .unwrap_or_else(|_| "ERROR".to_string()),
+            );
+            (
+                Cell::from(instr_cell),
+                Cell::from(format!("{}", float)),
+                Cell::from(format!("{:010x}", active_bits)),
+                Cell::from(format!("{:039b}", active_bits)),
+            )
+        };
+
+        Row::new(vec![Cell::from(format!("{:04}", current_addr)), instr_cell, float, hex, bits])
+            .style(row_style)
     });
 
     Table::new(rows, [4, 20, 10, 10, 39])
