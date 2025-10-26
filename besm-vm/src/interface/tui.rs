@@ -34,8 +34,8 @@ pub struct TabInfo {
 impl TabInfo {
     pub fn default() -> TabInfo {
         TabInfo {
-            titles: vec!["MAIN", "IS", "MD-0", "MD-1", "MD-2", "MD-3", "MD-4"],
-            offsets: vec![0, 0, 0, 0, 0, 0, 0],
+            titles: vec!["MAIN", "IS", "PRINT", "MD-0", "MD-1", "MD-2", "MD-3", "MD-4"],
+            offsets: vec![0, 0, 0, 0, 0, 0, 0, 0],
             selection: 0,
         }
     }
@@ -69,11 +69,12 @@ pub fn draw<T: Backend>(t: &mut Terminal<T>, vm: &VM, app: &Interface) {
         match app.tabs.selection {
             0 => render_main_panel(f.buffer_mut(), app, vm, chunks[0]),
             1 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
-            2 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
+            2 => render_printer_panel(f.buffer_mut(), app, vm, chunks[0]),
             3 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
             4 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
             5 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
             6 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
+            7 => render_memory_panel(f.buffer_mut(), app, vm, chunks[0]),
             _ => {}
         }
         render_status_line(f.buffer_mut(), app, &vm.active_ic, chunks[1]);
@@ -183,13 +184,30 @@ fn build_binary_cell(new_value: u64, old_value: u64, highlight_style: Style) -> 
     Line::from(spans)
 }
 
+fn render_printer_panel(t: &mut Buffer, app: &Interface, _vm: &VM, rect: Rect) {
+    let offset = app.tabs.offsets[2];
+
+    let lines: Vec<Line> = app.printer_output
+        .iter()
+        .skip(offset)
+        .map(|s| Line::from(s.as_str()))
+        .collect();
+
+    let text = Text::from(lines);
+
+    Paragraph::new(text)
+        .block(Block::default().title("PRINT").borders(Borders::ALL))
+        .render(rect, t);
+}
+
 fn render_memory_panel(t: &mut Buffer, app: &Interface, vm: &VM, rect: Rect) {
     use ratatui::widgets::Row;
 
+    // todo: pull out this logic it gets confusing now that the printer has been added
     let tabs = &app.tabs;
     let (mem_vec, addr_offset): (Box<dyn Iterator<Item = u64>>, usize) = match tabs.selection {
         1 => (Box::new(vm.memory.into_iter()) as Box<_>, 1),
-        i => (Box::new(vm.mag_system.mag_drives[i - 2].into_iter()) as Box<_>, 0),
+        i => (Box::new(vm.mag_system.mag_drives[i - 3].into_iter()) as Box<_>, 0),
     };
     let tab_offset = tabs.offsets[tabs.selection].saturating_sub(addr_offset);
 

@@ -24,6 +24,7 @@ pub struct Interface {
     pub tabs: TabInfo,
     pub breakpoint: Option<u16>,
     pub recent_writes: HashMap<u16, (u32, u64)>,  // address -> (age, old_value)
+    pub printer_output: Vec<String>,
     exiting: bool,
 }
 
@@ -36,6 +37,7 @@ impl Interface {
             tabs: TabInfo::default(),
             breakpoint: None,
             recent_writes: HashMap::new(),
+            printer_output: Vec::new(),
             exiting: false,
         }
     }
@@ -166,6 +168,11 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
             // Update write tracking
             if let Some(write) = step_result.write {
                 app.recent_writes.insert(write.address, (0, write.old_value));
+            }
+
+            // Capture printer output
+            if let Some(output) = step_result.printer_output {
+                app.printer_output.push(output);
             }
 
             // Age existing writes and remove old ones

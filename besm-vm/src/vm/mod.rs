@@ -33,6 +33,7 @@ pub struct MemoryWrite {
 pub struct StepResult {
     pub instruction: Instruction,
     pub write: Option<MemoryWrite>,
+    pub printer_output: Option<String>,
 }
 
 impl<'a> Memory<'a> {
@@ -155,6 +156,7 @@ impl<'a> VM<'a> {
         let opcode = self.memory.get(self.next_instr())?;
         let instr = Instruction::from_bytes(opcode)?;
         let mut memory_write: Option<MemoryWrite> = None;
+        let mut printer_output: Option<String> = None;
 
         match instr {
             Ma { a, b, c } => {
@@ -492,6 +494,12 @@ impl<'a> VM<'a> {
                     self.increment_ic();
                 }
             }
+            PN { a } => {
+                let value = self.memory.get(a)?;
+                let hex_output = format!("{:010x}", value.get_bits(0..39));
+                printer_output = Some(hex_output);
+                self.increment_ic();
+            }
             Stop => {
                 self.stopped = true;
             }
@@ -504,7 +512,7 @@ impl<'a> VM<'a> {
             }
         }
 
-        Ok(StepResult { instruction: instr, write: memory_write })
+        Ok(StepResult { instruction: instr, write: memory_write, printer_output })
     }
 
     pub fn next_instr(&self) -> u16 {
