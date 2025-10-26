@@ -427,7 +427,7 @@ pp3_1 = do
   -}
   operator 29 $ do
     clcc (op 47)
-    ai (var "trueAddresses") unity (var "trueAddresses")
+    ai (var "trueAddresses") one (var "trueAddresses")
     chain (op 32)
   {-
 
@@ -647,12 +647,12 @@ pp3_2 = do
   cBar <- local "Cbar" Cell       -- 03E2
   kBar <- local "Kbar" Cell       -- 03E3
   gammaBar <- local "gammaBar" Cell  -- 03E4
+
+
   p0 <- local "P0" Cell          -- 0008
-  c0 <- local "C0" Cell          -- 03EA (also Ko)
-  k0 <- local "K0" Cell          -- 03EB (also T0)
+  -- c0 <- local "C0" Cell          -- 03EA (also Ko)
+
   -- hrrmmm 
-  gamma0 <- local "gamma0" Cell  -- 03EC (also F0)
-  o0 <- local "O0" Cell          -- 03ED (also M0)
   m1 <- local "M1" Cell          -- M^(1)
   o  <- local "O" Cell           -- 03E5
 
@@ -669,17 +669,41 @@ pp3_2 = do
   -- local "0x18" (Raw 0x18)
 
 
+  -- +------+----------------------------------------------+
+  -- | Cell | Purpose                                      |
+  -- |------|----------------------------------------------|
+  -- | 0007 | Number of cells in block 0                   |
+  -- | 0008 | Address of last cell in block V              |
+  -- | 0009 | Address of first cell in block C             |
+  -- | 000A | Address of last cell in block C              | 
+  -- | 000B | Address of first cell in block K minus 1     |
+  -- | 000C | Address of last cell in block K              |
+  -- | 000D | Address of first cell in block gamma minus 1 |
+  -- | 000E | Address of first cell in block alpha minus 1 |
+  -- | 000F | Address of first cell in block beta minus 1  |
+  -- +------+----------------------------------------------+
+
+  local "final-header" (Size 9)
+
+  let c0final = var "final-header"
+  let k0final = var "final-header" `offAddr` 1 -- 03EB (also T0)
+  let gamma0final = var "final-header" `offAddr` 2 -- 03EC (also F0)
+  let o0final = var "final-header" `offAddr` 3 -- 03ED (also M0)
+  let m0final = var "final-header" `offAddr` 4 -- 03EE
+  let r0final = var "final-header" `offAddr` 5
+  let rffinal = var "final-header" `offAddr` 6
+
   local "const_0337" (Raw 0x0337)  -- Value 31 for comparison (2^5,F8)
-  local "const_0338" (Raw 0x0338)  -- Value 03F0 for comparison
+  local "0x3FF" (Raw 0x03FF)  -- Value 03F0 for comparison
   local "const_033A" (Raw 0x033A)  -- Forward address shift info mask (-2^0,000000FF)??
   local "const_033C" (Raw 0x033C)  -- Old RPD end (2^1,11111111)???
   local "const_033B" (Raw 0x34F)  
 
   local "const_0339" Cell
-  local "const_03EE" Cell -- check where this shows up in III
-  local "const_03E6" Cell -- as far as i can tell this is *never* used again (unless its copied as part of an Ma / Mb???)
-  local "const_03EF" Cell 
+  local "mBar" Cell -- as far as i can tell this is *never* used again (unless its copied as part of an Ma / Mb???)
   local "const_03E7" Cell -- as far as i can tell this is never used again... highly sus 
+
+  cell_0005 <- local "cell_0005" Cell -- unclear who sets this (pp2)
 
   -- 0334: ,TN 0010 03F0
   fetchTemplate <- local "fetchTemplate" (Template $ TN (var "programme") cell_03F0 UnNormalized)
@@ -689,31 +713,51 @@ pp3_2 = do
 
   {-
     Op 1. calculates Pbar, Cbar, Kbar, ɣbar Obar and C_0*, K_0*, ɣ_0*, O_0*, M_0*
+  
+    Pbar = C_1 - V_f 
+    Cbar = C_f - C_1 + 1
+    Kbar = K_f - K_0
+    gammaBar = ?? - gamma_0
+    0bar = ??? 
+    bar indicates magnitude
   -}
+  let c1 = header `offAddr` 2 -- 0009
+  let vf = header `offAddr` 1 -- 0008
+
+  let cf = header `offAddr` 3 -- 000a
+  let k0 = header `offAddr` 4
+  let kf = header `offAddr` 5 
+  let gamma0 = header `offAddr` 6
+  let oBar = header
+
+  -- local "0006" Cell -- todo: figure out who sets this! 
   operator 1 $ do
     -- check these offsets!!!
     -- /Pₓ +1 /  - P₀  =P+1
-    sub' (header `offAddr` 9) (header `offAddr` 8) (var "0001")
+    sub' c1 vf (var "0001")
     -- P
     sub' (var "0001") one pBar
-    -- Cₓ + P₀ =C+P=Cₘ=Ko
-    sub' (header `offAddr` 10) (header `offAddr` 8) c0
+    tN' pBar c0final
+    -- Cₓ - P₀ =C+P=Cₓ=Ko
+    sub' cf vf k0final
+
     -- (C+P) -P = C
-    sub' c0 pBar cBar
+    sub' c0final pBar cBar
     -- K = Kₓ - K₀
-    sub' (header `offAddr` 12) k0 kBar
+    sub' kf k0 kBar
     -- γbar
-    sub' (header `offAddr` 6) (header `offAddr` 13) gammaBar
+    --    v-- this is meant to be 0006
+    sub' gamma0 gamma0 gammaBar  -- this must mean metadata left from pp-2 for pp3 to read or i-pp-3
     -- 0 constant
-    tN' (header `offAddr` 7) o
-    -- (P+C) + K = Kₓ =T₀
-    ai c0 kBar k0
-    -- (P+C + K) + F = Fₓ = 0₀
-    ai k0 gammaBar gamma0
+    tN' oBar o
+    -- (P+C) + K = Kₓ =Gamma₀*
+    ai c0final kBar gamma0final
+    -- (P+C + K) + Gamma = Gammaₓ = 0₀
+    ai k0 gammaBar o0final
     -- (P+C+K+F) +0 = 0ₓ = M₀
-    ai gamma0 o o0
+    ai gamma0final o m0final
     -- M₀+1 = M₁ = M⁽¹⁾
-    ai o0 one m1
+    ai m0final one m1
     chain (op 2)
 
   {-
@@ -723,7 +767,7 @@ pp3_2 = do
   -}
   operator 2 $ do
     -- ΔС = -Пₖ
-    tMod' p0 deltaC
+    tMod' vf deltaC
     -- ΔС with order 31
     addE' deltaC (op 9) (var "const_0339")
     -- Loading fetch command from array П
@@ -789,14 +833,13 @@ pp3_2 = do
     chain (op 8)
 
   {-
-    Op. 8 compares M_l^(i+1)* with 03FFF.
+    Op. 8 compares M_1^(i+1)* with 03FF.
   -}
   operator 8 $ do
-    -- N₁⁽ⁱ⁺²⁾ ≥ 0350 ? NO - op 11
-    comp m1 (var "const_0338") (op 11) (op 9)
+    comp m1 (var "0x3FF") (op 11) (op 9)
 
   {-
-    Op. 9 is a check stop for M_l^(i+1)* 03FFF.
+    Op. 9 is a check stop for M_l^(i+1)* > 03FFF.
   -}
   operator 9 $ do
     -- Control stop
@@ -865,7 +908,7 @@ pp3_2 = do
   -}
   operator 16 $ do
     -- Counter of fetch command from array Г
-    ai (op 3) two (op 3)
+    ai (op 3) oneFirstAddr (op 3)
     -- Counter of return command to array П
     ai (op 15) one (op 15)
     chain (op 17)
@@ -882,20 +925,19 @@ pp3_2 = do
   -}
   operator 18 $ do
     -- (P/d)_к = Mк
-    sub' m1 one (var "const_03EE")
+    sub' m1 one m0final
     -- М = M_к - М_0
-    sub' (var "const_03EE") o0 (var "const_03E6")
+    sub' m0final o0final (var "mBar")
     -- (P/d)_к = Mк + P/d
-    -- not sure that the header value thing is correct
-    -- not sure where 0x3EE is from and whetehr there's a well known value associated
-    sub' (var "const_03EE") (header `offAddr` 5) (var "const_03EF")
+    -- not sure where 0x3EE is from and whether there's a well known value associated
+    sub' m0final cell_0005 r0final
     chain (op 19)
 
   {-
     Op. 19 compares R_f* with 03FF
   -}
   operator 19 $ do
-    comp (var "const_0338") (var "const_03EF") (op 20) (op 21)
+    comp (var "0x3FF") r0final (op 20) (op 21)
 
   {-
     Op. 20 is a check stop for R_f* > 03FF.
@@ -912,9 +954,9 @@ pp3_2 = do
     -- need to correct the header offsets
     sub' k0 (header `offAddr` 13) deltaGamma
     -- Δ(P/d) = (P/ya)₀ - (P/ya)ₑ old
-    sub' (var "const_03EE") (var "const_033B") deltaRPD
-    -- ΔК = Кg - Кo
-    sub' c0 k0 deltaK
+    sub' m0final (var "const_033B") deltaRPD
+    -- ΔК = Кf - Кo (strange...)
+    sub' c0final k0 deltaK
     -- inlined end to op 21
     -- header values are off!
     tN' (header `offAddr` 5) (var "const_03E7")
