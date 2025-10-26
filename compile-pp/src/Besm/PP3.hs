@@ -892,11 +892,10 @@ pp3_2 = do
     chain (op 19)
 
   {-
-    Op. 19 compares R_f* with 03FFF
+    Op. 19 compares R_f* with 03FF
   -}
   operator 19 $ do
-    -- (P/d)к ≥ 03F0 NO - op 21
-    comp (var "const_03EF") (var "const_0338") (op 21) (op 20)
+    comp (var "const_0338") (var "const_03EF") (op 20) (op 21)
 
   {-
     Op. 20 is a check stop for R_f* > 03FF.
