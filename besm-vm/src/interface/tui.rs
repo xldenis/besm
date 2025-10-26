@@ -1,9 +1,8 @@
-use log::{info, warn};
 use ratatui::{
     backend::*,
     buffer::Buffer,
     layout::{Alignment, Constraint::*, Direction::*, Layout, Rect},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Color, Modifier, Style, Styled as _, Stylize},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Cell, Paragraph, Table, Tabs, Widget, Wrap},
     Terminal,
@@ -142,7 +141,44 @@ fn build_instruction_cell(
     add_operand(&mut spans, new_b, old_b);
     add_operand(&mut spans, new_c, old_c);
 
-    // spans.push(Span::raw(" "));
+    Line::from(spans)
+}
+
+fn build_binary_cell(new_value: u64, old_value: u64, highlight_style: Style) -> Line<'static> {
+    let normal_style = Style::default();
+    let mut spans = Vec::new();
+
+    let new_opcode = new_value.get_bits(33..39);
+    let old_opcode = old_value.get_bits(33..39);
+
+    let new_a = new_value.get_bits(22..33);
+    let old_a = old_value.get_bits(22..33);
+
+    let new_b = new_value.get_bits(11..22);
+    let old_b = old_value.get_bits(11..22);
+
+    let new_c = new_value.get_bits(0..11);
+    let old_c = old_value.get_bits(0..11);
+
+    spans.push(Span::styled(
+        format!("{:06b}", new_opcode),
+        if new_opcode != old_opcode { highlight_style } else { normal_style },
+    ));
+
+    spans.push(Span::styled(
+        format!("{:011b}", new_a),
+        if new_a != old_a { highlight_style } else { normal_style },
+    ));
+
+    spans.push(Span::styled(
+        format!("{:011b}", new_b),
+        if new_b != old_b { highlight_style } else { normal_style },
+    ));
+
+    spans.push(Span::styled(
+        format!("{:011b}", new_c),
+        if new_c != old_c { highlight_style } else { normal_style },
+    ));
 
     Line::from(spans)
 }
@@ -178,13 +214,6 @@ fn render_memory_panel(t: &mut Buffer, app: &Interface, vm: &VM, rect: Rect) {
 
         let (instr_cell, float, hex, bits) = if let Some((age, old_value)) = write_info {
             let color = match age {
-                0 => Color::Indexed(196), // Bright red
-                1 => Color::Indexed(203), // Red-orange
-                2 => Color::Indexed(210), // Pink
-                3 => Color::Indexed(217), // Light pink
-                _ => Color::Reset,        // Default
-            };
-            let color = match age {
                 0 => Color::Rgb(255, 0, 0),     // Bright red
                 1 => Color::Rgb(255, 100, 100), // Medium red
                 2 => Color::Rgb(255, 150, 150), // Light red/pink
@@ -194,19 +223,22 @@ fn render_memory_panel(t: &mut Buffer, app: &Interface, vm: &VM, rect: Rect) {
 
             let style = row_style.fg(color).bold();
 
-            let instr_cell =
-                match (Instruction::from_bytes(instr), Instruction::from_bytes(old_value).ok()) {
-                    (Ok(new_instr), old_instr) => {
-                        build_instruction_cell(&new_instr, old_instr.as_ref(), style)
-                    }
-                    (Err(_), _) => Line::from("ERROR"),
-                };
+            let new_instr = Instruction::from_bytes(instr);
+            let is_instr = new_instr.is_ok();
+            let instr_cell = match (new_instr, Instruction::from_bytes(old_value).ok()) {
+                (Ok(new_instr), old_instr) => {
+                    build_instruction_cell(&new_instr, old_instr.as_ref(), style)
+                }
+                (Err(_), _) => Line::from("ERROR"),
+            };
 
+            let other_highlights = if is_instr { Style::default() } else { style };
+            let bits_cell = build_binary_cell(active_bits, old_value.get_bits(0..39), style);
             (
                 Cell::from(instr_cell),
-                Cell::from(format!("{}", float)),
-                Cell::from(format!("{:010x}", active_bits)),
-                Cell::from(format!("{:039b}", active_bits)),
+                Cell::from(format!("{}", float).set_style(other_highlights)),
+                Cell::from(format!("{:010x}", active_bits).set_style(other_highlights)),
+                Cell::from(bits_cell),
             )
         } else {
             let instr_cell = Line::from(
@@ -227,8 +259,7 @@ fn render_memory_panel(t: &mut Buffer, app: &Interface, vm: &VM, rect: Rect) {
     });
 
     Table::new(rows, [4, 20, 10, 10, 39])
-        // .header_style(Style::default().fg(Color::Yellow))
-        .header(Row::new(["Addr", "Instruction", "Number", "Hex", "Raw"]))
+        .header(Row::new(["Addr", "Instruction", "Number", "Hex", "Raw"]).fg(Color::Yellow))
         .column_spacing(2)
         .block(Block::default().title(tabs.titles[tabs.selection]).borders(Borders::ALL))
         .render(rect, t)
