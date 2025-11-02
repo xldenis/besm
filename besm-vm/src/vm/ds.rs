@@ -188,7 +188,7 @@ pub static DS: [u64; 384] =
         0x0000000000000800, // Address besm: 10B8 dec: 1208 value: 1 in second addr
         0x0000000000000001, // Address besm: 10B9 dec: 1209 value: 1 in third addr
         0x0000000000000000,
-        0x0000000000000000,
+        0x0000005800400001, // Address besm: 10BB dec: 1211 value: 1 in first and third addresses with a tn' opcode
         0x0000000000000000,
         0x0000000000000000,
         0x0000000000000000,
