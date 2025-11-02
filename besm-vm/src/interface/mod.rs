@@ -4,8 +4,8 @@ pub mod tui;
 use crate::interface::input::*;
 pub use crate::interface::tui::*;
 
-use crate::vm::{instruction::Instruction, VM};
-use ::ratatui::{layout::Rect, Terminal};
+use crate::vm::{VM, instruction::Instruction};
+use ::ratatui::{Terminal, layout::Rect};
 use arraydeque::{behavior::Wrapping, *};
 use log::error;
 use ratatui::layout::Size;
@@ -170,6 +170,7 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
         Err(e) => {
             error!("{:?}", e);
             vm.stopped = true; // vm should handle this internally
+            app.pause();
             return;
         }
     };

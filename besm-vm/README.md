@@ -17,7 +17,7 @@ The VM expects as input the binary representation of each input file. The `pp-be
 To actually run the compiler use the following command:
 
 ```
-cargo run --release -- run --bootloader=boot.txt --md0=mp1.txt --md4=mp2.txt --start-address=1025 --md2=test_progs/variable_address.txt
+cargo run --release -- run --bootloader=boot.txt --md0=mp1.txt --md4=mp2.txt --md3=mp3.txt --start-address=1025 --md2=test_progs/variable_address.txt
 ```
 
 ### Implemented instructions:

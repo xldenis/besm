@@ -1016,13 +1016,17 @@ pp3_3 = do
   deltaR <- global "deltaR" Cell
   deltaC <- global "deltaC" Cell
 
+  toProg <- local "trans_template" (Template $ TN (var "B") (Absolute 1) UnNormalized)
+  fromProg <- local "sel_template" (Template $ TN (Absolute 1) (var "A") UnNormalized)
+
   {-
   Op. 1 sets K_0 in counter K, in which will be stored the addres of the current instruction selected from the programme during functioning of the block.
   -}
   operator 1 $ do
     tN' k0 counterK
-    -- todo: init op 2
-    -- todo: init "send to program op"
+    shift' k0 (left 22) cellA
+    ai fromProg cellA (op 2)
+    ai toProg k0 (op 17)
     chain (op 2)
 
   {-
@@ -1168,6 +1172,10 @@ pp3_3 = do
   -}
   operator 19 $ do
     tN' k0 counterK
+    shift' gamma0 (left 22) cellA --- 000D
+    ai fromProg cellA (op 20)
+    -- ai toProg gamma0 (op 17)
+
     -- todo: init some empty cells (op 20) and wherever the return op is
     chain (op 20)
 
@@ -1199,6 +1207,7 @@ pp3_3 = do
     pure ()
 
   {-
+  -- this is all very suspicious seems to be op 36 in the source but does very different things
   Op. 23 forms and carries out the instruction
     -- todo: probably a typo should be tn
     ┌────┬──────┬─────┬──────┐
@@ -1420,8 +1429,8 @@ pp3_4 = do
 
   let k0 = header `offAddr` 4
 
-  let binaryConvertSub_1120 = Absolute 0x1120
-  let decimalConvertSub_10a2 = Absolute 0x10a2
+  let binaryConvertSub_1120 = Absolute $ unsafeFromBesmAddress "1120"
+  let decimalConvertSub_10a2 = Absolute $ unsafeFromBesmAddress "10A2"
 
   const_035d <- local "const_035d" (Raw 0x0) -- 2^1,11111111
   const_035e <- local "const_035e" (Raw 0x0) -- 2^8,88888888
@@ -1732,7 +1741,8 @@ pp3_4 = do
     ai maAddr cell_0001 maAddr
     shift (var "const_03ea") (left 11) cell_0001
     ai mbAddr cell_0001 mbAddr 
-    maAddr <- ma zero zero zero
+
+    maAddr <- ma (Absolute 0x0301) zero (Absolute 0x10)
     mbAddr <- mb zero 
     tN' checksum cell_03f1 
     clcc decimalConvertSub_10a2
