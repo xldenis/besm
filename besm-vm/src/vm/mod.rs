@@ -331,7 +331,7 @@ impl<'a> VM<'a> {
             TExp { a: source, c: target, normalize: needs_norm } => {
                 let val = Float::from_bytes(self.memory.get(source)?);
 
-                warn!("Transferring exponent from {:?}", val);
+                warn!("Transferring exponent {} from {}", val.exp, val);
 
                 let mut res = if needs_norm {
                     Float::from_int(val.exp as u32)

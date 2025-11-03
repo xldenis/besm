@@ -99,6 +99,9 @@ fn render_main_panel(t: &mut Buffer, app: &Interface, vm: &VM, rect: Rect) {
         .split(chunks[1]);
 
     TuiLoggerWidget::default()
+        .output_file(false)
+        .output_line(false)
+        .output_target(false)
         .block(Block::default().title("Log").borders(Borders::ALL))
         .render(inner_chunks[0], t);
 
