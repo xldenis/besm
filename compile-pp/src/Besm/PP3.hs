@@ -459,7 +459,8 @@ pp3_1 = do
 
   -}
   operator 33 $ do
-    sub' (var "trueAddresses") one counterKlast
+    -- unclear why we should decrement here.
+    -- sub' (var "trueAddresses") one counterKlast
     cccc (Procedure "MP-3" (op 2)) 
 
   {-
@@ -650,7 +651,7 @@ pp3_2 = do
 
 
   p0 <- local "P0" Cell          -- 0008
-  -- c0 <- local "C0" Cell          -- 03EA (also Ko)
+  -- c0 <- local "C0" Cell       -- 03EA (also Ko)
 
   -- hrrmmm 
   m1 <- local "M1" Cell          -- M^(1)
@@ -683,15 +684,15 @@ pp3_2 = do
   -- | 000F | Address of first cell in block beta minus 1  |
   -- +------+----------------------------------------------+
 
-  local "final-header" (Size 9)
+  global "final-header" (Size 9)
 
-  let c0final = var "final-header"
-  let k0final = var "final-header" `offAddr` 1 -- 03EB (also T0)
-  let gamma0final = var "final-header" `offAddr` 2 -- 03EC (also F0)
-  let o0final = var "final-header" `offAddr` 3 -- 03ED (also M0)
-  let m0final = var "final-header" `offAddr` 4 -- 03EE
-  let r0final = var "final-header" `offAddr` 5
-  let rffinal = var "final-header" `offAddr` 6
+  let c0final = var "final-header"             -- 03E9
+  let k0final = var "final-header" `offAddr` 1 -- 03EA (also T0)
+  let gamma0final = var "final-header" `offAddr` 2 -- 03EB (also F0)
+  let o0final = var "final-header" `offAddr` 3 -- 03EC (also M0)
+  let m0final = var "final-header" `offAddr` 4 -- 03ED
+  let r0final = var "final-header" `offAddr` 5 -- 03EE
+  let rffinal = var "final-header" `offAddr` 6 -- 03EF
 
   local "const_0337" (Raw 0x0337)  -- Value 31 for comparison (2^5,F8)
   local "0x3FF" (Raw 0x03FF)  -- Value 03F0 for comparison
@@ -723,7 +724,6 @@ pp3_2 = do
   -}
   let c1 = header `offAddr` 2 -- 0009
   let vf = header `offAddr` 1 -- 0008
-
   let cf = header `offAddr` 3 -- 000a
   let k0 = header `offAddr` 4
   let kf = header `offAddr` 5 
@@ -1427,7 +1427,6 @@ pp3_4 = do
   extern "programme header table"
   extern "programme"
 
-  let k0 = header `offAddr` 4
 
   let binaryConvertSub_1120 = Absolute $ unsafeFromBesmAddress "1120"
   let decimalConvertSub_10a2 = Absolute $ unsafeFromBesmAddress "10A2"
@@ -1450,11 +1449,12 @@ pp3_4 = do
   cell_0004 <- local "cell_0004" Cell
   cell_0002 <- local "cell_0002" Cell
 
+  let k0 = header `offAddr` 4
   let cell_000a = header `offAddr` 3 -- C_f
+  c0 <- local "c0" Cell -- C_0* 0x3e9
+  let gamma0 = header `offAddr` 7
   cell_0006 <- local "cell_0006" Cell -- possible something carried over from PP-2?
 
-  let gamma0 = header `offAddr` 7
-  let c0 = var "C_0"
 
   const_0305 <- local "const_0305" (Raw 0x3)
 
@@ -1463,7 +1463,6 @@ pp3_4 = do
 
   let pBar = var "pBar"
 
-  c0 <- local "c0" Cell -- 0x3e9
 
   local "0304" (Raw 4)
 
@@ -1471,10 +1470,16 @@ pp3_4 = do
 
   global "pBar" Cell
 
+  extern "final-header" -- starts at 03EA
+
+  let c0final = var "final-header"             -- 03E9
+  let k0final = var "final-header" `offAddr` 1 -- 03EA (also T0)
+  let gamma0final = var "final-header" `offAddr` 2 -- 03EB (also F0)
+  let o0final = var "final-header" `offAddr` 3 -- 03EC (also M0)
+  let m0final = var "final-header" `offAddr` 4 -- 03ED
+  let r0final = var "final-header" `offAddr` 5 -- 03EE
+  let rffinal = var "final-header" `offAddr` 6 -- 03EF
   -- this makes no sense?
-  local "const_03ea" Cell -- filled in by II-PP-3
-  local "const_03eb" Cell -- filled in by II-PP-3
-  local "const_03ec" Cell -- filled in by II-PP-3
 
   local "const_03d2" (Template $ TN (Absolute 0b1_11_1111_1111) (var "cell_03f1") UnNormalized)
   {-
@@ -1616,16 +1621,16 @@ pp3_4 = do
     comp transferCounter cell_0006 (op 13) (op 18)
 
   {-
-  Op. 18 writes blocks K and gamma on MD-1 in cells K_1* -K_f* and gamma _1* - gamma_f * respectively and reads block C from MD-2 into IS.
+  Op. 18 writes blocks K and gamma on MD-1 in cells K_1* -K_f* and gamma_1* - gamma_f * respectively and reads block C from MD-2 into IS.
   -}
   operator 18 $ mdo
     -- Write K to MD-1
     ai k0 one cell_0001
-    ai (var "const_03ea") one cell_0002
+    ai k0final one cell_0002
     shift cell_0002 (left 11) cell_0002
     ai cell_0001 cell_0002 cell_0001
     ai maAddr cell_0001 maAddr
-    shift (header `offAddr` 12) (left 11) cell_0001
+    shift gamma0final (left 11) cell_0001 -- sus: this should be K_f*?
     ai mbAddr cell_0001 mbAddr
     -- todo investigate this absolute
     maAddr <- ma (Absolute 0x0301) zero zero
@@ -1633,11 +1638,11 @@ pp3_4 = do
 
     -- Write gamma to MD-1
     ai gamma0 one cell_0001
-    ai (var "const_03eb") one cell_0002
+    ai gamma0final one cell_0002 -- sus feels like this should be gamma0 final??
     shift cell_0002 (left 11) cell_0002
     ai cell_0001 cell_0002 cell_0001
     ai ma2 cell_0001 ma2
-    shift (var "const_03ec") (left 11) cell_0001
+    shift o0final (left 11) cell_0001
     ai mb2 cell_0001 mb2
     ma2 <- ma (Absolute 0x0301) zero zero
     mb2 <- mb zero
@@ -1739,7 +1744,7 @@ pp3_4 = do
     shift cell_0001 (left 11) cell_0001
     -- Write C to MD-1 (addresses uncertain)
     ai maAddr cell_0001 maAddr
-    shift (var "const_03ea") (left 11) cell_0001
+    shift c0final (left 11) cell_0001
     ai mbAddr cell_0001 mbAddr 
 
     maAddr <- ma (Absolute 0x0301) zero (Absolute 0x10)
