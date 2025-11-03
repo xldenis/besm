@@ -287,7 +287,7 @@ fn render_status_line(t: &mut Buffer, app: &Interface, active_ic: &ActiveIC, rec
     let chunks = Layout::default()
         .margin(1)
         .direction(Horizontal)
-        .constraints(vec![Length(6), Length(8), Min(0), Length(11)])
+        .constraints(vec![Length(6), Length(8), Min(0), Length(15)])
         .split(rect);
 
     let (style, text) = match &app.step_mode {
@@ -326,6 +326,14 @@ fn render_status_line(t: &mut Buffer, app: &Interface, active_ic: &ActiveIC, rec
     if let Some(b) = app.mem_breakpoint {
         Paragraph::new(Text::styled(format!("MEM {:04} ", b), Style::default().fg(Color::Yellow)))
             .render(chunks[3], t);
+    }
+
+    if let Some(op_bp) = app.op_breakpoint {
+        Paragraph::new(Text::styled(
+            format!("OP {}-{}-{} ", op_bp.pass, op_bp.procedure, op_bp.operator),
+            Style::default().fg(Color::Yellow),
+        ))
+        .render(chunks[3], t);
     }
 }
 

@@ -15,6 +15,33 @@ use std::{collections::HashMap, sync::mpsc::*};
 
 const WRITE_DECAY_STEPS: u32 = 5;
 
+// Operator breakpoint: (pass, procedure, operator)
+#[derive(Debug, Clone, Copy)]
+pub struct OpBreakpoint {
+    pub pass: u16,
+    pub procedure: u16,
+    pub operator: u16,
+}
+
+// Operator metadata extracted from instruction
+#[derive(Debug, Clone, Copy)]
+pub struct OpMetadata {
+    pub pass: u16,
+    pub procedure: u16,
+    pub operator: u16,
+}
+
+/// Extract operator metadata (pass, subprogram, operator) from an instruction word
+fn extract_op_metadata(instr_word: u64) -> OpMetadata {
+    use bit_field::BitField;
+    let op_metadata = instr_word.get_bits(48..64);
+    OpMetadata {
+        pass: op_metadata.get_bits(14..16) as u16,
+        procedure: op_metadata.get_bits(10..14) as u16,
+        operator: op_metadata.get_bits(0..10) as u16,
+    }
+}
+
 // This should be split into two structures, so that input can fully happen in a separate thread.
 pub struct Interface {
     pub size: Size,
@@ -26,6 +53,7 @@ pub struct Interface {
     pub printer_output: Vec<String>,
     exiting: bool,
     mem_breakpoint: Option<u16>,
+    op_breakpoint: Option<OpBreakpoint>,
 }
 
 impl Interface {
@@ -40,6 +68,7 @@ impl Interface {
             printer_output: Vec::new(),
             exiting: false,
             mem_breakpoint: None,
+            op_breakpoint: None,
         }
     }
 
@@ -142,6 +171,13 @@ impl Interface {
                     self.mem_breakpoint = Some(off as u16);
                 }
             }
+            OpCommand(pass, procedure, operator) => {
+                if pass == 0 && procedure == 0 && operator == 0 {
+                    self.op_breakpoint = None;
+                } else {
+                    self.op_breakpoint = Some(OpBreakpoint { pass, procedure, operator });
+                }
+            }
             Tick if self.step_mode == Run => {
                 step_vm(vm, self);
             }
@@ -165,6 +201,19 @@ impl Interface {
 }
 
 fn step_vm(vm: &mut VM, app: &mut Interface) {
+    // Check operator breakpoint before stepping
+    if let Some(op_bp) = app.op_breakpoint {
+        if let Ok(instr_word) = vm.memory.get(vm.next_instr()) {
+            let metadata = extract_op_metadata(instr_word);
+
+            if metadata.pass == op_bp.pass && metadata.procedure == op_bp.procedure && metadata.operator == op_bp.operator {
+                log::info!("Operator breakpoint triggered - Pass: {}, Subprogram: {}, Operator: {}",
+                          metadata.pass, metadata.procedure, metadata.operator);
+                app.pause();
+            }
+        }
+    }
+
     let step_result = match vm.step() {
         Ok(res) => res,
         Err(e) => {
@@ -197,12 +246,22 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
         if let Some(out) = step_result.write
             && out.address == b
         {
+            if let Ok(instr_word) = vm.memory.get(vm.next_instr()) {
+                let metadata = extract_op_metadata(instr_word);
+                log::info!("Memory write breakpoint triggered at address {} - Pass: {}, Subprogram: {}, Operator: {}",
+                          b, metadata.pass, metadata.procedure, metadata.operator);
+            }
             app.pause();
         }
     }
 
     if let Some(b) = app.breakpoint {
         if b == vm.next_instr() {
+            if let Ok(instr_word) = vm.memory.get(vm.next_instr()) {
+                let metadata = extract_op_metadata(instr_word);
+                log::info!("Instruction breakpoint triggered at address {} - Pass: {}, Subprogram: {}, Operator: {}",
+                          b, metadata.pass, metadata.procedure, metadata.operator);
+            }
             app.pause();
         }
     }
