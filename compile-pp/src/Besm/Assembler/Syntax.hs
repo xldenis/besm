@@ -183,6 +183,7 @@ blockLen bb = length (instrs bb) + termLen (terminator bb)
   termLen (RetRTC _) = 2
   termLen (Chain _) = 0
   termLen JCC = 1
+  termLen (JCCChain _) = 1
   termLen _ = 1
 
 {- |
@@ -264,6 +265,8 @@ data Term a
   | SwitchStop
   | -- | Return to global control counter (from local control counter)
     JCC
+  | -- | JCC that must be followed by a specific address
+    JCCChain a
   | -- |  meta-linguistic, will be eliminated entirely before codegen.
     Chain a
   | -- | Insert the return-to-control instructions
@@ -317,5 +320,6 @@ termToCell (CCCCSnd b c) = pure $ buildInstruction (bitVector 0x01B) (bitVector 
 termToCell Stop = pure $ buildInstruction (bitVector 0x01F) (bitVector 0) (bitVector 0) (bitVector 0)
 termToCell SwitchStop = pure $ buildInstruction (bitVector 0x01C) (bitVector 0) (bitVector 0) (bitVector 0)
 termToCell JCC = pure $ buildInstruction (bitVector 0x019) (bitVector 0) (bitVector 0) (bitVector 0)
+termToCell (JCCChain _) = pure $ buildInstruction (bitVector 0x019) (bitVector 0) (bitVector 0) (bitVector 0)
 termToCell (RetRTC a) = [instToCell (AI 0b10100001111 (a + 1) (a + 1)), bitVector 0]
 termToCell (Chain _) = []

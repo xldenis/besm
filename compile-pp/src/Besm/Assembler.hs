@@ -763,5 +763,6 @@ implicitJumps (CCCCSnd _ _) = Nothing
 implicitJumps Stop = Nothing
 implicitJumps SwitchStop = Nothing
 implicitJumps JCC = Nothing
+implicitJumps (JCCChain a) = Just a
 implicitJumps (Chain a) = Just a
 implicitJumps (RetRTC _) = Nothing

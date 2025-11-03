@@ -602,8 +602,7 @@ pp3_1 = do
     -- do we need to do anything here?
     -- maybe the delta logic used in op 40 i actually incorrect?
     tN' cellB cellA
-    jcc
-    chain (op 46)
+    jccChain (op 46)
   {-
 
   Op. 46 is the sub-routine for selecting instructions from block K.
@@ -725,10 +724,19 @@ pp3_2 = do
   let c1 = header `offAddr` 2 -- 0009
   let vf = header `offAddr` 1 -- 0008
   let cf = header `offAddr` 3 -- 000a
-  let k0 = header `offAddr` 4
-  let kf = header `offAddr` 5 
+  let k0 = header `offAddr` 4 -- 000b
+  let kf = header `offAddr` 5 -- 000c
   let gamma0 = header `offAddr` 6
   let oBar = header
+
+  {-
+    Final layout:
+    - Block P
+    - Block C (starts at 0x10)
+    - Block K
+    - Block Gamma
+    - ....
+  -}
 
   -- local "0006" Cell -- todo: figure out who sets this! 
   operator 1 $ do
@@ -742,7 +750,7 @@ pp3_2 = do
     sub' cf vf k0final
 
     -- (C+P) -P = C
-    sub' c0final pBar cBar
+    sub' k0final pBar cBar
     -- K = Kₓ - K₀
     sub' kf k0 kBar
     -- γbar
@@ -751,13 +759,13 @@ pp3_2 = do
     -- 0 constant
     tN' oBar o
     -- (P+C) + K = Kₓ =Gamma₀*
-    ai c0final kBar gamma0final
+    add' k0final kBar gamma0final
     -- (P+C + K) + Gamma = Gammaₓ = 0₀
-    ai k0 gammaBar o0final
+    add' gamma0final gammaBar o0final
     -- (P+C+K+F) +0 = 0ₓ = M₀
-    ai gamma0final o m0final
+    add' o0final o m0final
     -- M₀+1 = M₁ = M⁽¹⁾
-    ai m0final one m1
+    add' m0final one m1
     chain (op 2)
 
   {-

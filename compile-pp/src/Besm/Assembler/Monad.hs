@@ -297,6 +297,10 @@ clcc addr = emitInstr $ CLCC addr
 jcc :: Builder Address
 jcc = emitTerm JCC
 
+-- | Jump to Control with Chain. Like jcc, but guarantees the target address follows immediately.
+jccChain :: Address -> Builder Address
+jccChain addr = emitTerm $ JCCChain addr
+
 {- |
   @chain@ is not an actual instruction. It is a meta-linguistic addition that is
   used to indicate that one block should flow into another. If those two blocks can be

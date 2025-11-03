@@ -228,8 +228,7 @@ arithCoder = do
       chain joinP
 
     joinP <- block $ do
-      jcc
-      chain (op 8)
+      jccChain (op 8)
 
     return ()
 
@@ -427,6 +426,8 @@ arithCoder = do
   Op. 30 shifts the code of the symbol in the first address of cell D for the
   subsequent transfer to the partial programme.
 
+  -- sus: should this be a clcc op 69?
+  -- the book clearly shows this as being ordinary control flow not a clcc though.
   -}
 
   operator 30 $ do
@@ -934,8 +935,8 @@ arithCoder = do
 
     stop <- block checkStop
 
-    jcc' <- block jcc
-
+    jcc' <- jccChain goTo2
+    goTo2 <- cccc (op 2)
     return ()
   {-
   Op 71. is the first-sub-routine of selection from the partial programme,
@@ -954,7 +955,7 @@ arithCoder = do
 
   {-
   Op 72. is the second sub-routine of selection from the partial programme,
-  transferring to cell D the contents of the next cell of the partial programme
+  transferring to cell D the contents of the next cell of the partifal programme
   and adding 1 to the counter B_3.
   -}
   operator 72 $ mdo
@@ -1386,8 +1387,7 @@ arithCoder = do
 
     transferI <- empty
 
-    jcc
-    chain (op 110)
+    jccChain (op 110)
 
   {-
   Op. 110 stores the transferred instruction in the standard cell. This operator
