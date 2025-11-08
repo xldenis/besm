@@ -29,8 +29,8 @@
 950 proc. "PP-1-2" blk. op. 114 + 3
 952 proc. "PP-1-2" blk. op. 120 + 2
 824 proc. "PP-1-2" blk. blk. blk. op. 70 + 2
-1023 proc. "PP-1-3" op. 18 + 7
-1014 proc. "PP-1-3" op. 22 + 3
+1017 proc. "PP-1-3" op. 18 + 7
+1023 proc. "PP-1-3" op. 22 + 3
 280 uk. &completedOperator
 710 uk. &partial-programme
 711 uk. ,< 0001 builder 112
@@ -342,14 +342,14 @@
 1002 proc. "PP-1-3" op. 15
 1003 proc. "PP-1-3" op. 16
 1008 proc. "PP-1-3" op. 17
-1017 proc. "PP-1-3" op. 18
-1009 proc. "PP-1-3" op. 19
-1011 proc. "PP-1-3" op. 20
-1012 proc. "PP-1-3" op. 21
-1013 proc. "PP-1-3" op. 22
+1011 proc. "PP-1-3" op. 18
+1018 proc. "PP-1-3" op. 19
+1020 proc. "PP-1-3" op. 20
+1021 proc. "PP-1-3" op. 21
+1022 proc. "PP-1-3" op. 22
 985 proc. "PP-1-3" blk. op. 5
 993 proc. "PP-1-3" blk. op. 10
-1015 proc. "PP-1-3" blk. op. 17
+1009 proc. "PP-1-3" blk. op. 17
 595 rtc. proc. "MP-1" op. 20
 607 rtc. proc. "MP-1" op. 23
 686 rtc. proc. "PP-1-1" op. 45

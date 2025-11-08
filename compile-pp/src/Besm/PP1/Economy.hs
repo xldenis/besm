@@ -235,13 +235,14 @@ pp1_3 = do
   -}
 
   let recallArg = Unknown "recall-arg"
-  operator 17 $ do
-    jcc
+  operator 17 $ mdo
+    jccChain cont
 
-    shift cellS (left 11) recallArg
-    clcc (op 9)
-
-    chain (op 18)
+    cont <- block $ do
+      shift cellS (left 11) recallArg
+      clcc (op 9)
+      chain (op 18)
+    pure ()
   {-
   Op. 18 placed the contents of the third address of cell S in the first addresss
   of the instruction under investigation, sends the investigated instruction
