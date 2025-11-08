@@ -185,6 +185,8 @@ impl<'a> VM<'a> {
                     val.normalize()
                 };
 
+                info!("{lfloat} + {rfloat} = {val}");
+
                 let new_value = val.to_bytes();
                 let old_value = self.memory.set(res, new_value)?;
                 memory_write = Some(MemoryWrite { address: res, old_value, new_value });

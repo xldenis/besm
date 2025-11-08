@@ -45,6 +45,15 @@ pub struct Opts {
     pub md3_out: Option<PathBuf>,
     #[arg(long = "md4-out")]
     pub md4_out: Option<PathBuf>,
+
+    #[arg(short = 'b', long = "breakpoint", help = "Set instruction address breakpoint")]
+    pub breakpoint: Option<u16>,
+
+    #[arg(long = "mem-breakpoint", help = "Set memory write breakpoint at address")]
+    pub mem_breakpoint: Option<u16>,
+
+    #[arg(long = "op-breakpoint", value_parser = parse_op_breakpoint, value_name = "PASS:PROCEDURE:OPERATOR", help = "Set operator breakpoint (format: PASS:PROCEDURE:OPERATOR)")]
+    pub op_breakpoint: Option<(u16, u16, u16)>,
 }
 
 use crate::vm::mag::MagDrive;
@@ -125,4 +134,20 @@ pub fn read_file(path: &Path) -> Box<dyn Iterator<Item = u64>> {
             panic!("unsupported is file type.");
         }
     }
+}
+
+fn parse_op_breakpoint(s: &str) -> Result<(u16, u16, u16), String> {
+    let parts: Vec<&str> = s.split(':').collect();
+    if parts.len() != 3 {
+        return Err(format!("Expected format PASS:PROCEDURE:OPERATOR, got '{}'", s));
+    }
+
+    let pass = parts[0].parse::<u16>()
+        .map_err(|_| format!("Invalid pass value: '{}'", parts[0]))?;
+    let procedure = parts[1].parse::<u16>()
+        .map_err(|_| format!("Invalid procedure value: '{}'", parts[1]))?;
+    let operator = parts[2].parse::<u16>()
+        .map_err(|_| format!("Invalid operator value: '{}'", parts[2]))?;
+
+    Ok((pass, procedure, operator))
 }

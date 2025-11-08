@@ -162,8 +162,8 @@ pp3_1 = do
   -}
   operator 1 $ do
     shift k0 (left 22) counterK
-    ai (Unknown "sel_template") counterK (op 46)  -- Form selection command
-    ai (Unknown "trans_template") finalK (op 47)  -- Form transmission command
+    ai selTemplate counterK (op 46)  -- Form selection command
+    ai transTemplate finalK (op 47)  -- Form transmission command
     tN' k0 counterK
     chain (op 2)
 

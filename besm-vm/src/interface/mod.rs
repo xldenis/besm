@@ -72,6 +72,25 @@ impl Interface {
         }
     }
 
+    pub fn with_breakpoints(
+        breakpoint: Option<u16>,
+        mem_breakpoint: Option<u16>,
+        op_breakpoint: Option<OpBreakpoint>,
+    ) -> Interface {
+        Interface {
+            size: Size::default(),
+            past_instrs: ArrayDeque::new(),
+            step_mode: StepMode::Step,
+            tabs: TabInfo::default(),
+            breakpoint,
+            recent_writes: HashMap::new(),
+            printer_output: Vec::new(),
+            exiting: false,
+            mem_breakpoint,
+            op_breakpoint,
+        }
+    }
+
     pub fn toggle_step(&mut self) {
         use StepMode::*;
         self.step_mode = match self.step_mode {
@@ -186,12 +205,14 @@ impl Interface {
                 step_vm(vm, self);
             }
             Key(Char('r')) => {
+                let old_mode = std::mem::replace(&mut self.step_mode, StepMode::Run);
                 for _ in 0..1000 {
                     step_vm(vm, self);
-                    if vm.stopped {
-                        break;
+                    if vm.stopped || self.step_mode == StepMode::Step {
+                        return true;
                     }
                 }
+                self.step_mode = old_mode;
             }
             _ => return false,
         }
@@ -206,9 +227,16 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
         if let Ok(instr_word) = vm.memory.get(vm.next_instr()) {
             let metadata = extract_op_metadata(instr_word);
 
-            if metadata.pass == op_bp.pass && metadata.procedure == op_bp.procedure && metadata.operator == op_bp.operator {
-                log::info!("Operator breakpoint triggered - Pass: {}, Subprogram: {}, Operator: {}",
-                          metadata.pass, metadata.procedure, metadata.operator);
+            if metadata.pass == op_bp.pass
+                && metadata.procedure == op_bp.procedure
+                && metadata.operator == op_bp.operator
+            {
+                log::info!(
+                    "Operator breakpoint triggered - Pass: {}, Subprogram: {}, Operator: {}",
+                    metadata.pass,
+                    metadata.procedure,
+                    metadata.operator
+                );
                 app.pause();
             }
         }
@@ -248,8 +276,13 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
         {
             if let Ok(instr_word) = vm.memory.get(vm.next_instr()) {
                 let metadata = extract_op_metadata(instr_word);
-                log::info!("Memory write breakpoint triggered at address {} - Pass: {}, Subprogram: {}, Operator: {}",
-                          b, metadata.pass, metadata.procedure, metadata.operator);
+                log::info!(
+                    "Memory write breakpoint triggered at address {} - Pass: {}, Subprogram: {}, Operator: {}",
+                    b,
+                    metadata.pass,
+                    metadata.procedure,
+                    metadata.operator
+                );
             }
             app.pause();
         }
@@ -259,8 +292,13 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
         if b == vm.next_instr() {
             if let Ok(instr_word) = vm.memory.get(vm.next_instr()) {
                 let metadata = extract_op_metadata(instr_word);
-                log::info!("Instruction breakpoint triggered at address {} - Pass: {}, Subprogram: {}, Operator: {}",
-                          b, metadata.pass, metadata.procedure, metadata.operator);
+                log::info!(
+                    "Instruction breakpoint triggered at address {} - Pass: {}, Subprogram: {}, Operator: {}",
+                    b,
+                    metadata.pass,
+                    metadata.procedure,
+                    metadata.operator
+                );
             }
             app.pause();
         }

@@ -1,6 +1,6 @@
 use crate::vm::*;
 use clap::Parser;
-use interface::Interface;
+use interface::{Interface, OpBreakpoint};
 
 use ratatui::backend::TermionBackend;
 use std::io;
@@ -13,21 +13,19 @@ mod interface;
 mod opt;
 mod vm;
 
-fn runner_from_command(command: Command) -> impl for<'a> FnOnce(&mut VM<'a>) -> () {
-    match command {
-        Command::Run => run_with_interface,
-        Command::Trace => trace_execution,
-    }
-}
-
-fn run_with_interface(vm: &mut VM) {
+fn run_with_interface(
+    vm: &mut VM,
+    breakpoint: Option<u16>,
+    mem_breakpoint: Option<u16>,
+    op_breakpoint: Option<OpBreakpoint>,
+) {
     let stdout = io::stdout().into_raw_mode().unwrap();
     let stdout = MouseTerminal::from(stdout);
     let stdout = AlternateScreen::from(stdout);
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend).unwrap();
 
-    let mut interface = Interface::default();
+    let mut interface = Interface::with_breakpoints(breakpoint, mem_breakpoint, op_breakpoint);
 
     interface.run(&mut terminal, vm);
 }
@@ -90,7 +88,17 @@ fn main() {
     let mut mem = Memory::new_with_bootloader(&mut is_buf, &bootloader);
     let mut vm = VM::new(&mut mem, &mut x, &mut y, opt.start_address as u16);
 
-    runner_from_command(opt.command)(&mut vm);
+    // Convert CLI op_breakpoint tuple to OpBreakpoint struct
+    let op_breakpoint = opt.op_breakpoint.map(|(pass, procedure, operator)| OpBreakpoint {
+        pass,
+        procedure,
+        operator,
+    });
+
+    match opt.command {
+        Command::Run => run_with_interface(&mut vm, opt.breakpoint, opt.mem_breakpoint, op_breakpoint),
+        Command::Trace => trace_execution(&mut vm),
+    }
 
     file_from_md(opt.md0_out, vm.mag_system.mag_drives[0]);
     file_from_md(opt.md1_out, vm.mag_system.mag_drives[1]);

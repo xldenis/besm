@@ -280,7 +280,7 @@ asmToCell (BB is tm adx) =
   map (instToCell . fmap fromIntegral) is ++ termToCell (fmap fromIntegral tm)
 
 instToCell :: Instr Integer -> BV 39
-instToCell (Add a b c n) = buildInstruction (bitVector 0x001) (bitVector a) (bitVector b) (bitVector c)
+instToCell (Add a b c n) = buildInstruction (bitVector $ normToBit n .|. 0x001) (bitVector a) (bitVector b) (bitVector c)
 instToCell (Sub a b c n) = buildInstruction (bitVector $ normToBit n .|. 0x002) (bitVector a) (bitVector b) (bitVector c)
 instToCell (Mult a b c n) = buildInstruction (bitVector $ normToBit n .|. 0x003) (bitVector a) (bitVector b) (bitVector c)
 instToCell (Div a b c n) = buildInstruction (bitVector $ normToBit n .|. 0x004) (bitVector a) (bitVector b) (bitVector c)
