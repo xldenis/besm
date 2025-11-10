@@ -644,9 +644,9 @@ pp3_2 = do
 
   -- Constants
   pBar <- global "Pbar" Cell      -- 03E1
-  cBar <- local "Cbar" Cell       -- 03E2
-  kBar <- local "Kbar" Cell       -- 03E3
-  gammaBar <- local "gammaBar" Cell  -- 03E4
+  cBar <- global "Cbar" Cell       -- 03E2
+  kBar <- global "Kbar" Cell       -- 03E3
+  gammaBar <- global "gammaBar" Cell  -- 03E4
 
 
   p0 <- local "P0" Cell          -- 0008
@@ -964,7 +964,7 @@ pp3_2 = do
     -- Δ(P/d) = (P/ya)₀ - (P/ya)ₑ old
     sub' m0final (var "const_033B") deltaRPD
     -- ΔК = Кf - Кo (strange...)
-    sub' c0final k0 deltaK
+    sub' k0final k0 deltaK
     -- inlined end to op 21
     -- header values are off!
     tN' (header `offAddr` 5) (var "const_03E7")
@@ -1446,7 +1446,6 @@ pp3_4 = do
   cell_03f1 <- local "cell_03f1" Cell
   cell_03f2 <- local "cell_03f2" Cell  
   cell_0001 <- local "cell_0001" Cell
-  let const_03d2 = var "const_03d2"
 
   let addr_0344 = var "addr_0344"
 
@@ -1459,24 +1458,25 @@ pp3_4 = do
 
   let k0 = header `offAddr` 4
   let cell_000a = header `offAddr` 3 -- C_f
-  c0 <- local "c0" Cell -- C_0* 0x3e9
   let gamma0 = header `offAddr` 7
+
+  c0 <- local "c0" Cell -- C_0* 0x3e9
+
   cell_0006 <- local "cell_0006" Cell -- possible something carried over from PP-2?
 
-
   const_0305 <- local "const_0305" (Raw 0x3)
-
   const_03ff <- local "const_03ff" Cell -- appears to have 0xb <- 22??
-
-
-  let pBar = var "pBar"
-
 
   local "0304" (Raw 4)
 
-  p0 <- local "P0" Cell          -- 0x3D8
+  -- todo: where is this written
+  p0 <- local "P0" Cell          -- 0x3E8
 
-  global "pBar" Cell
+  pBar <- extern "Pbar"  -- 03E1
+  cBar <- extern "Cbar"  -- 03E2
+
+
+  let kf = header `offAddr` 5 -- 000c
 
   extern "final-header" -- starts at 03EA
 
@@ -1487,9 +1487,7 @@ pp3_4 = do
   let m0final = var "final-header" `offAddr` 4 -- 03ED
   let r0final = var "final-header" `offAddr` 5 -- 03EE
   let rffinal = var "final-header" `offAddr` 6 -- 03EF
-  -- this makes no sense?
 
-  local "const_03d2" (Template $ TN (Absolute 0b1_11_1111_1111) (var "cell_03f1") UnNormalized)
   {-
   Op. 1 carries out the prepatory instructions.
   -}
@@ -1501,7 +1499,7 @@ pp3_4 = do
 
 
   {-
-  Op. 2 prints a number, the index of hte i-th block and formas a line of information on this block.
+  Op. 2 prints a number, the index of the i-th block and forms a line of information on this block.
   -}
   operator 2 $ do
     pN' cell_0004
@@ -1582,7 +1580,7 @@ pp3_4 = do
   Op. 11 repeats operators 7-10 for all instructions of the programme.
   -}
   operator 11 $ do
-    comp transferCounter (header `offAddr` 12) (op 7) (op 12)
+    comp transferCounter kf (op 7) (op 12)
 
   {-
   Op. 12 carries out prepatory instructions connected with summation and printing the constnats from block gamma.
@@ -1609,7 +1607,7 @@ pp3_4 = do
     comp const_0305 controlFlags (op 26) (op 15)
 
   {-
-  Op. 15 prints the constant sfrom block gamma.
+  Op. 15 prints the constants from block gamma.
   -}
   operator 15 $ do
     callRtc printSubroutine_03a4 printEntry_039c
@@ -1676,7 +1674,7 @@ pp3_4 = do
   -}
   operator 19 $ do
     tN' (var "programme") cell_03f1
-    ai' checksum cell_03f1 checksum
+    ai' checksum cell_03f1 checksum -- note: code uses same cell as P0 for checksum
     chain (op 20)
 
 
@@ -1723,7 +1721,7 @@ pp3_4 = do
   Op. 25 adds the binary constant to the check sum and sends it to block C.
   -}
   operator 25 $ do
-    add' checksum cell_03f1 checksum
+    add' checksum cell_03f1 checksum -- this appears to be redundant: should have been done by op 19
     tN' cell_03f2 (var "programme")
     chain (op 26)
     
@@ -1741,8 +1739,8 @@ pp3_4 = do
   {-
   Op. 27 repeats functioning of operators 19-26 for all constants of the block C.
   -}
-  operator 27 $ do
-    comp transferCounter const_03d2 (op 19) (op 28)
+  operator 27 $ do -- this seems totally wrong?
+    comp transferCounter cBar (op 19) (op 28)
 
   {-
   Op. 28 writes block C on Md-1 in cells C_1* - C_f* and prints the first check sum.
