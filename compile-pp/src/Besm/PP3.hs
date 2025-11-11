@@ -1750,10 +1750,10 @@ pp3_4 = do
     shift cell_0001 (left 11) cell_0001
     -- Write C to MD-1 (addresses uncertain)
     ai maAddr cell_0001 maAddr
-    shift c0final (left 11) cell_0001
+    shift k0final (left 11) cell_0001
     ai mbAddr cell_0001 mbAddr 
 
-    maAddr <- ma (Absolute 0x0301) zero (Absolute 0x10)
+    maAddr <- ma (Absolute 0x0301) zero (var "programme")
     mbAddr <- mb zero 
     tN' checksum cell_03f1 
     clcc decimalConvertSub_10a2
