@@ -1292,7 +1292,7 @@ pp3_3 = do
   operator 28 $ do
     -- if P_1 <= y <= C_f { op 37 } else { op 29 }
     -- todo: do I need to check for P_1 or is is it contiguous with V_f?
-    comp cellC cf (op 37) (op 29)
+    comp cf cellC (op 29) (op 37)
 
   {-
   Op. 29 refers to op. 38 if 01A0 <= y <= 01FF (y is the code of a quantity from block gamma).
@@ -1301,20 +1301,20 @@ pp3_3 = do
     -- TODO: this is what is failing
     -- todo: check this....
     -- if 0x1A0 <= y < 0x1FF { op 38 } else {op 30 }
-    comp cellC gammaFinal (op 38) (op 30)
+    comp gammaFinal cellC (op 30) (op 38)
 
   {-
   Op. 30 refers to op. 40 if 0200 <= y <= 03FF (y is the code of a postiive relative address).
   -}
   operator 30 $ do
     -- if 0x200 <= y < 0x3FF { op 38 } else {op 30 }
-    comp cellC (var "0x3ff") (op 40) (op 31)
+    comp (var "0x3ff") cellC (op 40) (op 31)
 
   {-
   Op. 31 calls up exit from the sub-routine if 1000 <= y <= 11EF (y is the address of a cell in DS).
   -}
   operator 31 $ mdo
-    comp cellC (var "0x11EF") exit (op 32)
+    comp (var "0x11EF") cellC (op 32) exit
     exit <- jcc
     pure ()
 
@@ -1323,7 +1323,7 @@ pp3_3 = do
   -}
   operator 32 $ do
     -- todo: do I actually need to do the last test?
-    comp cellC (var "0x11FF") (op 39) (op 41)
+    comp (var "0x11FF") cellC (op 41) (op 39)
 
   {-
   Operators 33- 36 obtain the initial value of the variable address Y according to the formula:
