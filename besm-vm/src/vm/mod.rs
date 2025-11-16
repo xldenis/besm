@@ -374,6 +374,25 @@ impl<'a> VM<'a> {
                 memory_write = Some(MemoryWrite { address: target, old_value, new_value });
                 self.increment_ic();
             }
+            TMin { a: source, c: target, normalize: needs_norm } => {
+                let mut val = Float::from_bytes(self.memory.get(source)?);
+
+                let new_value = if needs_norm {
+                    val.normalize();
+                    val.sign = !val.sign;
+                    val.to_bytes()
+                } else {
+                    val.to_bytes().wrapping_neg()
+                };
+
+                info!(
+                    "{}: tmin {source} {target} {needs_norm} {}",
+                    self.global_ic, new_value as i64
+                );
+                let old_value = self.memory.set(target, new_value)?;
+                memory_write = Some(MemoryWrite { address: target, old_value, new_value });
+                self.increment_ic();
+            }
             CCCC { b: cell, c: addr } => {
                 if cell != 0 {
                     let new_value = self.next_instr() as u64;
@@ -439,7 +458,6 @@ impl<'a> VM<'a> {
                 let left = Float::from_bytes(self.memory.get(a)?);
                 let right = Float::from_bytes(self.memory.get(b)?);
 
-                info!("CMP {:10.5} {:10.5}", left, right);
                 let branch = match left.exp.cmp(&right.exp) {
                     Ordering::Greater => left.sign,
                     Ordering::Less => !right.sign,
@@ -454,6 +472,11 @@ impl<'a> VM<'a> {
                     }
                 };
 
+                if left.to_float() < 0.0001 {
+                    info!("CMP' {} < {} = {}", left.mant, right.mant, branch);
+                } else {
+                    info!("CMP {:10.5} < {:10.5} = {}", left, right, branch);
+                }
                 if branch {
                     info!("Branching: {} -> {}", self.next_instr(), c);
                     self.set_ic(c);

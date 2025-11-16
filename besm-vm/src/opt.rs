@@ -142,12 +142,12 @@ fn parse_op_breakpoint(s: &str) -> Result<(u16, u16, u16), String> {
         return Err(format!("Expected format PASS:PROCEDURE:OPERATOR, got '{}'", s));
     }
 
-    let pass = parts[0].parse::<u16>()
-        .map_err(|_| format!("Invalid pass value: '{}'", parts[0]))?;
-    let procedure = parts[1].parse::<u16>()
-        .map_err(|_| format!("Invalid procedure value: '{}'", parts[1]))?;
-    let operator = parts[2].parse::<u16>()
-        .map_err(|_| format!("Invalid operator value: '{}'", parts[2]))?;
+    let pass =
+        parts[0].parse::<u16>().map_err(|_| format!("Invalid pass value: '{}'", parts[0]))?;
+    let procedure =
+        parts[1].parse::<u16>().map_err(|_| format!("Invalid procedure value: '{}'", parts[1]))?;
+    let operator =
+        parts[2].parse::<u16>().map_err(|_| format!("Invalid operator value: '{}'", parts[2]))?;
 
     Ok((pass, procedure, operator))
 }

@@ -261,7 +261,7 @@ data Term a
     CCCC a
   | -- | @CCCCSnd a b@ jumps to b, but writes the current instruction into a. Used for RTC.
     CCCCSnd a a
-  | Stop
+  | Stop a a a NormalizeResult
   | SwitchStop
   | -- | Return to global control counter (from local control counter)
     JCC
@@ -317,7 +317,7 @@ termToCell (CompWord a b c _) = pure $ buildInstruction (bitVector 0x034) (bitVe
 termToCell (CompMod a b c _) = pure $ buildInstruction (bitVector 0x015) (bitVector a) (bitVector b) (bitVector c)
 termToCell (CCCC c) = pure $ buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector 0) (bitVector c)
 termToCell (CCCCSnd b c) = pure $ buildInstruction (bitVector 0x01B) (bitVector 0) (bitVector b) (bitVector c)
-termToCell Stop = pure $ buildInstruction (bitVector 0x01F) (bitVector 0) (bitVector 0) (bitVector 0)
+termToCell (Stop a b c n)  = pure $ buildInstruction (bitVector $ normToBit n .|.0x01F) (bitVector a) (bitVector b) (bitVector c)
 termToCell SwitchStop = pure $ buildInstruction (bitVector 0x01C) (bitVector 0) (bitVector 0) (bitVector 0)
 termToCell JCC = pure $ buildInstruction (bitVector 0x019) (bitVector 0) (bitVector 0) (bitVector 0)
 termToCell (JCCChain _) = pure $ buildInstruction (bitVector 0x019) (bitVector 0) (bitVector 0) (bitVector 0)

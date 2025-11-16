@@ -775,7 +775,7 @@ pp3_2 = do
   -}
   operator 2 $ do
     -- ΔС = -Пₖ
-    tMod' vf deltaC
+    tMin' vf deltaC
     -- ΔС with order 31
     addE' deltaC (op 9) (var "const_0339")
     -- Loading fetch command from array П
@@ -851,14 +851,14 @@ pp3_2 = do
   -}
   operator 9 $ do
     -- Control stop
-    stop
+    rawStop zero zero (Absolute 0x13FF)
 
   {-
     Op. 10 obtains the true address M_l^i*, adding Δ C to the third address of the "main head".
   -}
   operator 10 $ do
     -- Decrease array start from constants by ΔС
-    add' cell_03F0 deltaC cell_03F0
+    add' cell_03F0 (var "const_0339") cell_03F0
     chain (op 11)
 
   {-
@@ -960,13 +960,13 @@ pp3_2 = do
   operator 21 $ do
     -- ΔГ = Г₀ - ɣ₀
     -- need to correct the header offsets
-    sub' k0 (header `offAddr` 13) deltaGamma
+    sub' k0 gamma0 deltaGamma
     -- Δ(P/d) = (P/ya)₀ - (P/ya)ₑ old
     sub' m0final (var "const_033B") deltaRPD
     -- ΔК = Кf - Кo (strange...)
     sub' k0final k0 deltaK
     -- inlined end to op 21
-    -- header values are off!
+    -- header value is off.. this should be 0005
     tN' (header `offAddr` 5) (var "const_03E7")
     -- Exit from program to MP-3
     cccc (Procedure "MP-3" (op 3))
@@ -986,7 +986,6 @@ pp3_3 = do
   extern "programme header table"
   -- extern "programme"
 
-  let k0 = header `offAddr` 4
 
   relocRes <- local "relocRes" Cell -- 03F2
   deltaK <- global "deltaK" Cell  -- 03F8
@@ -994,6 +993,9 @@ pp3_3 = do
 
   gammaFinal <- local "gammaFinal" (Raw 0x01FF) -- probs should be 0x200
   let gamma0 = header `offAddr` 7
+  let vf = header `offAddr` 1 -- 0008
+  let cf = header `offAddr` 3 -- 000a
+  let k0 = header `offAddr` 4
 
   relocationTemplate <- local "relocationTemplate" (Template (TN zero relocRes UnNormalized))
 
@@ -1027,6 +1029,8 @@ pp3_3 = do
   toProg <- local "trans_template" (Template $ TN (var "B") (Absolute 1) UnNormalized)
   fromProg <- local "sel_template" (Template $ TN (Absolute 1) (var "A") UnNormalized)
 
+  rawExp <- local "rawExp" Cell
+
   {-
   Op. 1 sets K_0 in counter K, in which will be stored the addres of the current instruction selected from the programme during functioning of the block.
   -}
@@ -1047,9 +1051,12 @@ pp3_3 = do
 
   {-
   Op. 3 transfers the operation code of the selected instruction to the standard cell B in which will be obtained the instruction with true address.
+  note: the original code also uses a +Exp to store the actual opcode bytes along with a ^ ,STOP 13FF to select the opcode and first addr bytes
+  this is all a bit confusing given how cellB is referred to in the book
   -}
   operator 3 $ do
-    tExp' cellA cellB
+    tExp' cellA rawExp
+    addE' zero cellA cellB
     chain (op 4)
 
   {-
@@ -1057,8 +1064,8 @@ pp3_3 = do
   (op 51)???
   -}
   operator 4 $ mdo
-    comp cellB (var "22") (op 5) next
-    next <- comp cellB (var "23") (op 11) (op 5)
+    comp rawExp (var "22") (op 5) next
+    next <- comp rawExp (var "23") (op 11) (op 5)
     pure ()
 
   {-
@@ -1138,7 +1145,7 @@ pp3_3 = do
   Op. 14, in accordance with the above, transers control to op. 15 if an instruction CCCC has been selected in the cell.
   -}
   operator 14 $ do
-    compWord cellB (var "0x1B") (op 17) (op 15)
+    compWord rawExp (var "0x1B") (op 17) (op 15)
 
   {-
   op. 15 determines the case of instruction CCCC in the second address of which is a relative address, transferring control to op. 16.
@@ -1170,7 +1177,9 @@ pp3_3 = do
     op 32.
   -}
   operator 18 $ do
-     comp counterK counterKlast (op 2) (op 19)
+    ai' (op 2) oneFirstAddr (op 2)
+    ai' (op 7) one (op 17)
+    comp counterK counterKlast (op 2) (op 19)
 
 
   {-
@@ -1264,7 +1273,9 @@ pp3_3 = do
   Op. 26 calls up exit from the sub-routine if 0000 <= y <= 000F (y is the address of a standard cell).
   -}
   operator 26 $ do
-    comp cellC (var "0xF") (op 31 `offAddr` 1) (op 27)
+    -- if y <= 0xF { exit } else { op 27 }
+    -- compiled as if 0xF < y { op 27 } else { exit }
+    comp (var "0xF") cellC (op 27) (op 31 `offAddr` 1)
 
   {-
   Op. 27 refers to op. 33 if 0010 <= y <= V_f (y is the code of the quantity having a variable address).
@@ -1272,26 +1283,31 @@ pp3_3 = do
   operator 27 $ do
     -- might need to flip this comparison around since comp is <
     -- V_f is 0008
-    comp cellC (header `offAddr` 2) (op 33) (op 28)
+    -- if 0x1 <= y <= V_f { op 33 } else { op 28 }
+    comp vf cellC  (op 28) (op 33)
 
   {-
   Op. 28 refers to op. 37 if P_1 <= y <= C_f (y is the code of a parameter or quantity from block C).
   -}
   operator 28 $ do
+    -- if P_1 <= y <= C_f { op 37 } else { op 29 }
     -- todo: do I need to check for P_1 or is is it contiguous with V_f?
-    comp cellC (header `offAddr` 4) (op 37) (op 29)
+    comp cellC cf (op 37) (op 29)
 
   {-
   Op. 29 refers to op. 38 if 01A0 <= y <= 01FF (y is the code of a quantity from block gamma).
   -}
   operator 29 $ do
+    -- TODO: this is what is failing
     -- todo: check this....
+    -- if 0x1A0 <= y < 0x1FF { op 38 } else {op 30 }
     comp cellC gammaFinal (op 38) (op 30)
 
   {-
   Op. 30 refers to op. 40 if 0200 <= y <= 03FF (y is the code of a postiive relative address).
   -}
   operator 30 $ do
+    -- if 0x200 <= y < 0x3FF { op 38 } else {op 30 }
     comp cellC (var "0x3ff") (op 40) (op 31)
 
   {-
@@ -1439,6 +1455,7 @@ pp3_4 = do
   let binaryConvertSub_1120 = Absolute $ unsafeFromBesmAddress "1120"
   let decimalConvertSub_10a2 = Absolute $ unsafeFromBesmAddress "10A2"
 
+  -- todo!
   const_035d <- local "const_035d" (Raw 0x0) -- 2^1,11111111
   const_035e <- local "const_035e" (Raw 0x0) -- 2^8,88888888
 
@@ -1456,11 +1473,6 @@ pp3_4 = do
   cell_0004 <- local "cell_0004" Cell
   cell_0002 <- local "cell_0002" Cell
 
-  let k0 = header `offAddr` 4
-  let cell_000a = header `offAddr` 3 -- C_f
-  let gamma0 = header `offAddr` 7
-
-  c0 <- local "c0" Cell -- C_0* 0x3e9
 
   cell_0006 <- local "cell_0006" Cell -- possible something carried over from PP-2?
 
@@ -1469,17 +1481,18 @@ pp3_4 = do
 
   local "0304" (Raw 4)
 
-  -- todo: where is this written
-  p0 <- local "P0" Cell          -- 0x3E8
-
-  pBar <- extern "Pbar"  -- 03E1
-  cBar <- extern "Cbar"  -- 03E2
-
-
+  let c1 = header `offAddr` 2 -- 0009
+  let cf = header `offAddr` 3 -- C_f
+  let k0 = header `offAddr` 4
   let kf = header `offAddr` 5 -- 000c
+  let gamma0 = header `offAddr` 7
 
   extern "final-header" -- starts at 03EA
 
+  -- todo: where is this written
+  p0 <- local "P0" Cell          -- 0x3E8
+  pBar <- extern "Pbar"  -- 03E1
+  cBar <- extern "Cbar"  -- 03E2
   let c0final = var "final-header"             -- 03E9
   let k0final = var "final-header" `offAddr` 1 -- 03EA (also T0)
   let gamma0final = var "final-header" `offAddr` 2 -- 03EB (also F0)
@@ -1493,7 +1506,7 @@ pp3_4 = do
   -}
   operator 1 $ do
     tN' zero p0
-    tN' pBar c0
+    tN' pBar c0final
     tN' transferCounter cell_0004
     chain (op 2)
 
@@ -1507,7 +1520,7 @@ pp3_4 = do
     shift cell_0001 (left 22) cell_0001
     shift pBar (left 11) cell_0002
     ai cell_0001 cell_0002 cell_0001
-    ai cell_0001 c0 cell_0001
+    ai cell_0001 c0final cell_0001
     chain (op 3)
 
   {-
@@ -1650,13 +1663,14 @@ pp3_4 = do
     ai ma2 cell_0001 ma2
     shift o0final (left 11) cell_0001
     ai mb2 cell_0001 mb2
+    -- Ma 0x030N n1 a | Mb n2 copies a.. into n1..=n2 on MD-N
     ma2 <- ma (Absolute 0x0301) zero zero
     mb2 <- mb zero
 
-    -- Read C from MD-2
-    shift c0 (left 11) cell_0001
+    -- Read C from MD-2 ~addr 970
+    shift c1 (left 11) cell_0001
     ai ma3 cell_0001 ma3
-    shift cell_000a (left 11) cell_0001
+    shift cf (left 11) cell_0001
     ai mb3 cell_0001 mb3
     -- todo: audit the 0x0102
     ma3 <- ma (Absolute 0x0102) zero (var "programme")
@@ -1674,6 +1688,7 @@ pp3_4 = do
   -}
   operator 19 $ do
     tN' (var "programme") cell_03f1
+    tN' cell_03f1 cell_03f2 -- todo: this should technically be handled by the conversion routines?
     ai' checksum cell_03f1 checksum -- note: code uses same cell as P0 for checksum
     chain (op 20)
 
@@ -1722,7 +1737,7 @@ pp3_4 = do
   -}
   operator 25 $ do
     add' checksum cell_03f1 checksum -- this appears to be redundant: should have been done by op 19
-    tN' cell_03f2 (var "programme")
+    tN' cell_03f2 (var "programme") -- this overwrites everything with 0, why
     chain (op 26)
     
 
@@ -1746,13 +1761,14 @@ pp3_4 = do
   Op. 28 writes block C on Md-1 in cells C_1* - C_f* and prints the first check sum.
   -}
   operator 28 $ mdo
-    add' c0 one cell_0001
+    add' c0final one cell_0001
     shift cell_0001 (left 11) cell_0001
     -- Write C to MD-1 (addresses uncertain)
     ai maAddr cell_0001 maAddr
     shift k0final (left 11) cell_0001
     ai mbAddr cell_0001 mbAddr 
 
+    -- Ma 0x030N n1 a | Mb n2 copies a.. into n1..=n2 on MD-N
     maAddr <- ma (Absolute 0x0301) zero (var "programme")
     mbAddr <- mb zero 
     tN' checksum cell_03f1 

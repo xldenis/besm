@@ -96,7 +96,9 @@ fn main() {
     });
 
     match opt.command {
-        Command::Run => run_with_interface(&mut vm, opt.breakpoint, opt.mem_breakpoint, op_breakpoint),
+        Command::Run => {
+            run_with_interface(&mut vm, opt.breakpoint, opt.mem_breakpoint, op_breakpoint)
+        }
         Command::Trace => trace_execution(&mut vm),
     }
 

@@ -221,6 +221,11 @@ tExp a c = emitInstr $ TExp a c Normalized
 
 tExp' a c = emitInstr $ TExp a c UnNormalized
 
+-- | Transfer number with negation
+tMin, tMin' :: Address -> Address -> Builder Address
+tMin a c = emitInstr $ TMin a c Normalized
+tMin' a c = emitInstr $ TMin a c UnNormalized
+
 -- | Transfer the modulus of a number. This transfers the absolute value of the first argument to the second one.
 tMod, tMod' :: Address -> Address -> Builder Address
 tMod a c = emitInstr $ TMod a c Normalized
@@ -315,7 +320,13 @@ cccc :: Address -> Builder Address
 cccc addr = emitTerm $ CCCC addr
 
 stop :: Builder Address
-stop = emitTerm Stop
+stop = emitTerm $ Stop zero zero zero Normalized
+
+rawStop :: Address -> Address -> Address -> Builder Address
+rawStop a b c = emitTerm $ Stop a b c Normalized
+
+rawStop' :: Address -> Address -> Address -> Builder Address
+rawStop' a b c = emitTerm $ Stop a b c UnNormalized
 
 checkStop :: Builder Address
 checkStop = emitTerm SwitchStop
