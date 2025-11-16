@@ -5,7 +5,6 @@
 1020 proc. "I-PP-3" blk. op. 4 + 2
 978 proc. "II-PP-3" op. 14 + 3
 973 proc. "II-PP-3" op. 21 + 6
-978 proc. "III-PP-3" op. 26 + 2
 1010 proc. "III-PP-3" op. 41 + 3
 976 proc. "III-PP-3" blk. op. 25 + 2
 987 proc. "IV-PP-3" op. 22 + 3
@@ -205,22 +204,23 @@
 992 proc. "III-PP-3" op. 28
 995 proc. "III-PP-3" op. 29
 998 proc. "III-PP-3" op. 30
-999 proc. "III-PP-3" op. 31
-1001 proc. "III-PP-3" op. 32
+1003 proc. "III-PP-3" op. 31
+1005 proc. "III-PP-3" op. 32
 980 proc. "III-PP-3" op. 33
 986 proc. "III-PP-3" op. 34
 987 proc. "III-PP-3" op. 35
 991 proc. "III-PP-3" op. 36
 993 proc. "III-PP-3" op. 37
 996 proc. "III-PP-3" op. 38
-1002 proc. "III-PP-3" op. 39
-1004 proc. "III-PP-3" op. 40
+1006 proc. "III-PP-3" op. 39
+999 proc. "III-PP-3" op. 40
 1008 proc. "III-PP-3" op. 41
-1006 proc. "III-PP-3" op. 42
+1001 proc. "III-PP-3" op. 42
 936 proc. "III-PP-3" blk. op. 4
 966 proc. "III-PP-3" blk. op. 22
 976 proc. "III-PP-3" blk. op. 25
-1000 proc. "III-PP-3" blk. op. 31
+978 proc. "III-PP-3" blk. op. 26
+1004 proc. "III-PP-3" blk. op. 31
 916 proc. "IV-PP-3" op. 1
 919 proc. "IV-PP-3" op. 2
 925 proc. "IV-PP-3" op. 3

@@ -1272,11 +1272,12 @@ pp3_3 = do
   {-
   Op. 26 calls up exit from the sub-routine if 0000 <= y <= 000F (y is the address of a standard cell).
   -}
-  operator 26 $ do
+  operator 26 $ mdo
     -- if y <= 0xF { exit } else { op 27 }
     -- compiled as if 0xF < y { op 27 } else { exit }
-    comp (var "0xF") cellC (op 27) (op 31 `offAddr` 1)
-
+    comp (var "0xF") cellC (op 27) exit
+    exit <- jcc
+    pure ()
   {-
   Op. 27 refers to op. 33 if 0010 <= y <= V_f (y is the code of the quantity having a variable address).
   -}
@@ -1307,8 +1308,8 @@ pp3_3 = do
   Op. 30 refers to op. 40 if 0200 <= y <= 03FF (y is the code of a postiive relative address).
   -}
   operator 30 $ do
-    -- if 0x200 <= y < 0x3FF { op 38 } else {op 30 }
-    comp (var "0x3ff") cellC (op 40) (op 31)
+    -- if 0x200 <= y < 0x3FF { op 40 } else {op 31 }
+    comp (var "0x3ff") cellC (op 31) (op 40)
 
   {-
   Op. 31 calls up exit from the sub-routine if 1000 <= y <= 11EF (y is the address of a cell in DS).
@@ -1399,7 +1400,7 @@ pp3_3 = do
     jcc
 
   {-
-  Op. 40 obtains the address k' of the instructiosn in the block K according to the formula k' = y - 0200 + (c.K).
+  Op. 40 obtains the address k' of the instructions in the block K according to the formula k' = y - 0200 + (c.K).
   -}
   operator 40 $ do
     sub' cellC (var "0200") cellC

@@ -35,8 +35,8 @@ pp1_3 = do
   cellA1 <- extern "A + 1"
   let working = cellA1 -- Unknown "econ-current-cell"
   cellS <- local "S" Cell
-  lowerBound <- extern "&completedOperator"
-  upperBound <- local "upperBound" (Raw 0x3FF)
+  lowerBound <- extern "&completedOperator" -- unclear if this is correct
+  upperBound <- local "upperBound" (Raw 0x3FF) -- wrong upper bound
 
   local ",TN 116F _" (Template (TN thirdAddr zero UnNormalized))
   local ",TN buffer _" (Template (TN completedOperator zero UnNormalized))
@@ -54,6 +54,9 @@ pp1_3 = do
   local "recall-arg" (Raw 0)
   local "working-code" (Raw 0)
   local "βᵢ" (Raw 0)
+
+  -- calculate this based off the address of beta
+  local "r" (Raw 0x1000)
 
   {-
   Op. 1 clears cells β₁, .., β₁₆ and forms the initial form of the instructiosn
@@ -214,6 +217,8 @@ pp1_3 = do
     Op. 16 places the code r + u of the working cell in the third addrss of the
     instruction with address k' and cell S if Bᵤ is the first "unmarked" cell from
     among β₁, .., β₁₆, and then "marks" cell Bᵤ.
+
+    TODO: We need to ensure the final results are in 11F0..11FF... this will require some sort of offset.
     -}
     operator 16 $ mdo
       let storeTemplate = Unknown "ai _ cellS _" -- this is used to store βᵢ in the third (blank addr) of k'
