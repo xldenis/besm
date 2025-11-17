@@ -960,7 +960,7 @@ pp3_2 = do
   operator 21 $ do
     -- ΔГ = Г₀ - ɣ₀
     -- need to correct the header offsets
-    sub' k0 gamma0 deltaGamma
+    sub' k0 gamma0 deltaGamma -- todo: this is out of whack
     -- Δ(P/d) = (P/ya)₀ - (P/ya)ₑ old
     sub' m0final (var "const_033B") deltaRPD
     -- ΔК = Кf - Кo (strange...)

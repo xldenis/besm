@@ -56,7 +56,8 @@ pp1_3 = do
   local "βᵢ" (Raw 0)
 
   -- calculate this based off the address of beta
-  local "r" (Raw 0x1000)
+  local "r" (Raw 1282) -- hardcoded from the assumption that beta starts at 238 (11f0 - beta_0)
+  -- local "r" (Raw $ unsafeFromBesmAddress "1000")
 
   {-
   Op. 1 clears cells β₁, .., β₁₆ and forms the initial form of the instructiosn
@@ -172,6 +173,8 @@ pp1_3 = do
   let k' = Unknown "k'" -- cell holds the address k'
   operator 11 $ mdo
     let andTemplate = Unknown "and-template" -- '^ _ thirdAddr cellS'
+    -- let r = Unknown "r"
+    -- sub' cellS r cellS -- Remove offset to get beta address for lookup
     shift cellS (left 22) k'
     ai andTemplate k' and
     ai k' cellS k'
@@ -223,11 +226,13 @@ pp1_3 = do
     operator 16 $ mdo
       let storeTemplate = Unknown "ai _ cellS _" -- this is used to store βᵢ in the third (blank addr) of k'
       let markTemplate = Unknown ",TN 116F _" -- used to mark βᵢ (116F is a builtin cell full of 1).
+      let r = Unknown "r"
       shift selector (right 22) cellS
-      ai storeTemplate k' storeK'
-      storeK' <- empty
       ai markTemplate cellS markBeta
       markBeta <- empty
+      ai cellS r cellS -- Add offset to create r+i
+      ai storeTemplate k' storeK'
+      storeK' <- empty
 
       chain (op 17)
   {-
