@@ -1,2 +1,2 @@
 file=${1}
-stack exec -- tools trace ${file} -o ${file:r}.png --source-map pp1.sm > optrace && open ${file:r}.png
+stack exec -- tools trace ${file} -o ${file:r}.png --source-map pp1.sm --source-map pp2.sm --source-map pp3.sm > optrace && open ${file:r}.png
