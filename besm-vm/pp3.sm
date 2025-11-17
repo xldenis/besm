@@ -3,8 +3,8 @@
 961 proc. "I-PP-3" op. 33 + 2
 1016 proc. "I-PP-3" op. 43 + 3
 1020 proc. "I-PP-3" blk. op. 4 + 2
-978 proc. "II-PP-3" op. 14 + 3
-973 proc. "II-PP-3" op. 21 + 6
+977 proc. "II-PP-3" op. 14 + 3
+972 proc. "II-PP-3" op. 21 + 6
 1010 proc. "III-PP-3" op. 41 + 3
 976 proc. "III-PP-3" blk. op. 25 + 2
 987 proc. "IV-PP-3" op. 22 + 3
@@ -13,16 +13,16 @@
 897 proc. "MP-3" op. 3 + 4
 900 proc. "MP-3" op. 4 + 4
 913 uk. ,P template
-914 uk. 0001
+913 uk. 0001
 915 uk. 0200
 912 uk. 0304
-915 uk. 03F0
+914 uk. 03F0
 916 uk. 0x11EF
 917 uk. 0x11FF
 918 uk. 0x12
 914 uk. 0x18
 919 uk. 0x1B
-918 uk. 0x3FF
+917 uk. 0x3FF
 920 uk. 0x3ff
 921 uk. 0xF
 915 uk. 1000
@@ -34,8 +34,8 @@
 907 uk. C
 874 uk. Cbar
 875 uk. Kbar
-912 uk. M1
-911 uk. O
+911 uk. M1
+910 uk. O
 902 uk. P0
 876 uk. Pbar
 917 uk. all-but-first
@@ -56,27 +56,26 @@
 911 uk. checksum
 925 uk. const_02FF
 913 uk. const_0305
-919 uk. const_0337
+918 uk. const_0337
 905 uk. const_0339
-920 uk. const_033A
-921 uk. const_033B
-922 uk. const_033C
+919 uk. const_033A
+920 uk. const_033B
+921 uk. const_033C
 914 uk. const_035d
 915 uk. const_035e
 903 uk. const_03E7
 903 uk. const_03ff
 904 uk. counterK
 905 uk. counterK'
-923 uk. counterTemplate
+922 uk. counterTemplate
 906 uk. currentInstr
 877 uk. deltaC
 879 uk. deltaGamma
 881 uk. deltaK
 882 uk. deltaR
-909 uk. deltaRPD
 908 uk. fetchCounter
 904 uk. fetchK
-917 uk. fetchTemplate
+916 uk. fetchTemplate
 865 uk. final-header
 883 uk. gammaBar
 926 uk. gammaFinal
@@ -90,7 +89,7 @@
 902 uk. rawExp
 910 uk. relocRes
 914 uk. relocationTemplate
-916 uk. returnTemplate
+915 uk. returnTemplate
 911 uk. sel_template
 912 uk. trans_template
 907 uk. transferCounter
@@ -152,28 +151,28 @@
 995 proc. "I-PP-3" blk. blk. op. 38
 1000 proc. "I-PP-3" blk. blk. op. 39
 1001 proc. "I-PP-3" blk. blk. blk. op. 39
-924 proc. "II-PP-3" op. 1
-936 proc. "II-PP-3" op. 2
-943 proc. "II-PP-3" op. 3
-946 proc. "II-PP-3" op. 4
-947 proc. "II-PP-3" op. 5
-948 proc. "II-PP-3" op. 6
-949 proc. "II-PP-3" op. 7
-953 proc. "II-PP-3" op. 8
-954 proc. "II-PP-3" op. 9
-955 proc. "II-PP-3" op. 10
-956 proc. "II-PP-3" op. 11
-957 proc. "II-PP-3" op. 12
-959 proc. "II-PP-3" op. 13
-976 proc. "II-PP-3" op. 14
-961 proc. "II-PP-3" op. 15
-962 proc. "II-PP-3" op. 16
-964 proc. "II-PP-3" op. 17
-965 proc. "II-PP-3" op. 18
-968 proc. "II-PP-3" op. 19
-974 proc. "II-PP-3" op. 20
-969 proc. "II-PP-3" op. 21
-975 proc. "II-PP-3" blk. op. 13
+923 proc. "II-PP-3" op. 1
+935 proc. "II-PP-3" op. 2
+942 proc. "II-PP-3" op. 3
+945 proc. "II-PP-3" op. 4
+946 proc. "II-PP-3" op. 5
+947 proc. "II-PP-3" op. 6
+948 proc. "II-PP-3" op. 7
+952 proc. "II-PP-3" op. 8
+953 proc. "II-PP-3" op. 9
+954 proc. "II-PP-3" op. 10
+955 proc. "II-PP-3" op. 11
+956 proc. "II-PP-3" op. 12
+958 proc. "II-PP-3" op. 13
+975 proc. "II-PP-3" op. 14
+960 proc. "II-PP-3" op. 15
+961 proc. "II-PP-3" op. 16
+963 proc. "II-PP-3" op. 17
+964 proc. "II-PP-3" op. 18
+967 proc. "II-PP-3" op. 19
+973 proc. "II-PP-3" op. 20
+968 proc. "II-PP-3" op. 21
+974 proc. "II-PP-3" blk. op. 13
 927 proc. "III-PP-3" op. 1
 931 proc. "III-PP-3" op. 2
 933 proc. "III-PP-3" op. 3
@@ -270,7 +269,7 @@
 902 proc start. IV-PP-3
 887 proc start. MP-3
 1023 proc end. I-PP-3
-978 proc end. II-PP-3
+977 proc end. II-PP-3
 1010 proc end. III-PP-3
 1011 proc end. IV-PP-3
 901 proc end. MP-3

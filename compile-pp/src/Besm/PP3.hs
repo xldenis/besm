@@ -657,9 +657,9 @@ pp3_2 = do
   o  <- local "O" Cell           -- 03E5
 
   deltaC <- local "deltaC" Cell  -- 03F7
-  deltaGamma <- global "deltaGamma" Cell  -- 03F9
   deltaK <- global "deltaK" Cell  -- 03F8
-  deltaRPD <- local "deltaRPD" Cell  -- 03FA
+  deltaGamma <- global "deltaGamma" Cell  -- 03F9
+  deltaRPD <- extern "deltaR"      -- 03FA
 
   fetchCounter <- local "fetchCounter" Cell  -- 03FD
   cellA <- local "cellA" Cell    -- 03FB
@@ -999,9 +999,9 @@ pp3_3 = do
 
   relocationTemplate <- local "relocationTemplate" (Template (TN zero relocRes UnNormalized))
 
-  local "0x11EF" (Raw 0x11EF)
-  local "0x11FF" (Raw 0x11FF)
-  local "0200"   (Raw 0x0200)
+  local "0x11EF" (Raw $ unsafeFromBesmAddress "11EF")
+  local "0x11FF" (Raw $ unsafeFromBesmAddress "11FF")
+  local "0200"   (Raw $ unsafeFromBesmAddress "0200")
   local "1200"   (Raw 0x1200)
   local "0x1B"   (Raw 0x1B)
   local "0x12"   (Raw 0x12)
