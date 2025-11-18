@@ -1178,7 +1178,7 @@ pp3_3 = do
   -}
   operator 18 $ do
     ai' (op 2) oneFirstAddr (op 2)
-    ai' (op 7) one (op 17)
+    ai (op 17) one (op 17)
     comp counterK counterKlast (op 2) (op 19)
 
 

@@ -266,6 +266,11 @@ pp1_3 = do
     ai cellS workingCode cellS
     shift selectNextInstr (right 22) finalStore
 
+    -- as documented the +Exp uses the mantissa of the first argument in the result
+    -- but this only transfers the 32 lower bits, while we need the 33 lower bits. This is particularly
+    -- problematic since we *specifically* need to have the 33d bit set to 1 (since the output must be in the range 11F0..11FF).
+    -- the only reasonable interpretation though is that we keep the sign of x (first argument as well)
+    -- the documented sematnics are +E x y z E(z) = E(x) + E(y); M(z) = M(x) but logically S(z) = S(x)?
     let template = Unknown "final-store" -- ,+Exp cellS working _
     ai template finalStore finalStore
     finalStore <- empty

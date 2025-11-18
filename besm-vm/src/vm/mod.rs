@@ -225,7 +225,9 @@ impl<'a> VM<'a> {
                 let lfloat = Float::from_bytes(self.memory.get(x)?);
                 let rfloat = Float::from_bytes(self.memory.get(y)?);
 
+                info!("+E {:032b}", lfloat.mant);
                 let mut result = Float::new(lfloat.mant, lfloat.exp + rfloat.exp);
+                result.sign = lfloat.sign;
 
                 if needs_norm {
                     result.normalize()
