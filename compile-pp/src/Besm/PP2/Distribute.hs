@@ -175,7 +175,7 @@ pp2_3 = do
 
   operator 11 $ do
     clcc (op 41)
-    chain (op 10)
+    chain (op 12)
   {-
   Op. 12 prepares the sub-routine for transferring control instructions from the
   block beta for transfer to address-modification instructions.
@@ -332,7 +332,7 @@ pp2_3 = do
   NOTES this is instantiated by a template!
   -}
   operator 32 $ do
-    comp zero zero (op 37) (op 32)
+    comp zero zero (op 37) (op 33)
   {-
   The address-modification instruction is found as an instruction AI, having 1
   in the eleventh place of the first address (the sign place).

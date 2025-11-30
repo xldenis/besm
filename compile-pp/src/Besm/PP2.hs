@@ -41,6 +41,8 @@ header = Unknown "programme header table" `offAddr` 6 -- This should be cell 7
 
 gammaInitial = header `offAddr` 6
 gammaTransInit = Unknown "ɣ-trans-initial"
+betaInitial = header `offAddr` 8
+alphaInitial = header `offAddr` 7
 
 initialI = header `offAddr` 1
 counterI = Unknown "i"
@@ -248,9 +250,10 @@ mp2 = do
   22).
   -}
   let nextAddr = cellJ
+  let vf = header `offAddr` 1  -- V_f: upper bound of variable addresses in block V
   operator 10 $ mdo
-    comp nextAddr seven' (op 22) omgg -- check if standard cell < 7
-    omgg <- comp (addr 8) nextAddr (op 11) (op 22) -- check if va addr < Vmax
+    comp nextAddr seven' (op 22) omgg -- check if nextAddr < 7 (standard cell)
+    omgg <- comp vf nextAddr (op 22) (op 11) -- check if nextAddr <= Vf (variable address)
     return ()
 
   {-
@@ -385,7 +388,9 @@ mp2 = do
   number of parameter codes in the information on the variable address).
   -}
   operator 21 $ do
-    comp (var "end-loop") (op 12) (op 12) (op 22)
+    -- If (op 12) < end-loop, continue inner loop; else exit to op 22
+    -- Use compWord since we're comparing instruction templates (bit patterns), not floating-point numbers
+    compWord (op 12) (var "end-loop") (op 12) (op 22)
 
   {-
   Op. 22 prepares testing of the following address of the instruction.
@@ -394,9 +399,14 @@ mp2 = do
   local "shift-back-change" (Template (ShiftAll zero (left 11) zero))
 
   operator 22 $ do
+    -- Increment addr-selector in op 9 to extract next address from instruction
+    ai (op 9) oneSndAddr (op 9)
+    -- Adjust shift: right 22 -> right 11 -> right 0 (subtract 11 each iteration)
+    sub' (op 9 `offAddr` 1) (var "shift-dec11") (op 9 `offAddr` 1)
+
+    -- Reset/adjust inner loop selectors
     ai (op 12) oneSndAddr (op 12)
     sub' (op 16 `offAddr` 2) (var "shift-back-change") (op 16 `offAddr` 2)
-    -- Changed from the page 8-419
     sub' (op 12 `offAddr` 1) (var "shift-back-change") (op 12 `offAddr` 1)
 
     chain (op 23)
@@ -407,7 +417,9 @@ mp2 = do
   -}
 
   operator 23 $ do
-    comp (op 12) (var "select-loop-end") (op 9) (op 24)
+    -- Compare addr-selector at op 9 with end condition (not op 12 which is for inner loop)
+    -- Use compWord since we're comparing instruction templates (bit patterns), not floating-point numbers
+    compWord (op 9) (var "select-loop-end") (op 9) (op 24)
 
   {-
   Op. 24 verifies if the given instruction depends on parameter i (YES -- op.
@@ -449,8 +461,15 @@ mp2 = do
     │ 01F │ 13FF │ 13FF │ 13FF │
     └─────┴──────┴──────┴──────┘
   -}
-  operator 27 $ do
-    stop
+
+  operator 27 $ mdo
+    let toAddr = Absolute . unsafeFromBesmAddress
+    -- Compare selected instruction with close-parenthesis pattern
+    -- If match (end of working part), go to op 28; otherwise continue with op 4
+    compWord (var "selected") closeParen (op 4) (op 28)
+    closeParen <- rawStop (toAddr "13FF") (toAddr "13FF") (toAddr "13FF")
+    pure ()
+
   {-
   Op. 28 reads the block III-PP-2 from MD-4.
   -}
@@ -498,7 +517,7 @@ mp2 = do
     Op. 34, comparing alpha_c and alpha_cr, tests block alpha for "overflow".
   -}
   operator 34 $ do
-    compWord alphaCounter (Absolute 0xF) (op 32 `offAddr` 3) (op 35)
+    compWord alphaCounter betaInitial (op 32 `offAddr` 3) (op 35)
 
   {-
     Op. 35 is a check stop for overflow.
