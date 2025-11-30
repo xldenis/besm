@@ -297,8 +297,7 @@ pp2_3 = do
     compMod alphaInitial alphaCounter (op 19) p2
 
     p2 <- block $ do
-      clcc (Procedure "MP-2" (op 35))
-      chain (op 29)
+      cccc (Procedure "MP-2" (op 30))
     return ()
   {-
   Operators 29 - 38 formed the sub-routine for transfers from block beta.
@@ -402,7 +401,7 @@ pp2_3 = do
     sub' kTrans one kTrans
     jcc
   {-
-  Op. 41 is the sub-routien for transferring instrucitons to block K.
+  Op. 41 is the sub-routine for transferring instructions to block K.
 
   -}
   operator 41 $ do

@@ -209,9 +209,9 @@ lowerProgramme (S.P va p c k) =
     -}
 
     0
-    10
-    10
-    10
+    16
+    16
+    16
 
 data VAIR = VAIR
   { irName :: Text

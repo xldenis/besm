@@ -358,18 +358,18 @@ memoryLayout m@Mod{..} =
   let
     (secs, sizes) = unzip $ map (\gs -> (getSection $ head gs, globalMapSize constantSize gs)) (globalSections m)
 
-    globalOffs = scanl (+) 0 sizes
+    globalOffs = scanl (+) 1 sizes
 
     procSizes = map (\p -> (procName p, procedureLen p)) procs
 
     -- Procedures are grouped into segments which share the same memory block. This means the size of a given
     -- segment will be the maximum of the sizes of all procedures inside that segment.
     segSizes = map (\(MkSeg seg) -> maximum . map snd $ filter (\p -> fst p `elem` seg) procSizes) segments
-    segOffs = scanl (+) (sum sizes) segSizes
+    segOffs = scanl (+) (sum sizes + 1) segSizes
     procOffs = concatMap (\(MkSeg seg, size) -> map (\s -> (Text s, size)) seg) (zip segments segOffs)
     (pinned, default') = partition (\(s, _) -> s /= DefaultData) (zip secs globalOffs)
     usedSpace = sum segSizes + sum sizes
-    padding = 1023 - usedSpace + 1
+    padding = 1023 - usedSpace  -- 1-based: addresses 1-1023
    in
     MkLayout
       { size = usedSpace
