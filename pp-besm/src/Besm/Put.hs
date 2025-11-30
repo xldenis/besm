@@ -432,7 +432,7 @@ encodeCode pa (OperatorSign os : ops) = Full (buildInstruction operatorSign (get
 encodeCode pa (LoopOpen p : ops) = Full (buildInstruction operatorSign (quantityOffsetBits pa p) b0 b0) : encodeCode pa ops
 encodeCode pa (LoopClose : ops) = Full (buildInstruction (mkBV knownNat 0x01F) b13FF b13FF b13FF) : encodeCode pa ops
  where
-  b13FF = mkBV knownNat 0x13FF
+  b13FF = mkBV knownNat 2047 -- besm: 13FF (aka 2047, aka all 1s)
 encodeCode pa (NS ns a b c : ops) = Full (buildInstruction (putOpCode ns) (bvAddr pa a) (bvAddr pa b) (bvAddr pa c)) : encodeCode pa ops
 encodeCode pa (Empty : ops) = Full b0 : encodeCode pa ops
 encodeCode pa [LogicalOperator lo] = encodeLogicalOp pa Nothing lo Empty
