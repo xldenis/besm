@@ -57,21 +57,6 @@ pub struct Interface {
 }
 
 impl Interface {
-    pub fn default() -> Interface {
-        Interface {
-            size: Size::default(),
-            past_instrs: ArrayDeque::new(),
-            step_mode: StepMode::Step,
-            tabs: TabInfo::default(),
-            breakpoint: None,
-            recent_writes: HashMap::new(),
-            printer_output: Vec::new(),
-            exiting: false,
-            mem_breakpoint: None,
-            op_breakpoint: None,
-        }
-    }
-
     pub fn with_breakpoints(
         breakpoint: Option<u16>,
         mem_breakpoint: Option<u16>,

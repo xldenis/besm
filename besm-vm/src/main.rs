@@ -3,8 +3,9 @@ use clap::Parser;
 use interface::{Interface, OpBreakpoint};
 
 use ratatui::backend::TermionBackend;
-use std::io;
+use std::{collections::HashMap, io};
 use termion::{input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use vm::instruction::Instruction;
 
 use ratatui::Terminal;
 
@@ -31,7 +32,10 @@ fn run_with_interface(
 }
 
 fn trace_execution(vm: &mut VM) {
+    let mut back_jumps = HashMap::new();
+
     let mut previous_operator = 0;
+    let mut current_instr = 0;
     loop {
         if vm.stopped {
             break;
@@ -47,7 +51,29 @@ fn trace_execution(vm: &mut VM) {
             println!("PP{} {} {:3} {}", pass, procedure, operator, vm.next_instr());
         }
 
-        vm.step().unwrap();
+        match vm.step() {
+            Ok(_) => {
+                if vm.next_instr() < current_instr {
+                    let hash = vm.memory.hash();
+
+                    if back_jumps.get(&vm.next_instr()) == Some(&hash) {
+                        eprintln!("InfiniteLoop");
+                        return;
+                    }
+
+                    back_jumps.insert(vm.next_instr(), hash);
+                }
+
+                current_instr = vm.next_instr();
+            }
+            Err(e) => {
+                eprintln!("{e:?}");
+                let next = vm.memory.get(vm.next_instr()).unwrap();
+                let instr = Instruction::from_bytes(next).unwrap();
+                eprintln!("{}", instr);
+                return;
+            }
+        }
     }
 }
 

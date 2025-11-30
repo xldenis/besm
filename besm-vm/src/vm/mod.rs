@@ -1,6 +1,7 @@
 use crate::float::*;
 use bit_field::BitField;
 use log::{info, warn};
+use std::hash::Hasher;
 
 mod ds;
 pub mod instruction;
@@ -79,8 +80,15 @@ impl<'a> Memory<'a> {
         }
     }
 
-    fn iter_mut(&mut self) -> slice::IterMut<u64> {
+    fn iter_mut(&mut self) -> slice::IterMut<'_, u64> {
         self.is.iter_mut()
+    }
+
+    /// Hash the IS so that we can determine whether we're stuck in a loop
+    pub fn hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.is.hash(&mut s);
+        s.finish()
     }
 }
 
@@ -89,7 +97,10 @@ pub struct Iter<'a> {
     index: usize,
 }
 
-use std::slice;
+use std::{
+    hash::{DefaultHasher, Hash},
+    slice,
+};
 
 impl<'a> IntoIterator for &'a Memory<'a> {
     type Item = u64;
@@ -507,11 +518,16 @@ impl<'a> VM<'a> {
                 }
             }
             CompWord { a, b, c } => {
-                let left = self.memory.get(a)?;
-                let right = self.memory.get(b)?;
+                let left = self.memory.get(a)?.get_bits(0..39);
+                let right = self.memory.get(b)?.get_bits(0..39);
 
-                info!("CMPWD {} {}", left, right);
+                info!(
+                    "CMPWD {:?} {:?}",
+                    Instruction::from_bytes(left),
+                    Instruction::from_bytes(right)
+                );
                 if left != right {
+                    info!("{left} != {right}");
                     info!("Branching {} -> {}", self.next_instr(), c);
                     self.set_ic(c);
                 } else {
