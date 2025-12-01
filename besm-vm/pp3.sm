@@ -12,91 +12,20 @@
 894 proc. "MP-3" op. 2 + 4
 897 proc. "MP-3" op. 3 + 4
 900 proc. "MP-3" op. 4 + 4
-913 uk. ,P template
-913 uk. 0001
-915 uk. 0200
-912 uk. 0304
-914 uk. 03F0
-916 uk. 0x11EF
-917 uk. 0x11FF
-918 uk. 0x12
-914 uk. 0x18
-919 uk. 0x1B
-917 uk. 0x3FF
-920 uk. 0x3ff
-921 uk. 0xF
-915 uk. 1000
-922 uk. 1200
-923 uk. 22
-924 uk. 23
-909 uk. A
-908 uk. B
-907 uk. C
 874 uk. Cbar
 875 uk. Kbar
-911 uk. M1
-910 uk. O
-902 uk. P0
 876 uk. Pbar
-917 uk. all-but-first
-918 uk. all-but-second
-919 uk. all-but-third
-907 uk. cellA
-906 uk. cellB
-905 uk. cellC
-906 uk. cellX
-907 uk. cellZ
-908 uk. cell_0001
-905 uk. cell_0002
-906 uk. cell_0004
-902 uk. cell_0005
-904 uk. cell_0006
-910 uk. cell_03f1
-909 uk. cell_03f2
-911 uk. checksum
-925 uk. const_02FF
-913 uk. const_0305
-918 uk. const_0337
-905 uk. const_0339
-919 uk. const_033A
-920 uk. const_033B
-921 uk. const_033C
-914 uk. const_035d
-915 uk. const_035e
-903 uk. const_03E7
-903 uk. const_03ff
-904 uk. counterK
-905 uk. counterK'
-922 uk. counterTemplate
-906 uk. currentInstr
 877 uk. deltaC
 879 uk. deltaGamma
 881 uk. deltaK
 882 uk. deltaR
-908 uk. fetchCounter
-904 uk. fetchK
-916 uk. fetchTemplate
 865 uk. final-header
 883 uk. gammaBar
-926 uk. gammaFinal
-912 uk. i_sel_template
-911 uk. i_trans_template
 884 uk. k
-903 uk. k'
-904 uk. mBar
 885 uk. maTemplate
 886 uk. mbTemplate
 16 uk. programme
 1 uk. programme header table
-902 uk. rawExp
-910 uk. relocRes
-914 uk. relocationTemplate
-915 uk. returnTemplate
-911 uk. sel_template
-912 uk. trans_template
-907 uk. transferCounter
-910 uk. transferTemplate
-909 uk. trueAddresses
 920 proc. "I-PP-3" op. 1
 924 proc. "I-PP-3" op. 2
 926 proc. "I-PP-3" op. 3
@@ -153,6 +82,24 @@
 995 proc. "I-PP-3" blk. blk. op. 38
 1000 proc. "I-PP-3" blk. blk. op. 39
 1001 proc. "I-PP-3" blk. blk. blk. op. 39
+913 proc. "I-PP-3" uk. 0200
+914 proc. "I-PP-3" uk. 0x18
+915 proc. "I-PP-3" uk. 1000
+916 proc. "I-PP-3" uk. 1200
+908 proc. "I-PP-3" uk. A
+903 proc. "I-PP-3" uk. B
+907 proc. "I-PP-3" uk. C
+917 proc. "I-PP-3" uk. all-but-first
+918 proc. "I-PP-3" uk. all-but-second
+919 proc. "I-PP-3" uk. all-but-third
+902 proc. "I-PP-3" uk. cell_0001
+905 proc. "I-PP-3" uk. counterK'
+906 proc. "I-PP-3" uk. currentInstr
+904 proc. "I-PP-3" uk. fetchK
+912 proc. "I-PP-3" uk. sel_template
+911 proc. "I-PP-3" uk. trans_template
+910 proc. "I-PP-3" uk. transferTemplate
+909 proc. "I-PP-3" uk. trueAddresses
 923 proc. "II-PP-3" op. 1
 935 proc. "II-PP-3" op. 2
 942 proc. "II-PP-3" op. 3
@@ -175,6 +122,27 @@
 973 proc. "II-PP-3" op. 20
 968 proc. "II-PP-3" op. 21
 974 proc. "II-PP-3" blk. op. 13
+913 proc. "II-PP-3" uk. 0001
+914 proc. "II-PP-3" uk. 03F0
+917 proc. "II-PP-3" uk. 0x3FF
+911 proc. "II-PP-3" uk. M1
+910 proc. "II-PP-3" uk. O
+912 proc. "II-PP-3" uk. P0
+907 proc. "II-PP-3" uk. cellA
+906 proc. "II-PP-3" uk. cellB
+902 proc. "II-PP-3" uk. cell_0005
+918 proc. "II-PP-3" uk. const_0337
+905 proc. "II-PP-3" uk. const_0339
+919 proc. "II-PP-3" uk. const_033A
+920 proc. "II-PP-3" uk. const_033B
+921 proc. "II-PP-3" uk. const_033C
+903 proc. "II-PP-3" uk. const_03E7
+922 proc. "II-PP-3" uk. counterTemplate
+909 proc. "II-PP-3" uk. deltaC
+908 proc. "II-PP-3" uk. fetchCounter
+916 proc. "II-PP-3" uk. fetchTemplate
+904 proc. "II-PP-3" uk. mBar
+915 proc. "II-PP-3" uk. returnTemplate
 927 proc. "III-PP-3" op. 1
 931 proc. "III-PP-3" op. 2
 933 proc. "III-PP-3" op. 3
@@ -222,6 +190,31 @@
 976 proc. "III-PP-3" blk. op. 25
 978 proc. "III-PP-3" blk. op. 26
 1004 proc. "III-PP-3" blk. op. 31
+913 proc. "III-PP-3" uk. ,P template
+915 proc. "III-PP-3" uk. 0200
+916 proc. "III-PP-3" uk. 0x11EF
+917 proc. "III-PP-3" uk. 0x11FF
+918 proc. "III-PP-3" uk. 0x12
+919 proc. "III-PP-3" uk. 0x1B
+920 proc. "III-PP-3" uk. 0x3ff
+921 proc. "III-PP-3" uk. 0xF
+922 proc. "III-PP-3" uk. 1200
+923 proc. "III-PP-3" uk. 22
+924 proc. "III-PP-3" uk. 23
+909 proc. "III-PP-3" uk. A
+908 proc. "III-PP-3" uk. B
+905 proc. "III-PP-3" uk. cellC
+906 proc. "III-PP-3" uk. cellX
+907 proc. "III-PP-3" uk. cellZ
+925 proc. "III-PP-3" uk. const_02FF
+904 proc. "III-PP-3" uk. counterK
+926 proc. "III-PP-3" uk. gammaFinal
+903 proc. "III-PP-3" uk. k'
+902 proc. "III-PP-3" uk. rawExp
+910 proc. "III-PP-3" uk. relocRes
+914 proc. "III-PP-3" uk. relocationTemplate
+911 proc. "III-PP-3" uk. sel_template
+912 proc. "III-PP-3" uk. trans_template
 916 proc. "IV-PP-3" op. 1
 919 proc. "IV-PP-3" op. 2
 925 proc. "IV-PP-3" op. 3
@@ -254,6 +247,20 @@
 1007 proc. "IV-PP-3" op. 30
 1007 proc. "IV-PP-3" op. 31
 1008 proc. "IV-PP-3" op. 32
+912 proc. "IV-PP-3" uk. 0304
+902 proc. "IV-PP-3" uk. P0
+908 proc. "IV-PP-3" uk. cell_0001
+905 proc. "IV-PP-3" uk. cell_0002
+906 proc. "IV-PP-3" uk. cell_0004
+904 proc. "IV-PP-3" uk. cell_0006
+910 proc. "IV-PP-3" uk. cell_03f1
+909 proc. "IV-PP-3" uk. cell_03f2
+911 proc. "IV-PP-3" uk. checksum
+913 proc. "IV-PP-3" uk. const_0305
+914 proc. "IV-PP-3" uk. const_035d
+915 proc. "IV-PP-3" uk. const_035e
+903 proc. "IV-PP-3" uk. const_03ff
+907 proc. "IV-PP-3" uk. transferCounter
 887 proc. "MP-3" op. 1
 892 proc. "MP-3" op. 2
 895 proc. "MP-3" op. 3

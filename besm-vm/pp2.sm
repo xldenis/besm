@@ -28,69 +28,22 @@
 906 proc. "MP-2" blk. op. 26 + 1
 822 proc. "MP-2" blk. op. 31 + 3
 910 proc. "MP-2" blk. blk. op. 7 + 1
-920 uk. + 0001 0002
-918 uk. + 0001 _ _
-921 uk. + _ 0001 _
-922 uk. + _ 1081 _
-916 uk. ,TN _ firstHalf
-924 uk. ,TN _ parameter-info
-803 uk. 22
-804 uk. 24
 784 uk. 7'
-923 uk. I _ 0001
-912 uk. S
 774 uk. U
 775 uk. V
-912 uk. add-template
-805 uk. addr-selectors
-913 uk. ai-template
 789 uk. builder
 776 uk. built-comp
-911 uk. comp-operator
-911 uk. current
-794 uk. end-loop
-808 uk. final-select
-915 uk. first and second mask
-918 uk. gamma param
 777 uk. i
-914 uk. i-shifted
 778 uk. iinShifted
 779 uk. incr-instruction
 780 uk. k
 785 uk. k-trans-initial
-914 uk. k-trans-template-1
-913 uk. k-trans-template-2
-912 uk. lkadjf
-809 uk. lower-10bits
-916 uk. neg param
-810 uk. neg-bit
 781 uk. norm-instruction
-913 uk. parameter-info
 782 uk. paren-code
-917 uk. posi param
 16 uk. programme
 1 uk. programme header table
-800 uk. select-loop-end
-801 uk. select-template
 783 uk. selected
-799 uk. shift-back
-793 uk. shift-back-change
-811 uk. shift-dec11
-812 uk. shift-dec8
-813 uk. shift-incr
-802 uk. shift-template
-915 uk. t
-916 uk. temp-value
-796 uk. ugh-1
-795 uk. ugh-2
-798 uk. va-select
-814 uk. va-selectors
-797 uk. va-shift
 766 uk. working-cells
-917 uk. x _ _ 0001
-919 uk. x _ _ 0002
-915 uk. xa-template
-914 uk. xb-template
 790 uk. ɣ-counter
 786 uk. ɣ-trans-initial
 791 uk. α-counter
@@ -129,6 +82,20 @@
 1012 proc. "I-PP-2" op. 30
 1020 proc. "I-PP-2" op. 31
 984 proc. "I-PP-2" op. 32
+920 proc. "I-PP-2" uk. + 0001 0002
+918 proc. "I-PP-2" uk. + 0001 _ _
+921 proc. "I-PP-2" uk. + _ 0001 _
+922 proc. "I-PP-2" uk. + _ 1081 _
+916 proc. "I-PP-2" uk. ,TN _ firstHalf
+924 proc. "I-PP-2" uk. ,TN _ parameter-info
+923 proc. "I-PP-2" uk. I _ 0001
+912 proc. "I-PP-2" uk. S
+911 proc. "I-PP-2" uk. comp-operator
+914 proc. "I-PP-2" uk. i-shifted
+913 proc. "I-PP-2" uk. parameter-info
+915 proc. "I-PP-2" uk. t
+917 proc. "I-PP-2" uk. x _ _ 0001
+919 proc. "I-PP-2" uk. x _ _ 0002
 919 proc. "II-PP-2" op. 1
 924 proc. "II-PP-2" op. 2
 925 proc. "II-PP-2" op. 3
@@ -181,6 +148,13 @@
 988 proc. "II-PP-2" op. 50
 981 proc. "II-PP-2" blk. op. 44
 991 proc. "II-PP-2" blk. op. 50
+912 proc. "II-PP-2" uk. add-template
+913 proc. "II-PP-2" uk. ai-template
+918 proc. "II-PP-2" uk. gamma param
+916 proc. "II-PP-2" uk. neg param
+917 proc. "II-PP-2" uk. posi param
+915 proc. "II-PP-2" uk. xa-template
+914 proc. "II-PP-2" uk. xb-template
 917 proc. "III-PP-2" op. 1
 927 proc. "III-PP-2" op. 2
 928 proc. "III-PP-2" op. 3
@@ -225,6 +199,12 @@
 993 proc. "III-PP-2" op. 42
 983 proc. "III-PP-2" op. 43
 965 proc. "III-PP-2" blk. op. 28
+911 proc. "III-PP-2" uk. current
+915 proc. "III-PP-2" uk. first and second mask
+914 proc. "III-PP-2" uk. k-trans-template-1
+913 proc. "III-PP-2" uk. k-trans-template-2
+912 proc. "III-PP-2" uk. lkadjf
+916 proc. "III-PP-2" uk. temp-value
 817 proc. "MP-2" op. 1
 823 proc. "MP-2" op. 2
 825 proc. "MP-2" op. 3
@@ -275,6 +255,26 @@
 908 proc. "MP-2" blk. op. 29
 821 proc. "MP-2" blk. op. 31
 910 proc. "MP-2" blk. blk. op. 7
+803 proc. "MP-2" uk. 22
+804 proc. "MP-2" uk. 24
+805 proc. "MP-2" uk. addr-selectors
+794 proc. "MP-2" uk. end-loop
+808 proc. "MP-2" uk. final-select
+809 proc. "MP-2" uk. lower-10bits
+810 proc. "MP-2" uk. neg-bit
+800 proc. "MP-2" uk. select-loop-end
+801 proc. "MP-2" uk. select-template
+799 proc. "MP-2" uk. shift-back
+793 proc. "MP-2" uk. shift-back-change
+811 proc. "MP-2" uk. shift-dec11
+812 proc. "MP-2" uk. shift-dec8
+813 proc. "MP-2" uk. shift-incr
+802 proc. "MP-2" uk. shift-template
+796 proc. "MP-2" uk. ugh-1
+795 proc. "MP-2" uk. ugh-2
+798 proc. "MP-2" uk. va-select
+814 proc. "MP-2" uk. va-selectors
+797 proc. "MP-2" uk. va-shift
 987 rtc. proc. "I-PP-2" op. 32
 992 rtc. proc. "II-PP-2" blk. op. 50
 984 rtc. proc. "III-PP-2" op. 43

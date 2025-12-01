@@ -276,7 +276,9 @@ debugConstantLayout mod = do
     putStrLn "Constants by render position:"
     forM_ (zip [0..] (constDefs proc)) $ \(pos, c) -> do
       let name = constantName c
-      let absoluteAddr = case Unknown name `M.lookup` offsetMap mod of
+      -- Use procedure-qualified key to match the internalized format
+      let key = Procedure nm (Unknown name)
+      let absoluteAddr = case key `M.lookup` offsetMap mod of
             Just addr -> show addr
             Nothing -> "NOT FOUND"
       putStrLn $ "  pos " <> show pos <> ": " <> name <> " -> offsetMap says " <> absoluteAddr <> " (expected " <> show (procBase + pos) <> ")"
@@ -517,8 +519,9 @@ mkRelativizationDict constants procs =
     bbOffsets =
       procs >>= \proc ->
         let
-          (o, constOffset) = buildOffsetMap (Unknown . constantName) (constantSize . fromDef) (constDefs proc)
           nm = procName proc
+          -- Use Procedure-qualified keys for local constants to avoid name collisions across procedures
+          (o, constOffset) = buildOffsetMap (\c -> Procedure nm (Unknown (constantName c))) (constantSize . fromDef) (constDefs proc)
          in
           (ProcStart nm, Rel (Text nm) 0)
             : (ProcEnd nm, Rel (Text nm) (procedureLen proc - 1))
@@ -565,12 +568,21 @@ internalizeModule mod =
 
 internalizeAddresses :: Procedure Address -> Procedure Address
 internalizeAddresses proc =
-  proc{blocks = map (fmap internalizeAddress) (blocks proc)}
+  proc
+    { blocks = map (fmap internalizeAddress) (blocks proc)
+    , constDefs = map (fmap internalizeAddress) (constDefs proc)
+    }
  where
+  -- Names of local constants in this procedure (after layoutConstants' removed externs/globals)
+  localConstNames = map constantName (constDefs proc)
   internalizeAddress (Operator n) = Procedure (procName proc) (Operator n)
   internalizeAddress (Block a) = Procedure (procName proc) (Block a)
   internalizeAddress (RTC a) = RTC $ internalizeAddress a
   internalizeAddress (Offset a o) = Offset (internalizeAddress a) o
+  -- Only internalize Unknown if it's a local constant (not a global/extern)
+  internalizeAddress (Unknown nm)
+    | nm `elem` localConstNames = Procedure (procName proc) (Unknown nm)
+    | otherwise = Unknown nm
   internalizeAddress i = i
 
 -- * Utilities
