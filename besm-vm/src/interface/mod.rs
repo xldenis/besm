@@ -24,7 +24,7 @@ pub struct OpBreakpoint {
 }
 
 // Operator metadata extracted from instruction
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct OpMetadata {
     pub pass: u16,
     pub procedure: u16,
@@ -32,7 +32,7 @@ pub struct OpMetadata {
 }
 
 /// Extract operator metadata (pass, subprogram, operator) from an instruction word
-fn extract_op_metadata(instr_word: u64) -> OpMetadata {
+pub fn extract_op_metadata(instr_word: u64) -> OpMetadata {
     use bit_field::BitField;
     let op_metadata = instr_word.get_bits(48..64);
     OpMetadata {

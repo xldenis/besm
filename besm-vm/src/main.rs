@@ -1,6 +1,6 @@
 use crate::vm::*;
 use clap::Parser;
-use interface::{Interface, OpBreakpoint};
+use interface::{Interface, OpBreakpoint, OpMetadata, extract_op_metadata};
 
 use bit_field::BitField;
 use ratatui::backend::TermionBackend;
@@ -69,27 +69,75 @@ fn print_memory_ranges(vm: &VM, ranges: &[MemoryRange]) {
     }
 }
 
-fn trace_execution(vm: &mut VM, print_memory: &[MemoryRange]) {
+fn trace_execution(
+    vm: &mut VM,
+    print_memory: &[MemoryRange],
+    breakpoint: Option<u16>,
+    mem_breakpoint: Option<u16>,
+    op_breakpoint: Option<OpBreakpoint>,
+) {
     let mut back_jumps = HashMap::new();
 
-    let mut previous_operator = 0;
+    let mut previous_operator = OpMetadata::default();
     let mut current_instr = 0;
     loop {
         if vm.stopped {
             break;
         }
-        let current_operator = vm.memory.get(vm.next_instr()).unwrap().get_bits(48..64);
+        let instr_word = vm.memory.get(vm.next_instr()).unwrap();
+        let current_operator = extract_op_metadata(instr_word);
 
         if previous_operator != current_operator {
             previous_operator = current_operator;
-            let pass = current_operator.get_bits(14..16);
-            let procedure = current_operator.get_bits(10..14);
-            let operator = current_operator.get_bits(0..10);
-            println!("PP{} {} {:3} {}", pass, procedure, operator, vm.next_instr());
+            println!(
+                "PP{} {} {:3} {}",
+                current_operator.pass,
+                current_operator.procedure,
+                current_operator.operator,
+                vm.next_instr()
+            );
+        }
+
+        // Check operator breakpoint before stepping
+        if let Some(op_bp) = &op_breakpoint {
+            if current_operator.pass == op_bp.pass
+                && current_operator.procedure == op_bp.procedure
+                && current_operator.operator == op_bp.operator
+            {
+                eprintln!(
+                    "Operator breakpoint triggered - Pass: {}, Procedure: {}, Operator: {}",
+                    current_operator.pass, current_operator.procedure, current_operator.operator
+                );
+                print_memory_ranges(vm, print_memory);
+                return;
+            }
         }
 
         match vm.step() {
-            Ok(_) => {
+            Ok(step_result) => {
+                // Check memory write breakpoint
+                if let Some(mem_bp) = mem_breakpoint {
+                    if let Some(ref write) = step_result.write {
+                        if write.address == mem_bp {
+                            eprintln!(
+                                "Memory write breakpoint triggered at address {} (wrote {:016x})",
+                                mem_bp, write.new_value
+                            );
+                            print_memory_ranges(vm, print_memory);
+                            return;
+                        }
+                    }
+                }
+
+                // Check instruction address breakpoint
+                if let Some(bp) = breakpoint {
+                    if bp == vm.next_instr() {
+                        eprintln!("Instruction breakpoint triggered at address {}", bp);
+                        print_memory_ranges(vm, print_memory);
+                        return;
+                    }
+                }
+
                 if vm.next_instr() < current_instr {
                     let hash = vm.memory.hash();
 
@@ -168,7 +216,13 @@ fn main() {
         Command::Run => {
             run_with_interface(&mut vm, opt.breakpoint, opt.mem_breakpoint, op_breakpoint)
         }
-        Command::Trace => trace_execution(&mut vm, &opt.print_memory),
+        Command::Trace => trace_execution(
+            &mut vm,
+            &opt.print_memory,
+            opt.breakpoint,
+            opt.mem_breakpoint,
+            op_breakpoint,
+        ),
     }
 
     file_from_md(opt.md0_out, vm.mag_system.mag_drives[0]);
