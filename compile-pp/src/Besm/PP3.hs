@@ -141,8 +141,9 @@ pp3_1 = do
   mbTemplate <- global "mbTemplate" (Template (Mb zero))
 
   -- Probably need to make cellA global for this to work
-  selTemplate <- local "sel_template" (Template $ TN (Absolute 1) currentInstr UnNormalized)
-  transTemplate <- local "trans_template" (Template $ TN cellA (Absolute 1) UnNormalized)
+  -- Renamed to avoid name collision with III-PP-3's sel_template/trans_template
+  selTemplate <- local "i_sel_template" (Template $ TN (Absolute 1) currentInstr UnNormalized)
+  transTemplate <- local "i_trans_template" (Template $ TN cellA (Absolute 1) UnNormalized)
   local "all-but-third" (Raw $ 0b1_11_1111_1111 `B.shift` 22 B..|. 0b1_11_1111_1111 `B.shift` 11)
   local "all-but-first" (Raw $ 0b1_11_1111_1111 `B.shift` 11 B..|. 0b1_11_1111_1111)
   local "all-but-second" (Raw $ 0b1_11_1111_1111 `B.shift` 22 B..|. 0b1_11_1111_1111)
@@ -162,6 +163,9 @@ pp3_1 = do
   -}
   operator 1 $ do
     shift k0 (left 22) counterK
+    -- weirdly they end up flipped, and this screws everythign up
+    -- currently there's an off-by-one on these constants that *only* seems to affect these constants.
+    -- unclear why.
     ai selTemplate counterK (op 46)  -- Form selection command
     ai transTemplate finalK (op 47)  -- Form transmission command
     tN' k0 counterK
@@ -617,6 +621,7 @@ pp3_1 = do
   Op. 47 is the sub-routine for transferring instructions to block K.
 
     todo: make self-incrementing?
+    todo: this writes into the compiler's program. This means the destination must be wrong
 
   -}
   operator 47 $ do

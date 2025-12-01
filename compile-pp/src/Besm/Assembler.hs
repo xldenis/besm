@@ -263,6 +263,23 @@ modInfo mod = void $ do
  where
   procInfo proc = putStrLn $ "proc: " <> procName proc <> " " <> show (procedureLen proc)
   globalInfo globals = putStrLn $ "globals: " <> show (sum $ map (\(_, _, c) -> constantSize c) globals)
+
+-- | Debug function to compare rendered positions with calculated offsets
+debugConstantLayout :: ModuleAssembly 'Absolutized -> IO ()
+debugConstantLayout mod = do
+  putStrLn "=== Constant Layout Debug ==="
+  let mem = memoryLayout mod
+  forM_ (procs mod) $ \proc -> do
+    let nm = procName proc
+    let Just procBase = Text nm `lookup` offsets mem
+    putStrLn $ "\nProcedure: " <> nm <> " (base = " <> show procBase <> ")"
+    putStrLn "Constants by render position:"
+    forM_ (zip [0..] (constDefs proc)) $ \(pos, c) -> do
+      let name = constantName c
+      let absoluteAddr = case Unknown name `M.lookup` offsetMap mod of
+            Just addr -> show addr
+            Nothing -> "NOT FOUND"
+      putStrLn $ "  pos " <> show pos <> ": " <> name <> " -> offsetMap says " <> absoluteAddr <> " (expected " <> show (procBase + pos) <> ")"
 -- * Absolutization
 
 {- |

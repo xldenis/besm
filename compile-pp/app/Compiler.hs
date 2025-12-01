@@ -171,6 +171,8 @@ debugCommand _ = do
       modInfo pp1
       modInfo pp2
       modInfo pp3
+      putStrLn "\n=== PP3 Constant Layout Debug ==="
+      debugConstantLayout pp3
       pure ()
     Left err -> mapM_ putStrLn err
   pure ()
