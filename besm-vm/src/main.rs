@@ -2,12 +2,16 @@ use crate::vm::*;
 use clap::Parser;
 use interface::{Interface, OpBreakpoint};
 
+use bit_field::BitField;
 use ratatui::backend::TermionBackend;
 use std::{collections::HashMap, io};
 use termion::{input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use vm::instruction::Instruction;
 
 use ratatui::Terminal;
+
+use crate::float::Float;
+use crate::opt::MemoryRange;
 
 mod float;
 mod interface;
@@ -31,7 +35,41 @@ fn run_with_interface(
     interface.run(&mut terminal, vm);
 }
 
-fn trace_execution(vm: &mut VM) {
+fn print_memory_cell(vm: &VM, addr: u16) {
+    if let Ok(word) = vm.memory.get(addr) {
+        let float = Float::from_bytes(word);
+        let active_bits = word.get_bits(0..39);
+        let instr_str = Instruction::from_bytes(word)
+            .map(|i| format!("{}", i))
+            .unwrap_or_else(|_| "ERROR".to_string());
+
+        println!(
+            "{:4}  {:<20}  {:>12}  {:010x}  {:039b}",
+            addr,
+            instr_str,
+            &format!("{float:>012}")[..12],
+            active_bits,
+            active_bits
+        );
+    }
+}
+
+fn print_memory_ranges(vm: &VM, ranges: &[MemoryRange]) {
+    if ranges.is_empty() {
+        return;
+    }
+
+    for (i, range) in ranges.iter().enumerate() {
+        if i > 0 {
+            println!();
+        }
+        for addr in range.start..=range.end {
+            print_memory_cell(vm, addr);
+        }
+    }
+}
+
+fn trace_execution(vm: &mut VM, print_memory: &[MemoryRange]) {
     let mut back_jumps = HashMap::new();
 
     let mut previous_operator = 0;
@@ -40,7 +78,6 @@ fn trace_execution(vm: &mut VM) {
         if vm.stopped {
             break;
         }
-        use bit_field::BitField;
         let current_operator = vm.memory.get(vm.next_instr()).unwrap().get_bits(48..64);
 
         if previous_operator != current_operator {
@@ -58,6 +95,7 @@ fn trace_execution(vm: &mut VM) {
 
                     if back_jumps.get(&vm.next_instr()) == Some(&hash) {
                         eprintln!("InfiniteLoop");
+                        print_memory_ranges(vm, print_memory);
                         return;
                     }
 
@@ -68,13 +106,18 @@ fn trace_execution(vm: &mut VM) {
             }
             Err(e) => {
                 eprintln!("{e:?}");
-                let next = vm.memory.get(vm.next_instr()).unwrap();
-                let instr = Instruction::from_bytes(next).unwrap();
-                eprintln!("{}", instr);
+                if let Ok(next) = vm.memory.get(vm.next_instr()) {
+                    match Instruction::from_bytes(next) {
+                        Ok(instr) => eprintln!("{}", instr),
+                        Err(_) => eprintln!("(invalid instruction: {:016x})", next),
+                    }
+                }
+                print_memory_ranges(vm, print_memory);
                 return;
             }
         }
     }
+    print_memory_ranges(vm, print_memory);
 }
 
 extern crate termion;
@@ -125,7 +168,7 @@ fn main() {
         Command::Run => {
             run_with_interface(&mut vm, opt.breakpoint, opt.mem_breakpoint, op_breakpoint)
         }
-        Command::Trace => trace_execution(&mut vm),
+        Command::Trace => trace_execution(&mut vm, &opt.print_memory),
     }
 
     file_from_md(opt.md0_out, vm.mag_system.mag_drives[0]);

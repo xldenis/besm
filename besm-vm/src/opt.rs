@@ -4,6 +4,30 @@ use std::{fs::File, path::PathBuf};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use clap::{Parser, ValueEnum};
 
+#[derive(Debug, Clone, Copy)]
+pub struct MemoryRange {
+    pub start: u16,
+    pub end: u16,
+}
+
+fn parse_memory_range(s: &str) -> Result<MemoryRange, String> {
+    if let Some((start_str, end_str)) = s.split_once(':') {
+        let start = start_str
+            .parse::<u16>()
+            .map_err(|_| format!("Invalid start address: '{}'", start_str))?;
+        let end = end_str
+            .parse::<u16>()
+            .map_err(|_| format!("Invalid end address: '{}'", end_str))?;
+        if start > end {
+            return Err(format!("Start address {} is greater than end address {}", start, end));
+        }
+        Ok(MemoryRange { start, end })
+    } else {
+        let addr = s.parse::<u16>().map_err(|_| format!("Invalid address: '{}'", s))?;
+        Ok(MemoryRange { start: addr, end: addr })
+    }
+}
+
 #[derive(ValueEnum, Debug, Clone)]
 pub enum Command {
     Run,
@@ -54,6 +78,9 @@ pub struct Opts {
 
     #[arg(long = "op-breakpoint", value_parser = parse_op_breakpoint, value_name = "PASS:PROCEDURE:OPERATOR", help = "Set operator breakpoint (format: PASS:PROCEDURE:OPERATOR)")]
     pub op_breakpoint: Option<(u16, u16, u16)>,
+
+    #[arg(long = "print-memory", value_parser = parse_memory_range, value_name = "ADDR or START:END", help = "Print memory cells when trace exits (can be repeated)")]
+    pub print_memory: Vec<MemoryRange>,
 }
 
 use crate::vm::mag::MagDrive;
