@@ -1415,13 +1415,12 @@ pp3_3 = do
 
   {-
   Op. 41 obtains the address of instruction k' in the block K according to the formula k' = (c.K) - ( y - 1200).
-
-  todo: this gets implemented with a CCCC which breaks!!!!! the jcc. what does the source do?
   -}
   operator 41 $ do
     sub' cellC (var "1200") cellC
     sub' counterK cellC k'
-    chain (op 42)
+    clcc (op 42)
+    -- chain (op 42)
 
   {-
   Op. 42 obtains the true address of the isntruction according to the formula Y = k' + Delta K.
