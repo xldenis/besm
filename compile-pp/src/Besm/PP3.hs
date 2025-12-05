@@ -880,7 +880,7 @@ pp3_2 = do
     -- Print information about array :М⁽ⁱ⁾
     -- part of mp-3
     callRtc printSubroutine_03a4 printEntry_039c
-    empty
+    -- empty -- why was this left in?
     chain (op 13)
 
   {-
@@ -1310,6 +1310,8 @@ pp3_3 = do
 
   {-
   Op. 30 refers to op. 40 if 0200 <= y <= 03FF (y is the code of a postiive relative address).
+
+  todo: it seems to go wrong here....
   -}
   operator 30 $ do
     -- if 0x200 <= y < 0x3FF { op 40 } else {op 31 }
@@ -1413,6 +1415,8 @@ pp3_3 = do
 
   {-
   Op. 41 obtains the address of instruction k' in the block K according to the formula k' = (c.K) - ( y - 1200).
+
+  todo: this gets implemented with a CCCC which breaks!!!!! the jcc. what does the source do?
   -}
   operator 41 $ do
     sub' cellC (var "1200") cellC
