@@ -39,9 +39,16 @@ fn print_memory_cell(vm: &VM, addr: u16) {
     if let Ok(word) = vm.memory.get(addr) {
         let float = Float::from_bytes(word);
         let active_bits = word.get_bits(0..39);
-        let instr_str = Instruction::from_bytes(word)
-            .map(|i| format!("{}", i))
-            .unwrap_or_else(|_| "ERROR".to_string());
+        let instr_str =
+            Instruction::from_bytes(word).map(|i| format!("{}", i)).unwrap_or_else(|_| {
+                format!(
+                    "{} {} {} {}",
+                    active_bits.get_bits(33..39),
+                    active_bits.get_bits(22..33),
+                    active_bits.get_bits(11..22),
+                    active_bits.get_bits(0..11)
+                )
+            });
 
         println!(
             "{:4}  {:<20}  {:>12}  {:010x}  {:039b}",

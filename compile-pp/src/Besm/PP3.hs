@@ -182,19 +182,22 @@ pp3_1 = do
   Op. 3 determines the case where open-parentheses of the loop or the sign of
   an operator number have been selected, transferring control to op. 12.
 
-  test the opcode against the value 0x018 (as both logical operators and loops start with that)
+  Loop markers and operator signs have opcode 0 (stripped by PP1).
   -}
   operator 3 $ do
-    comp currentInstr (var "0x18") (op 12) (op 4)
+    tExp' currentInstr cellC  -- extract opcode
+    compWord zero cellC (op 12) (op 4)  -- if opcode == 0, it's a marker
   {-
 
   Op. 4 in the case of selection of instructions Ma or Mb transfers control
   immediately to op. 10 since in theses instructions the first two addresses
   are not examined.
   -}
-  operator 4 $ do
-    comp currentInstr mbTemplate (op 4) (op 12)
-    comp currentInstr maTemplate (op 12) (op 4)
+
+  operator 4 $ mdo
+    comp currentInstr mbTemplate (op 10) next
+    next <- comp currentInstr maTemplate (op 10) (op 5)
+    pure ()
 
   {-
   Op. 5 determines the first address of the instruction and shifts it to the
@@ -420,9 +423,11 @@ pp3_1 = do
 
   Op. 28 transfers control to op. 29 if an instruction has been selected to op. 30 if the open-parentheses of a loop or the sign of an operator number has been selected.
 
+  Loop markers and operator signs have opcode 0 (stripped by PP1).
   -}
-  operator 28 $ do 
-    comp currentInstr (var "0x18") (op 30) (op 29) 
+  operator 28 $ do
+    tExp' currentInstr cellC  -- extract opcode
+    compWord zero cellC (op 30) (op 29)  -- if opcode == 0, it's a marker
   {-
 
   Op. 29 sends the instruction back to the programme and adds unity to the special counter of true instruction addresses.

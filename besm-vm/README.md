@@ -20,6 +20,16 @@ To actually run the compiler use the following command:
 cargo run --release -- run --bootloader=boot.txt --md0=mp1.txt --md4=mp2.txt --md3=mp3.txt --start-address=1025 --md2=test_progs/variable_address.txt
 ```
 
+#### Debugging
+
+The VM includes multiple kinds of breakpoints to make debugging programs simpler.
+
+- Address breakpoints: `B <ADDR>` in the TUI. `--breakpoint` in the cli
+- Write breakpoints: `M <ADDR>` in the TUI. `--mem-breakpoint` in the cli
+- Operator breakpoints `O <PHASE>-<ROUTINE>-<OP>` in the TUI. `--op-breakpoint=<PHASE>:<ROUTINE>:<OP>` in the cli.
+
+There is a `trace` command available that runs the VM in headless mode and prints a trace of the source operators executed. This command will stop whenever a programmed breakpoint is hit, and can be made to print memory using `--print-mem=start:end`.
+
 ### Implemented instructions:
 
 legend: ✅ = working instruction, 🐛 = instruction has known bugs, ❌ = instruction is not implemented.

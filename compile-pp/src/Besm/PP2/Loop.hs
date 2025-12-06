@@ -158,7 +158,7 @@ pp2_1 = do
     └─────┴──────┴──────┴──────┘
     -}
     operator 3 $ do
-      compWord selected shiftedI (op 2) (op 4)
+      compWord selected shiftedI (op 4) (op 2)
 
   {-
   Op. 4 transfers the address of the open-parentheses of the loop to the

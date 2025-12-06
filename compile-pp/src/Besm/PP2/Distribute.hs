@@ -30,6 +30,31 @@ instructions from the block K, beginning with the last instruction, to the
 standard cell and the sub-routine for transfer to the programme (op. 41),
 which realizes all transfers of control instructions and "shifted" programme
 instructions to block K, also beginning with the last instruction.
+
+Notes:
+
+For such a division of control instructions two storage blcoks are utilized in programming each loop in the PP -- the blocks alpha and beta already mentioned in the first part. All control instructions formed which should be placed before the worrking part of the loop are stored in the block alpha in the same order in which tehy will be located in the programme. Those control instructions which shoudl be set after the workign part of the loop  are stored in blcok beta, with the address-modification instructions which should be located in hte repeititive part of the loop amrked by a specifal sign distinguishing them from other instructions in the block beta. The instructions of comparison and parameter change are stored in standard cells up to their introduction into the programme.
+
+0 | "i"| 0 | 0
+dispatch of calculation of i_in
+calculation of i_fin*
+dispatch of initial values of variable instructions*
+working part of loop
+address-modification instructions*
++ "i" 1081 "i"
+comparison instruction
+restoration instructions*
+
+* only when needed
+
+
+17.
+
+After formation of control instructions they are to be arranged in the programme which is carried out in the following manner.
+
+Let n_1 be the number of control instructions wihcih should be located before the working part of a loop and n_2 the nubmer of control instructions which should be after the working part. Then all instructions in the programme located after the close parentheses of the programmed loop are shifted "down" by n_1 + n_2 - 1 cells.
+
+Directly before them are placed those those instructions from the block beta which should be "after the loop". Before them is placed the comparsion instruction, then the parameter modification instruction before which is placed the address-modification instructions transferred from block beta. After this the working part of the loop is shifted "down" by n_1 cells,  so that it is found directly before the addres-modification instructions. The control instructions transferred from block alpha are placed in the n_1 cells released, which complete teh arrangement of the control instructions. In transferring control instructions to the programme all addresses of variable instructions are made relative. It is easy to see that in transferring control instructions the clsoe parentheses of the programmed loop is eliminated.
 -}
 
 pp2_3 = do

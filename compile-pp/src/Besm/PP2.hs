@@ -500,7 +500,7 @@ mp2 = do
   operator 32 $ do
     kTransfer <- empty
     ai kTransfer oneFirstAddr kTransfer
-    ai k unity k
+    ai one k k
     jcc
   {-
   Operators 33-35 form the sub-routine for transferring to block alpha.

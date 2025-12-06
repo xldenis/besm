@@ -382,7 +382,7 @@ fn render_current_instruction_box(t: &mut Buffer, ix: u16, instr_bytes: u64, rec
 
     Paragraph::new(Text::raw(format!(
         "{:06b} {:011b} {:011b} {:011b}",
-        instr_bytes.get_bits(33..38),
+        instr_bytes.get_bits(33..39),
         first_addr(instr_bytes),
         second_addr(instr_bytes),
         third_addr(instr_bytes)
