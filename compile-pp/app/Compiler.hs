@@ -147,6 +147,8 @@ compileCommand (oDir, smDir) = do
                     , Mb 1023
                     ]
                 , terminator = CCCC pp1Start
+                , baseAddress = 1
+                , operatorNum = 1
                 }
             , BB
                 { instrs =
@@ -154,6 +156,8 @@ compileCommand (oDir, smDir) = do
                     , Mb 1023
                     ]
                 , terminator = CCCC pp2Start
+                , baseAddress = 2
+                , operatorNum = 2
                 }
             , BB
                 { instrs = -- todo correct this
@@ -161,6 +165,8 @@ compileCommand (oDir, smDir) = do
                     , Mb 1023
                     ]
                 , terminator = CCCC pp3Start
+                , baseAddress = 3
+                , operatorNum = 3
                 }
             ]
         }
@@ -246,4 +252,5 @@ bb0 =
           [ Add 5 5 6 Normalized
           , Sub 6 5 6 Normalized
           ]
+      , operatorNum = 0
       }

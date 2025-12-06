@@ -36,6 +36,7 @@ data BuilderState = BuilderState
   { currentBlock :: CurrentBlock
   , builtBlocks :: SnocList BasicBlock
   , builtConsts :: [ConstantDef Address]
+  , nextTempNum :: Int -- Counter for temp block numbers, decrements from 998
   }
 
 -- | The current basic block being assembled by a builder
@@ -71,7 +72,7 @@ runBuilder ::
   ([BasicBlock], [ConstantDef Address])
 runBuilder i bld =
   let
-    s = flip execState (BuilderState (emptyCurrentBlock i) (SnocList []) []) $ unBuilder bld
+    s = flip execState (BuilderState (emptyCurrentBlock i) (SnocList []) [] 998) $ unBuilder bld
    in
     (getSnocList $ builtBlocks s, builtConsts s)
 
@@ -102,12 +103,14 @@ emitTerm term = do
           { instrs = getSnocList $ currentInstrs bb
           , baseAddress = blockAddr bb
           , terminator = term
+          , operatorNum = getOperatorNum (blockAddr bb)
           }
 
   modify $ \bs ->
     bs
-      { currentBlock = emptyCurrentBlock (Block (blockAddr bb))
+      { currentBlock = emptyCurrentBlock (op (nextTempNum bs))
       , builtBlocks = builtBlocks bs `snoc` basicBlock
+      , nextTempNum = nextTempNum bs - 1
       }
 
   return (currentAddr bb)

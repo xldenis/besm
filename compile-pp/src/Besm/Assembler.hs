@@ -243,11 +243,11 @@ renderProc passNum ix proc =
     procIx = bitVector ix :: BV 4
    in
     concatMap renderLocal (constDefs proc)
-      ++ (zip [1..] (blocks proc) >>= uncurry (renderBlock passIx procIx))
+      ++ (blocks proc >>= renderBlock passIx procIx)
  where
   renderLocal c = map (b0 <:>) (constantToCell $ fromDef c)
 
-  renderBlock passIx procIx i b = map (passIx <:> procIx <:> (bitVector i :: BV 10) <:> (b0 :: BV 9) <:>) (asmToCell b)
+  renderBlock passIx procIx b = map (passIx <:> procIx <:> (bitVector (fromIntegral (operatorNum b)) :: BV 10) <:> (b0 :: BV 9) <:>) (asmToCell b)
 
   fromDef (Def _ _ c) = c
 
@@ -335,11 +335,12 @@ absolutize mod@Mod{..} =
   absolve _ (Abs i) = i
 
   absoluteBlock :: MemoryLayout -> MemoryLayout -> BB RelativeAddr -> BB Int
-  absoluteBlock mem disk (BB i t b) =
+  absoluteBlock mem disk (BB i t b opNum) =
     BB
       (map (absoluteInstr mem disk) i)
       (fmap (absolve mem) t)
       (absolve mem b)
+      opNum
 
   absoluteInstr mem disk (Ma o a s) = Ma (absolve mem o) (absolve disk a) (absolve mem s)
   absoluteInstr mem disk (Mb b) = Mb (absolve disk b)
@@ -765,7 +766,9 @@ addJump [bb] = case implicitJumps (terminator bb) of
       [bb', jB]
   Nothing -> [bb]
  where
-  jumpBlk fromB to = BB [] (CCCC to) (baseAddress fromB `offAddr` (blockLen fromB + 1))
+  jumpBlk fromB to =
+    let addr = baseAddress fromB `offAddr` (blockLen fromB + 1)
+    in BB [] (CCCC to) addr (getOperatorNum addr)
 addJump (bb : bbs) = bb : addJump bbs
 addJump [] = []
 

@@ -8,7 +8,7 @@
 669 proc. "PP-1-1" op. 29 + 4
 660 proc. "PP-1-1" op. 34 + 1
 688 proc. "PP-1-1" op. 40 + 3
-690 proc. "PP-1-1" blk. op. 11 + 2
+690 proc. "PP-1-1" op. 955 + 2
 796 proc. "PP-1-2" op. 11 + 2
 808 proc. "PP-1-2" op. 17 + 2
 805 proc. "PP-1-2" op. 18 + 2
@@ -22,13 +22,13 @@
 863 proc. "PP-1-2" op. 73 + 2
 874 proc. "PP-1-2" op. 78 + 2
 891 proc. "PP-1-2" op. 88 + 2
-955 proc. "PP-1-2" op. 110 + 2
+954 proc. "PP-1-2" op. 110 + 2
 936 proc. "PP-1-2" op. 119 + 2
 944 proc. "PP-1-2" op. 121 + 7
-811 proc. "PP-1-2" blk. op. 21 + 2
-948 proc. "PP-1-2" blk. op. 114 + 3
-950 proc. "PP-1-2" blk. op. 120 + 2
-822 proc. "PP-1-2" blk. blk. blk. op. 70 + 2
+946 proc. "PP-1-2" op. 871 + 2
+949 proc. "PP-1-2" op. 878 + 3
+822 proc. "PP-1-2" op. 924 + 2
+811 proc. "PP-1-2" op. 976 + 2
 1017 proc. "PP-1-3" op. 18 + 7
 1023 proc. "PP-1-3" op. 22 + 3
 278 uk. &completedOperator
@@ -123,8 +123,8 @@
 676 proc. "PP-1-1" op. 42
 677 proc. "PP-1-1" op. 43
 679 proc. "PP-1-1" op. 45
-689 proc. "PP-1-1" blk. op. 11
-638 proc. "PP-1-1" blk. op. 14
+689 proc. "PP-1-1" op. 955
+638 proc. "PP-1-1" op. 992
 614 proc. "PP-1-1" uk. 0202
 611 proc. "PP-1-1" uk. Y
 610 proc. "PP-1-1" uk. Y'
@@ -239,8 +239,8 @@
 927 proc. "PP-1-2" op. 106
 928 proc. "PP-1-2" op. 107
 929 proc. "PP-1-2" op. 108
-951 proc. "PP-1-2" op. 109
-954 proc. "PP-1-2" op. 110
+950 proc. "PP-1-2" op. 109
+953 proc. "PP-1-2" op. 110
 914 proc. "PP-1-2" op. 111
 917 proc. "PP-1-2" op. 112
 918 proc. "PP-1-2" op. 113
@@ -253,17 +253,17 @@
 937 proc. "PP-1-2" op. 120
 938 proc. "PP-1-2" op. 121
 924 proc. "PP-1-2" op. 122
-762 proc. "PP-1-2" blk. op. 7
-766 proc. "PP-1-2" blk. op. 10
-810 proc. "PP-1-2" blk. op. 21
-778 proc. "PP-1-2" blk. op. 36
-945 proc. "PP-1-2" blk. op. 70
-930 proc. "PP-1-2" blk. op. 108
-946 proc. "PP-1-2" blk. op. 114
-949 proc. "PP-1-2" blk. op. 120
-821 proc. "PP-1-2" blk. blk. op. 70
-951 proc. "PP-1-2" blk. blk. op. 108
-822 proc. "PP-1-2" blk. blk. blk. op. 70
+945 proc. "PP-1-2" op. 871
+947 proc. "PP-1-2" op. 878
+950 proc. "PP-1-2" op. 885
+930 proc. "PP-1-2" op. 886
+822 proc. "PP-1-2" op. 924
+821 proc. "PP-1-2" op. 925
+955 proc. "PP-1-2" op. 926
+778 proc. "PP-1-2" op. 961
+810 proc. "PP-1-2" op. 976
+766 proc. "PP-1-2" op. 988
+762 proc. "PP-1-2" op. 992
 708 proc. "PP-1-2" uk. &partial-programme
 709 proc. "PP-1-2" uk. ,< 0001 builder 112
 699 proc. "PP-1-2" uk. ,CE _ -2 _
@@ -331,9 +331,9 @@
 1020 proc. "PP-1-3" op. 20
 1021 proc. "PP-1-3" op. 21
 1022 proc. "PP-1-3" op. 22
-984 proc. "PP-1-3" blk. op. 5
-992 proc. "PP-1-3" blk. op. 10
-1009 proc. "PP-1-3" blk. op. 17
+1009 proc. "PP-1-3" op. 980
+992 proc. "PP-1-3" op. 988
+984 proc. "PP-1-3" op. 994
 963 proc. "PP-1-3" uk. ,TN 116F _
 962 proc. "PP-1-3" uk. ,TN buffer _
 961 proc. "PP-1-3" uk. ,TN β₀ βᵢ

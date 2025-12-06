@@ -265,7 +265,7 @@ pp3_1 = do
     clcc (op 34)
     bitAnd currentInstr (var "all-but-third") currentInstr
     ai currentInstr cellA currentInstr
-    chain (op 9)
+    chain (op 12)
   {-
 
   Op. 12 transfers the instruction back to block K.

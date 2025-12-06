@@ -30,7 +30,7 @@ programmeToGraph bbs =
     Nothing -> error "you dun goofed"
 
 blockToGraphInfo :: BasicBlock -> (Address, [Address])
-blockToGraphInfo (BB _ t nm) =
+blockToGraphInfo (BB _ t nm _) =
   (nm, termToAddrs t)
 
 termToAddrs :: Terminator -> [Address]

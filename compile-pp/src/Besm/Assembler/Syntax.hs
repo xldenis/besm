@@ -64,6 +64,13 @@ addr = Absolute
 isUnknown (Unknown _) = True
 isUnknown _ = False
 
+-- | Extract the operator number from an Address
+getOperatorNum :: Address -> Int
+getOperatorNum (Operator n) = n
+getOperatorNum (Block a) = getOperatorNum a
+getOperatorNum (Procedure _ a) = getOperatorNum a
+getOperatorNum _ = 0
+
 unknowns :: Address -> [String]
 unknowns (Offset o _) = unknowns o
 unknowns (Procedure _ o) = unknowns o
@@ -155,6 +162,7 @@ data BB a = BB
   { instrs :: [Instr a]
   , terminator :: Term a
   , baseAddress :: a
+  , operatorNum :: Int -- Original operator number for debug data encoding
   }
   deriving (Show, Functor, Foldable, Eq, Traversable)
 
@@ -276,7 +284,7 @@ data Term a
 type RawBlock = BB Int
 
 asmToCell :: RawBlock -> [BV 39]
-asmToCell (BB is tm adx) =
+asmToCell (BB is tm adx _) =
   map (instToCell . fmap fromIntegral) is ++ termToCell (fmap fromIntegral tm)
 
 instToCell :: Instr Integer -> BV 39
