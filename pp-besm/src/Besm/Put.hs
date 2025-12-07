@@ -613,7 +613,7 @@ numberToBesmFloating num =
  where
   toBitVector :: [Bool] -> BV 32
   -- toBitVector bits =
-  toBitVector bits = case BV.bitsBE (pad ++ bits) of
+  toBitVector bits = case BV.bitsBE (bits ++ pad) of
     p ->
       viewPair
         ( \prf b ->
