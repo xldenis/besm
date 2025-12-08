@@ -81,6 +81,9 @@ pub struct Opts {
 
     #[arg(long = "print-memory", value_parser = parse_memory_range, value_name = "ADDR or START:END", help = "Print memory cells when trace exits (can be repeated)")]
     pub print_memory: Vec<MemoryRange>,
+
+    #[arg(long = "no-trace", help = "Suppress trace output, only show memory dump")]
+    pub no_trace: bool,
 }
 
 use crate::vm::mag::MagDrive;

@@ -264,6 +264,7 @@ pp2_1 = do
   -}
 
   operator 12 $ do
+    shift ifin (left 11) ifin     -- Move ifin to second address position
     ai builtComp ifin builtComp
 
     cccc (Procedure "MP-2" (op 4))

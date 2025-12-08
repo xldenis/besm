@@ -82,6 +82,7 @@ fn trace_execution(
     breakpoint: Option<u16>,
     mem_breakpoint: Option<u16>,
     op_breakpoint: Option<OpBreakpoint>,
+    no_trace: bool,
 ) {
     let mut back_jumps = HashMap::new();
 
@@ -96,13 +97,15 @@ fn trace_execution(
 
         if previous_operator != current_operator {
             previous_operator = current_operator;
-            println!(
-                "PP{} {} {:3} {}",
-                current_operator.pass,
-                current_operator.procedure,
-                current_operator.operator,
-                vm.next_instr()
-            );
+            if !no_trace {
+                println!(
+                    "PP{} {} {:3} {}",
+                    current_operator.pass,
+                    current_operator.procedure,
+                    current_operator.operator,
+                    vm.next_instr()
+                );
+            }
         }
 
         // Check operator breakpoint before stepping
@@ -229,6 +232,7 @@ fn main() {
             opt.breakpoint,
             opt.mem_breakpoint,
             op_breakpoint,
+            opt.no_trace,
         ),
     }
 

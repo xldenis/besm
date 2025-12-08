@@ -177,9 +177,9 @@ pp2_3 = do
     sub' unnamed parenCode temp
     sub' temp alphaDiff temp
 
-    -- v ---
-    local "temp-value" (Raw 0x200) -- 10 bits set... why?
-    ai temp (var "temp-value") temp -- what does this do??????
+    -- Encode as negative relative address for backward jump to loop start
+    local "temp-value" (Raw $ unsafeFromBesmAddress "1200")
+    ai temp (var "temp-value") temp
     ai builtComp temp (var "current")
 
     chain (op 9)

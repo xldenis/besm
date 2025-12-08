@@ -151,9 +151,9 @@ pp3_1 = do
 
   local "B" Cell
 
-  local "0200"   (Raw 0x0200)
-  local "1200"   (Raw 0x1200)
-  local "1000"   (Raw 0x1000)
+  local "0200"   (Raw $ unsafeFromBesmAddress "0200")
+  local "1200"   (Raw $ unsafeFromBesmAddress "1200")
+  local "1000"   (Raw $ unsafeFromBesmAddress "1000")
 
 
   let k0 = header `offAddr` 4
@@ -1011,7 +1011,7 @@ pp3_3 = do
   local "0x11EF" (Raw $ unsafeFromBesmAddress "11EF")
   local "0x11FF" (Raw $ unsafeFromBesmAddress "11FF")
   local "0200"   (Raw $ unsafeFromBesmAddress "0200")
-  local "1200"   (Raw 0x1200)
+  local "1200"   (Raw $ unsafeFromBesmAddress "1200")
   local "0x1B"   (Raw 0x1B)
   local "0x12"   (Raw 0x12)
   local "0xF"    (Raw 0xF)
