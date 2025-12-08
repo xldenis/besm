@@ -178,7 +178,7 @@ pp2_3 = do
     sub' temp alphaDiff temp
 
     -- v ---
-    local "temp-value" (Raw 0x03FF) -- 10 bits set... why?
+    local "temp-value" (Raw 0x200) -- 10 bits set... why?
     ai temp (var "temp-value") temp -- what does this do??????
     ai builtComp temp (var "current")
 
