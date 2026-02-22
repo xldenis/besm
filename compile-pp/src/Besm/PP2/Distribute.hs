@@ -122,7 +122,7 @@ pp2_3 = do
   -}
   let kCr = header `offAddr` 6
   operator 2 $ do
-    compMod kCr kLast (Procedure "MP-2" (op 35)) (op 3)
+    compMod kCr kLast (Procedure "MP-2" (op 35)) (op 5)
 
   {-
   Op. 3 transfers the next insturction of the programme, beginning with the

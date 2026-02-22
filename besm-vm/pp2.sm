@@ -16,9 +16,10 @@
 962 proc. "II-PP-2" op. 30 + 3
 985 proc. "II-PP-2" op. 49 + 2
 979 proc. "II-PP-2" op. 955 + 2
-965 proc. "III-PP-2" op. 24 + 2
-992 proc. "III-PP-2" op. 42 + 2
-963 proc. "III-PP-2" op. 971 + 2
+964 proc. "III-PP-2" op. 4 + 2
+966 proc. "III-PP-2" op. 24 + 2
+993 proc. "III-PP-2" op. 42 + 2
+961 proc. "III-PP-2" op. 971 + 2
 823 proc. "MP-2" op. 3 + 2
 826 proc. "MP-2" op. 8 + 3
 828 proc. "MP-2" op. 14 + 2
@@ -158,48 +159,48 @@
 912 proc. "II-PP-2" uk. xb-template
 915 proc. "III-PP-2" op. 1
 925 proc. "III-PP-2" op. 2
-926 proc. "III-PP-2" op. 3
-927 proc. "III-PP-2" op. 4
-928 proc. "III-PP-2" op. 5
-929 proc. "III-PP-2" op. 6
-931 proc. "III-PP-2" op. 7
-932 proc. "III-PP-2" op. 8
-936 proc. "III-PP-2" op. 9
-937 proc. "III-PP-2" op. 10
-938 proc. "III-PP-2" op. 11
-939 proc. "III-PP-2" op. 12
-941 proc. "III-PP-2" op. 13
-942 proc. "III-PP-2" op. 14
-943 proc. "III-PP-2" op. 15
-944 proc. "III-PP-2" op. 16
-945 proc. "III-PP-2" op. 17
-946 proc. "III-PP-2" op. 18
-948 proc. "III-PP-2" op. 19
-949 proc. "III-PP-2" op. 20
-950 proc. "III-PP-2" op. 21
-954 proc. "III-PP-2" op. 22
-955 proc. "III-PP-2" op. 23
-964 proc. "III-PP-2" op. 24
-958 proc. "III-PP-2" op. 25
-959 proc. "III-PP-2" op. 26
-960 proc. "III-PP-2" op. 27
-962 proc. "III-PP-2" op. 28
-966 proc. "III-PP-2" op. 29
-967 proc. "III-PP-2" op. 30
-968 proc. "III-PP-2" op. 31
-969 proc. "III-PP-2" op. 32
-970 proc. "III-PP-2" op. 33
-971 proc. "III-PP-2" op. 34
-972 proc. "III-PP-2" op. 35
-978 proc. "III-PP-2" op. 36
-979 proc. "III-PP-2" op. 37
-980 proc. "III-PP-2" op. 38
-983 proc. "III-PP-2" op. 39
-984 proc. "III-PP-2" op. 40
-987 proc. "III-PP-2" op. 41
-991 proc. "III-PP-2" op. 42
-981 proc. "III-PP-2" op. 43
-963 proc. "III-PP-2" op. 971
+962 proc. "III-PP-2" op. 3
+963 proc. "III-PP-2" op. 4
+926 proc. "III-PP-2" op. 5
+927 proc. "III-PP-2" op. 6
+929 proc. "III-PP-2" op. 7
+930 proc. "III-PP-2" op. 8
+934 proc. "III-PP-2" op. 9
+935 proc. "III-PP-2" op. 10
+936 proc. "III-PP-2" op. 11
+937 proc. "III-PP-2" op. 12
+939 proc. "III-PP-2" op. 13
+940 proc. "III-PP-2" op. 14
+941 proc. "III-PP-2" op. 15
+942 proc. "III-PP-2" op. 16
+943 proc. "III-PP-2" op. 17
+944 proc. "III-PP-2" op. 18
+946 proc. "III-PP-2" op. 19
+947 proc. "III-PP-2" op. 20
+948 proc. "III-PP-2" op. 21
+952 proc. "III-PP-2" op. 22
+953 proc. "III-PP-2" op. 23
+965 proc. "III-PP-2" op. 24
+956 proc. "III-PP-2" op. 25
+957 proc. "III-PP-2" op. 26
+958 proc. "III-PP-2" op. 27
+960 proc. "III-PP-2" op. 28
+967 proc. "III-PP-2" op. 29
+968 proc. "III-PP-2" op. 30
+969 proc. "III-PP-2" op. 31
+970 proc. "III-PP-2" op. 32
+971 proc. "III-PP-2" op. 33
+972 proc. "III-PP-2" op. 34
+973 proc. "III-PP-2" op. 35
+979 proc. "III-PP-2" op. 36
+980 proc. "III-PP-2" op. 37
+981 proc. "III-PP-2" op. 38
+984 proc. "III-PP-2" op. 39
+985 proc. "III-PP-2" op. 40
+988 proc. "III-PP-2" op. 41
+992 proc. "III-PP-2" op. 42
+982 proc. "III-PP-2" op. 43
+961 proc. "III-PP-2" op. 971
 909 proc. "III-PP-2" uk. current
 913 proc. "III-PP-2" uk. first and second mask
 912 proc. "III-PP-2" uk. k-trans-template-1
@@ -278,12 +279,12 @@
 795 proc. "MP-2" uk. va-shift
 987 rtc. proc. "I-PP-2" op. 32
 990 rtc. proc. "II-PP-2" op. 948
-982 rtc. proc. "III-PP-2" op. 43
+983 rtc. proc. "III-PP-2" op. 43
 909 proc start. I-PP-2
 909 proc start. II-PP-2
 909 proc start. III-PP-2
 791 proc start. MP-2
 1023 proc end. I-PP-2
 990 proc end. II-PP-2
-992 proc end. III-PP-2
+993 proc end. III-PP-2
 908 proc end. MP-2

@@ -54,7 +54,7 @@ pp2_1 = do
 
   parameterSelect <- local ",TN _ parameter-info" $ Template (TN zero (var "parameter-info") UnNormalized)
   normTemplate <- local "I _ 0001" (Template (I zero zero zero))
-  incrTemplate <- local "+ _ 1081 _" (Template (Add zero zero zero UnNormalized))
+  incrTemplate <- local "+ _ 1081 _" (Template (Add zero unity zero UnNormalized))
 
   local "+ _ 0001 _" $ Template (Add zero (addr 1) zero UnNormalized)
   local "+ 0001 0002" $ Template (Add (addr 1) (addr 2) zero UnNormalized)
@@ -176,7 +176,7 @@ pp2_1 = do
   operator 4 $ mdo
     bitAnd parameterInfo firstAddr iin
     shift iin (right 22) iinShifted
-    tN' counterK parenCode
+    sub' counterK one parenCode
 
     chain (op 5)
   {-

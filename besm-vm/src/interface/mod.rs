@@ -54,6 +54,7 @@ pub struct Interface {
     exiting: bool,
     mem_breakpoint: Option<u16>,
     op_breakpoint: Option<OpBreakpoint>,
+    previous_op: OpMetadata,
 }
 
 impl Interface {
@@ -73,6 +74,7 @@ impl Interface {
             exiting: false,
             mem_breakpoint,
             op_breakpoint,
+            previous_op: OpMetadata::default(),
         }
     }
 
@@ -207,12 +209,13 @@ impl Interface {
 }
 
 fn step_vm(vm: &mut VM, app: &mut Interface) {
-    // Check operator breakpoint before stepping
+    // Check operator breakpoint: fire only on transition into the matching operator
     if let Some(op_bp) = app.op_breakpoint {
         if let Ok(instr_word) = vm.memory.get(vm.next_instr()) {
             let metadata = extract_op_metadata(instr_word);
 
-            if metadata.pass == op_bp.pass
+            if metadata != app.previous_op
+                && metadata.pass == op_bp.pass
                 && metadata.procedure == op_bp.procedure
                 && metadata.operator == op_bp.operator
             {
@@ -222,9 +225,15 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
                     metadata.procedure,
                     metadata.operator
                 );
+                app.previous_op = metadata;
                 app.pause();
             }
         }
+    }
+
+    // Track operator transitions for breakpoint edge detection
+    if let Ok(instr_word) = vm.memory.get(vm.next_instr()) {
+        app.previous_op = extract_op_metadata(instr_word);
     }
 
     let step_result = match vm.step() {

@@ -106,20 +106,20 @@ fn trace_execution(
                     vm.next_instr()
                 );
             }
-        }
 
-        // Check operator breakpoint before stepping
-        if let Some(op_bp) = &op_breakpoint {
-            if current_operator.pass == op_bp.pass
-                && current_operator.procedure == op_bp.procedure
-                && current_operator.operator == op_bp.operator
-            {
-                eprintln!(
-                    "Operator breakpoint triggered - Pass: {}, Procedure: {}, Operator: {}",
-                    current_operator.pass, current_operator.procedure, current_operator.operator
-                );
-                print_memory_ranges(vm, print_memory);
-                return;
+            // Check operator breakpoint on transition into the matching operator
+            if let Some(op_bp) = &op_breakpoint {
+                if current_operator.pass == op_bp.pass
+                    && current_operator.procedure == op_bp.procedure
+                    && current_operator.operator == op_bp.operator
+                {
+                    eprintln!(
+                        "Operator breakpoint triggered - Pass: {}, Procedure: {}, Operator: {}",
+                        current_operator.pass, current_operator.procedure, current_operator.operator
+                    );
+                    print_memory_ranges(vm, print_memory);
+                    return;
+                }
             }
         }
 
