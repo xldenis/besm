@@ -9,4 +9,4 @@ a, b, 1, 10
 
 4. Logical Scheme
 
-[a a + b => b]; a + a => a; Form b ,=> 0
+[a a + b => b]; a + a => a; Form b ,=> 0; stop
