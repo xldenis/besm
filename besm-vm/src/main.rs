@@ -76,9 +76,59 @@ fn print_memory_ranges(vm: &VM, ranges: &[MemoryRange]) {
     }
 }
 
+fn print_md_cell(drive: &vm::mag::MagDrive, addr: u16) {
+    if let Some(&word) = drive.drive.get(addr as usize) {
+        let float = Float::from_bytes(word);
+        let active_bits = word.get_bits(0..39);
+        let instr_str =
+            Instruction::from_bytes(word).map(|i| format!("{}", i)).unwrap_or_else(|_| {
+                format!(
+                    "{} {} {} {}",
+                    active_bits.get_bits(33..39),
+                    active_bits.get_bits(22..33),
+                    active_bits.get_bits(11..22),
+                    active_bits.get_bits(0..11)
+                )
+            });
+
+        println!(
+            "{:4}  {:<20}  {:>12}  {:010x}  {:039b}",
+            addr,
+            instr_str,
+            &format!("{float:>012}")[..12],
+            active_bits,
+            active_bits
+        );
+    }
+}
+
+fn print_md_ranges(drive: &vm::mag::MagDrive, drive_name: &str, ranges: &[MemoryRange]) {
+    if ranges.is_empty() {
+        return;
+    }
+
+    println!("--- {drive_name} ---");
+    for (i, range) in ranges.iter().enumerate() {
+        if i > 0 {
+            println!();
+        }
+        for addr in range.start..=range.end {
+            print_md_cell(drive, addr);
+        }
+    }
+}
+
+fn print_all_dumps(vm: &VM, print_memory: &[MemoryRange], print_mds: &[&[MemoryRange]; 4]) {
+    print_memory_ranges(vm, print_memory);
+    for (i, ranges) in print_mds.iter().enumerate() {
+        print_md_ranges(&vm.mag_system.mag_drives[i + 1], &format!("MD-{}", i + 1), ranges);
+    }
+}
+
 fn trace_execution(
     vm: &mut VM,
     print_memory: &[MemoryRange],
+    print_mds: &[&[MemoryRange]; 4],
     breakpoint: Option<u16>,
     mem_breakpoint: Option<u16>,
     op_breakpoint: Option<OpBreakpoint>,
@@ -117,7 +167,7 @@ fn trace_execution(
                         "Operator breakpoint triggered - Pass: {}, Procedure: {}, Operator: {}",
                         current_operator.pass, current_operator.procedure, current_operator.operator
                     );
-                    print_memory_ranges(vm, print_memory);
+                    print_all_dumps(vm, print_memory, print_mds);
                     return;
                 }
             }
@@ -133,7 +183,7 @@ fn trace_execution(
                                 "Memory write breakpoint triggered at address {} (wrote {:016x})",
                                 mem_bp, write.new_value
                             );
-                            print_memory_ranges(vm, print_memory);
+                            print_all_dumps(vm, print_memory, print_mds);
                             return;
                         }
                     }
@@ -143,7 +193,7 @@ fn trace_execution(
                 if let Some(bp) = breakpoint {
                     if bp == vm.next_instr() {
                         eprintln!("Instruction breakpoint triggered at address {}", bp);
-                        print_memory_ranges(vm, print_memory);
+                        print_all_dumps(vm, print_memory, print_mds);
                         return;
                     }
                 }
@@ -153,7 +203,7 @@ fn trace_execution(
 
                     if back_jumps.get(&vm.next_instr()) == Some(&hash) {
                         eprintln!("InfiniteLoop");
-                        print_memory_ranges(vm, print_memory);
+                        print_all_dumps(vm, print_memory, print_mds);
                         return;
                     }
 
@@ -170,12 +220,12 @@ fn trace_execution(
                         Err(_) => eprintln!("(invalid instruction: {:016x})", next),
                     }
                 }
-                print_memory_ranges(vm, print_memory);
+                print_all_dumps(vm, print_memory, print_mds);
                 return;
             }
         }
     }
-    print_memory_ranges(vm, print_memory);
+    print_all_dumps(vm, print_memory, print_mds);
 }
 
 extern crate termion;
@@ -229,6 +279,7 @@ fn main() {
         Command::Trace => trace_execution(
             &mut vm,
             &opt.print_memory,
+            &[&opt.print_md_1, &opt.print_md_2, &opt.print_md_3, &opt.print_md_4],
             opt.breakpoint,
             opt.mem_breakpoint,
             op_breakpoint,

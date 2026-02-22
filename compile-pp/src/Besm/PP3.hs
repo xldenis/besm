@@ -665,7 +665,7 @@ pp3_2 = do
   m1 <- local "M1" Cell          -- M^(1)
   o  <- local "O" Cell           -- 03E5
 
-  deltaC <- local "deltaC" Cell  -- 03F7
+  deltaC <- global "deltaC" Cell  -- 03F7
   deltaK <- global "deltaK" Cell  -- 03F8
   deltaGamma <- global "deltaGamma" Cell  -- 03F9
   deltaRPD <- extern "deltaR"      -- 03FA

@@ -82,6 +82,15 @@ pub struct Opts {
     #[arg(long = "print-memory", value_parser = parse_memory_range, value_name = "ADDR or START:END", help = "Print memory cells when trace exits (can be repeated)")]
     pub print_memory: Vec<MemoryRange>,
 
+    #[arg(long = "print-md-1", value_parser = parse_memory_range, value_name = "ADDR or START:END", help = "Print MD-1 cells when trace exits")]
+    pub print_md_1: Vec<MemoryRange>,
+    #[arg(long = "print-md-2", value_parser = parse_memory_range, value_name = "ADDR or START:END", help = "Print MD-2 cells when trace exits")]
+    pub print_md_2: Vec<MemoryRange>,
+    #[arg(long = "print-md-3", value_parser = parse_memory_range, value_name = "ADDR or START:END", help = "Print MD-3 cells when trace exits")]
+    pub print_md_3: Vec<MemoryRange>,
+    #[arg(long = "print-md-4", value_parser = parse_memory_range, value_name = "ADDR or START:END", help = "Print MD-4 cells when trace exits")]
+    pub print_md_4: Vec<MemoryRange>,
+
     #[arg(long = "no-trace", help = "Suppress trace output, only show memory dump")]
     pub no_trace: bool,
 }
