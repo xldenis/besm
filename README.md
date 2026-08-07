@@ -56,7 +56,7 @@ Electronic Digital Machines
 
 Electronic Computers
 
-- https://catalog.lib.utexas.edu/record=b1571926~S29
+- [https://catalog.lib.utexas.edu/record=b1571926~S29](https://search.lib.utexas.edu/permalink/01UTAU_INST/h95s71/alma991035119739706011)
 
 Electronic Digital Computers and Programming
 
