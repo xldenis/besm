@@ -1,0 +1,22 @@
+# The parameter inside a product: Σ i*i for i < 4.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+i : i_in = 0, i_fin = 4
+
+3. List of Constants and Variable Quantities
+
+0, 4, s
+
+4. Logical Scheme
+
+0 => s; [i s + i * i => s]; stop
+'''
+
+[expect.values]
+s = 14

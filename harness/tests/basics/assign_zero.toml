@@ -1,0 +1,20 @@
+# Assigning zero.
+
+xfail = "block K starts with an untranslated word instead of instructions"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+0, 5, x
+
+4. Logical Scheme
+
+5 => x; 0 => x; stop
+'''
+
+[expect.values]
+x = 0

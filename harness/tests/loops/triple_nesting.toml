@@ -1,0 +1,24 @@
+# Three nested loops: 2 x 2 x 2.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+i : i_in = 0, i_fin = 2
+j : j_in = 0, j_fin = 2
+k : k_in = 0, k_fin = 2
+
+3. List of Constants and Variable Quantities
+
+0, 1, 2, c
+
+4. Logical Scheme
+
+0 => c; [i [j [k c + 1 => c]]]; stop
+'''
+
+[expect.values]
+c = 8

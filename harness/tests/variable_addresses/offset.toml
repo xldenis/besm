@@ -1,0 +1,33 @@
+# <a_i> = 1.i + 2 is shifted by two cells from the start of the block.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+(a) Block a (5 cells)
+
+<a_i> = 1.i + 2
+<a_0> = 0
+<a_1> = 1
+<a_2> = 2
+<a_4> = 4
+
+2. Parameters
+
+i : i_in = 0, i_fin = 3
+
+3. List of Constants and Variable Quantities
+
+0, 3, 10, p, q, r, s
+
+4. Logical Scheme
+
+0 => a_0; 0 => a_1; [i i + 10 => a_i]; a_0 => p; a_1 => q; a_2 => r; a_4 => s; stop
+'''
+
+[expect.values]
+p = 0
+q = 0
+r = 10
+s = 12

@@ -1,0 +1,22 @@
+# Printing the loop parameter on every iteration.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+i : i_in = 0, i_fin = 3
+
+3. List of Constants and Variable Quantities
+
+0, 3
+
+4. Logical Scheme
+
+[i i ,=> 0]; stop
+'''
+
+[expect]
+printed = ["0000000000", "0280000000", "0480000000"]

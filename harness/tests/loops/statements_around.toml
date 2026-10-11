@@ -1,0 +1,23 @@
+# Code before, inside and after a loop.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+i : i_in = 0, i_fin = 3
+
+3. List of Constants and Variable Quantities
+
+1, 3, 0, 5, x, y
+
+4. Logical Scheme
+
+5 => x; [i x + 1 => x]; x + x => y; stop
+'''
+
+[expect.values]
+x = 8
+y = 16

@@ -1,0 +1,20 @@
+# Multiplication by a negative quantity.
+
+xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+0, 3, 4, x, y
+
+4. Logical Scheme
+
+0 - 3 => x; x * 4 => y; stop
+'''
+
+[expect.values]
+y = -12

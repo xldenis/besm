@@ -1,0 +1,22 @@
+# The parameter takes the values in, ..., fin - 1.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+i : i_in = 0, i_fin = 5
+
+3. List of Constants and Variable Quantities
+
+0, 5, l
+
+4. Logical Scheme
+
+[i i => l]; stop
+'''
+
+[expect.values]
+l = 4

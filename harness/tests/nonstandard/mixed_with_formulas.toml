@@ -1,0 +1,22 @@
+# Values flow between formulas and machine instructions.
+
+xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+1, 2, 3, a, b, c
+
+4. Logical Scheme
+
+2 + 3 => a; (Add, a, a, b); b + 1 => c; stop
+'''
+
+[expect.values]
+a = 5
+b = 10
+c = 11

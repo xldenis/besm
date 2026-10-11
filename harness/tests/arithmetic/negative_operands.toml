@@ -1,0 +1,22 @@
+# Arithmetic on a negative quantity.
+
+xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+0, 5, 2, x, y, z
+
+4. Logical Scheme
+
+0 - 5 => x; x + 2 => y; x - 2 => z; stop
+'''
+
+[expect.values]
+x = -5
+y = -3
+z = -7

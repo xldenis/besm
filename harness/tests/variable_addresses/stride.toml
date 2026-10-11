@@ -1,0 +1,35 @@
+# <a_i> = 2.i only touches even cells.
+
+xfail = "compiled programme traps with OutOfBounds (I 26 0 706)"
+
+program = '''
+1. Variable Addresses
+
+(a) Block a (5 cells)
+
+<a_i> = 2.i
+<a_0> = 0
+<a_1> = 1
+<a_2> = 2
+<a_3> = 3
+<a_4> = 4
+
+2. Parameters
+
+i : i_in = 0, i_fin = 3
+
+3. List of Constants and Variable Quantities
+
+0, 1, 3, p, q, r, s, t
+
+4. Logical Scheme
+
+0 => a_0; 0 => a_1; 0 => a_2; 0 => a_3; 0 => a_4; [i i + 1 => a_i]; a_0 => p; a_1 => q; a_2 => r; a_3 => s; a_4 => t; stop
+'''
+
+[expect.values]
+p = 1
+q = 0
+r = 2
+s = 0
+t = 3

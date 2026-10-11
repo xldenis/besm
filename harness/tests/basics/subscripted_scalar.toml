@@ -1,0 +1,22 @@
+# Scalars may have subscripted names (x_1, x_ab) outside any variable-address block.
+
+xfail = "pp-besm: section 3 only accepts single-letter quantities"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+3, 5, x_1, x_ab, y
+
+4. Logical Scheme
+
+3 => x_1; 5 => x_ab; x_1 + x_ab => y; stop
+'''
+
+[expect.values]
+x_1 = 3
+x_ab = 5
+y = 8

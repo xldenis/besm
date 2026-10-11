@@ -1,0 +1,20 @@
+# Several printouts appear in programme order.
+
+xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+1, 2, 3
+
+4. Logical Scheme
+
+1 ,=> 0; 2 ,=> 0; 3 ,=> 0; stop
+'''
+
+[expect]
+printed = ["0280000000", "0480000000", "04c0000000"]

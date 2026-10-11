@@ -1,0 +1,31 @@
+# Updating a block in place with the parameter: a_i + i => a_i.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+(a) Block a (3 cells)
+
+<a_i> = 1.i
+<a_0> = 0
+<a_1> = 1
+<a_2> = 2
+
+2. Parameters
+
+i : i_in = 0, i_fin = 3
+
+3. List of Constants and Variable Quantities
+
+0, 1, 3, p, q, r
+
+4. Logical Scheme
+
+1 => a_0; 1 => a_1; 1 => a_2; [i a_i + i => a_i]; a_0 => p; a_1 => q; a_2 => r; stop
+'''
+
+[expect.values]
+p = 1
+q = 2
+r = 3

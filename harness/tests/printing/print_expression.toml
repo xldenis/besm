@@ -1,0 +1,20 @@
+# Printing a formula without assigning it.
+
+xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+2, 3, 10, 4
+
+4. Logical Scheme
+
+2 + 3 ,=> 0; 10 - 4 ,=> 0; stop
+'''
+
+[expect]
+printed = ["06a0000000", "06c0000000"]

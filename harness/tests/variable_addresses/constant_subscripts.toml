@@ -1,0 +1,28 @@
+# Variable addresses with constant subscripts are distinct cells of the block.
+
+xfail = "a_0 => p compiles to a call into the DS (CLCC 1168) that runs into an empty word"
+
+program = '''
+1. Variable Addresses
+
+(a) Block a (3 cells)
+
+<a_0> = 0
+<a_1> = 1
+<a_2> = 2
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+5, 6, 7, p, q, r
+
+4. Logical Scheme
+
+5 => a_0; 6 => a_1; 7 => a_2; a_0 => p; a_1 => q; a_2 => r; stop
+'''
+
+[expect.values]
+p = 5
+q = 6
+r = 7

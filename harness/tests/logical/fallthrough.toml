@@ -1,0 +1,20 @@
+# Branching to the operator that follows P anyway, then running on.
+
+xfail = "pp-besm crashes in BitLayout.hs:63 encoding logical operators"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+0, 1, r
+
+4. Logical Scheme
+
+0 => r; P(r, 0101; 0101 / (-∞, 1)); L0101 r + 1 => r; stop
+'''
+
+[expect.values]
+r = 1

@@ -1,0 +1,24 @@
+# Division giving fractions (negative exponents).
+
+xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+1, 4, 3, 2, x, y
+
+4. Logical Scheme
+
+1 : 4 => x; 3 : 2 => y; stop
+'''
+
+[expect]
+tolerance = 1e-6
+
+[expect.values]
+x = 0.25
+y = 1.5

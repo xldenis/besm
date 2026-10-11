@@ -1,0 +1,20 @@
+# (TN, a, 0, b) copies a into b.
+
+xfail = "block K starts with an untranslated word instead of instructions"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+9, a, b
+
+4. Logical Scheme
+
+9 => a; (TN, a, 0, b); stop
+'''
+
+[expect.values]
+b = 9

@@ -1,0 +1,30 @@
+# Largest element of a block using P inside a loop.
+
+xfail = "pp-besm: LeftImproperSemiInterval ranges are not yet implemented in Lower.hs"
+
+program = '''
+1. Variable Addresses
+
+(a) Block a (4 cells)
+
+<a_i> = 1.i
+<a_0> = 0
+<a_1> = 1
+<a_2> = 2
+<a_3> = 3
+
+2. Parameters
+
+i : i_in = 0, i_fin = 4
+
+3. List of Constants and Variable Quantities
+
+0, 3, 4, 7, 9, m
+
+4. Logical Scheme
+
+3 => a_0; 9 => a_1; 4 => a_2; 7 => a_3; a_0 => m; [i P(a_i, 0101; 0102 / (-∞, m]); L0101 a_i => m; L0102 ]; stop
+'''
+
+[expect.values]
+m = 9

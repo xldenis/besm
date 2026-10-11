@@ -1,0 +1,33 @@
+# Writing a block in a loop, reading it back with constant subscripts.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+(a) Block a (4 cells)
+
+<a_i> = 1.i
+<a_0> = 0
+<a_1> = 1
+<a_2> = 2
+<a_3> = 3
+
+2. Parameters
+
+i : i_in = 0, i_fin = 4
+
+3. List of Constants and Variable Quantities
+
+0, 4, 10, p, q, r, s
+
+4. Logical Scheme
+
+[i i + 10 => a_i]; a_0 => p; a_1 => q; a_2 => r; a_3 => s; stop
+'''
+
+[expect.values]
+p = 10
+q = 11
+r = 12
+s = 13

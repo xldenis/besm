@@ -1,0 +1,22 @@
+# A loop with exactly one iteration.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+i : i_in = 0, i_fin = 1
+
+3. List of Constants and Variable Quantities
+
+0, 1, c
+
+4. Logical Scheme
+
+0 => c; [i c + 1 => c]; stop
+'''
+
+[expect.values]
+c = 1

@@ -1,0 +1,20 @@
+# P on a negative quantity.
+
+xfail = "pp-besm crashes in BitLayout.hs:63 encoding logical operators"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+0, 1, 2, 3, x, r
+
+4. Logical Scheme
+
+0 - 3 => x; P(x, 0102; 0101 / (-∞, 0)); L0101 1 => r; /0103; L0102 2 => r; L0103 stop
+'''
+
+[expect.values]
+r = 1

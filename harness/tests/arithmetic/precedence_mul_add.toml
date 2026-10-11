@@ -1,0 +1,21 @@
+# '*' binds tighter than '+' on either side.
+
+xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+2, 3, 4, x, y
+
+4. Logical Scheme
+
+2 + 3 * 4 => x; 3 * 4 + 2 => y; stop
+'''
+
+[expect.values]
+x = 14
+y = 14

@@ -1,0 +1,21 @@
+# A loop built from P and a backward branch.
+
+xfail = "pp-besm crashes in BitLayout.hs:63 encoding logical operators"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+0, 1, 3, i, s
+
+4. Logical Scheme
+
+0 => i; 0 => s; L0101 i + 1 => i; s + i => s; P(i, 0102; 0101 / (-∞, 3)); L0102 stop
+'''
+
+[expect.values]
+i = 3
+s = 6

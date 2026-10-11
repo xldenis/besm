@@ -1,0 +1,33 @@
+# Knuth's TPK (examples/knuth.pp) without the drum reads: values > 400 become 999.
+
+xfail = "pp-besm crashes in BitLayout.hs:63 encoding logical operators"
+
+program = '''
+1. Variable Addresses
+
+(a) Block a (3 cells)
+
+<a_j> = 1.j
+<a_0> = 0
+<a_1> = 1
+<a_2> = 2
+
+2. Parameters
+
+j : j_in = 0, j_fin = 3
+
+3. List of Constants and Variable Quantities
+
+0, 1, 2, 3, 5, 10, 400, 999, y, c
+
+4. Logical Scheme
+
+1 => a_0; 2 => a_1; 10 => a_2; 0 => c
+[j sqrt mod a_j + 5 * a_j^3 => y; P(y, 0102; 0101 / (400, ∞)); L0101 999 => y; L0102 c + y => c]; stop
+'''
+
+[expect]
+tolerance = 1e-6
+
+[expect.values]
+c = 1046.414213562373

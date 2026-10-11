@@ -1,0 +1,20 @@
+# Cubing ('^3').
+
+xfail = "x^3 compiles to nothing: block K starts with an empty word"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+3, x
+
+4. Logical Scheme
+
+3^3 => x; stop
+'''
+
+[expect.values]
+x = 27

@@ -1,0 +1,23 @@
+# A logical operator on the parameter inside the body: count and sum i in [2, 4).
+
+xfail = "pp-besm: SemiInterval ranges are not yet implemented in Lower.hs"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+i : i_in = 0, i_fin = 6
+
+3. List of Constants and Variable Quantities
+
+0, 1, 2, 4, 6, c, s
+
+4. Logical Scheme
+
+0 => c; 0 => s; [i P(i, 0102; 0101 / [2, 4)); L0101 c + 1 => c; s + i => s; L0102 ]; stop
+'''
+
+[expect.values]
+c = 2
+s = 5

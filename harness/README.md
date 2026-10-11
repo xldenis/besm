@@ -44,4 +44,23 @@ b = 45
 
 Named values work for the entries of section 3 ("List of Constants and Variable Quantities"). PP-3 lays block C out in that order right after the parameter counters, so entry *i* is at C0\* + 1 + *i*. Use `[expect.memory]` for anything else, such as variable-address blocks.
 
-The suite exits non-zero on any FAIL, XPASS or harness ERROR.
+The suite exits non-zero on any FAIL, XPASS or harness ERROR. A programme that `pp-besm` refuses to encode is a test failure (`encode: ...`), not a harness error, so it can be marked `xfail`.
+
+## Feature suite
+
+`harness/tests/<feature>/` holds small programmes that each target one feature of the language. Most check final variable values rather than printouts, so that a bug in printing doesn't hide the feature under test. Specs are named by their relative path, so `test -k loops/` runs one group.
+
+| directory | covers |
+|:--|:--|
+| `basics` | assignment, `stop`, `;` vs whitespace, comments, layout of section 3 |
+| `printing` | `,=> 0` (PN output) and `Form` |
+| `arithmetic` | `+ - * :`, precedence and associativity, negatives, fractions, `^3`, `mod`, `sqrt` |
+| `economy` | PP-1-3: common subexpressions (commutativity, associativity), invalidation, dead stores, working cells |
+| `logical` | `P(x, ...)` with each of the eight range forms, probed below, on and above each bound; several branches; variable bounds |
+| `control` | `/N` forward and backward, hex operator numbers, `/-N` and `\-` sub-routines |
+| `loops` | iteration counts (`fin` is exclusive), parameter values, nesting, sequencing, branches and early exits |
+| `variable_addresses` | constant subscripts, offsets, strides, negative slopes, 2-D blocks, offsets ≥ 255 coded from the end |
+| `nonstandard` | inline machine instructions with quantities as addresses |
+| `programmes` | small complete programmes: factorial, Fibonacci, maximum, dot product, Horner, TPK |
+
+Every spec that fails today is marked `xfail` with the symptom it shows, so a fix shows up as XPASS: drop the `xfail` line when that happens.

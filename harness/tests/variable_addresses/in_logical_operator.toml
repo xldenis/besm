@@ -1,0 +1,30 @@
+# A variable address as the quantity tested by P: count elements > 2.
+
+xfail = "pp-besm crashes in BitLayout.hs:63 encoding logical operators"
+
+program = '''
+1. Variable Addresses
+
+(a) Block a (4 cells)
+
+<a_i> = 1.i
+<a_0> = 0
+<a_1> = 1
+<a_2> = 2
+<a_3> = 3
+
+2. Parameters
+
+i : i_in = 0, i_fin = 4
+
+3. List of Constants and Variable Quantities
+
+0, 1, 2, 4, 5, 7, c
+
+4. Logical Scheme
+
+1 => a_0; 5 => a_1; 2 => a_2; 7 => a_3; 0 => c; [i P(a_i, 0102; 0101 / (2, ∞)); L0101 c + 1 => c; L0102 ]; stop
+'''
+
+[expect.values]
+c = 2

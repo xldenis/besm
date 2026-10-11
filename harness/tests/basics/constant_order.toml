@@ -1,0 +1,22 @@
+# Constants and variables interleaved in section 3 get the right cells.
+
+xfail = "block K starts with an untranslated word instead of instructions"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+x, 2, y, 3, z
+
+4. Logical Scheme
+
+2 => x; 3 => y; x + y => z; stop
+'''
+
+[expect.values]
+x = 2
+y = 3
+z = 5

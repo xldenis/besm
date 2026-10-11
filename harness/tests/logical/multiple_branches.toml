@@ -1,0 +1,27 @@
+# A P with three ranges plus the default operator.
+
+xfail = "pp-besm: SemiInterval ranges are not yet implemented in Lower.hs"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+0, 1, 2, 3, 4, 5, 10, 15, 20, 25, x, p, q, r, s
+
+4. Logical Scheme
+
+0 - 1 => x; P(x, 0104; 0101 / (-∞, 0) 0102 / [0, 10) 0103 / [10, 20)); L0101 1 => p; /0105; L0102 2 => p; /0105; L0103 3 => p; /0105; L0104 4 => p; L0105
+5 => x; P(x, 0204; 0201 / (-∞, 0) 0202 / [0, 10) 0203 / [10, 20)); L0201 1 => q; /0205; L0202 2 => q; /0205; L0203 3 => q; /0205; L0204 4 => q; L0205
+15 => x; P(x, 0304; 0301 / (-∞, 0) 0302 / [0, 10) 0303 / [10, 20)); L0301 1 => r; /0305; L0302 2 => r; /0305; L0303 3 => r; /0305; L0304 4 => r; L0305
+25 => x; P(x, 0404; 0401 / (-∞, 0) 0402 / [0, 10) 0403 / [10, 20)); L0401 1 => s; /0405; L0402 2 => s; /0405; L0403 3 => s; /0405; L0404 4 => s; L0405
+stop
+'''
+
+[expect.values]
+p = 1
+q = 2
+r = 3
+s = 4

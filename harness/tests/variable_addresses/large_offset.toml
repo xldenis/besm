@@ -1,0 +1,31 @@
+# Offsets of 255 or more are coded from the end of the block.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+(a) Block a (300 cells)
+
+<a_i> = 1.i + 290
+<a_290> = 290
+<a_291> = 291
+<a_292> = 292
+
+2. Parameters
+
+i : i_in = 0, i_fin = 3
+
+3. List of Constants and Variable Quantities
+
+0, 3, 10, p, q, r
+
+4. Logical Scheme
+
+[i i + 10 => a_i]; a_290 => p; a_291 => q; a_292 => r; stop
+'''
+
+[expect.values]
+p = 10
+q = 11
+r = 12

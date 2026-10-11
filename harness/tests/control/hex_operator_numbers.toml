@@ -1,0 +1,21 @@
+# Operator numbers are hexadecimal and need not be ordered.
+
+xfail = "block K starts with an untranslated word instead of instructions"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+1, 2, 3, x, y
+
+4. Logical Scheme
+
+/01af; 1 => x; L0020 2 => y; stop; L01af 3 => x; /0020
+'''
+
+[expect.values]
+x = 3
+y = 2

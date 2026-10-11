@@ -1,0 +1,21 @@
+# Sums with the operands reordered.
+
+xfail = "block K starts with an untranslated word instead of instructions"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+1, 2, 4, a, b, c, x, y
+
+4. Logical Scheme
+
+1 => a; 2 => b; 4 => c; a + b + c => x; c + b + a => y; stop
+'''
+
+[expect.values]
+x = 7
+y = 7

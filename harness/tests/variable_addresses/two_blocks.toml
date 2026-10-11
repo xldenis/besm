@@ -1,0 +1,38 @@
+# Two blocks indexed by the same parameter: b_i = a_i + a_i.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+(a) Block a (3 cells)
+
+<a_i> = 1.i
+<a_0> = 0
+<a_1> = 1
+<a_2> = 2
+
+(b) Block b (3 cells)
+
+<b_i> = 1.i
+<b_0> = 0
+<b_1> = 1
+<b_2> = 2
+
+2. Parameters
+
+i : i_in = 0, i_fin = 3
+
+3. List of Constants and Variable Quantities
+
+1, 2, 3, 0, p, q, r
+
+4. Logical Scheme
+
+1 => a_0; 2 => a_1; 3 => a_2; [i a_i + a_i => b_i]; b_0 => p; b_1 => q; b_2 => r; stop
+'''
+
+[expect.values]
+p = 2
+q = 4
+r = 6

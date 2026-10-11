@@ -1,0 +1,21 @@
+# 'mod' takes the absolute value.
+
+xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+0, 5, x, y, z
+
+4. Logical Scheme
+
+0 - 5 => x; mod x => y; mod 5 => z; stop
+'''
+
+[expect.values]
+y = 5
+z = 5

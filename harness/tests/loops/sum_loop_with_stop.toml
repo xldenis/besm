@@ -1,0 +1,22 @@
+# examples/sum_loop.pp with a well-formed constant list: Σ a for a = 1..9.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+a : a_in = 1, a_fin = 10
+
+3. List of Constants and Variable Quantities
+
+0, 1, 10, b
+
+4. Logical Scheme
+
+0 => b; [a b + a => b]; stop
+'''
+
+[expect.values]
+b = 45

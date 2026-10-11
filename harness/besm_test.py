@@ -48,6 +48,10 @@ class HarnessError(Exception):
     pass
 
 
+class EncodeError(HarnessError):
+    """pp-besm rejected the programme: a failure of the toolchain, not of the harness."""
+
+
 # ---------------------------------------------------------------------------
 # Tools
 
@@ -213,7 +217,8 @@ def execute(tools, pp_path, workdir, start=None):
     tape = os.path.join(workdir, "tape.txt")
     res = subprocess.run([*tools.pp_besm, "print", pp_path], capture_output=True, text=True)
     if res.returncode != 0:
-        raise HarnessError(f"pp-besm failed to encode {pp_path}:\n{res.stderr.strip()}")
+        lines = [l for l in res.stderr.splitlines() if l.strip() and not l.lstrip().startswith("CallStack")]
+        raise EncodeError(" / ".join(l.strip() for l in lines) or "pp-besm failed")
     with open(tape, "w") as f:
         f.write(res.stdout)
 
@@ -379,7 +384,7 @@ def make_workdir(keep, name):
         path = os.path.join(keep, name)
         os.makedirs(path, exist_ok=True)
         return path
-    return tempfile.mkdtemp(prefix=f"besm-{name}-")
+    return tempfile.mkdtemp(prefix=f"besm-{name.replace(os.sep, '-')}-")
 
 
 def cmd_run(tools, args):
@@ -398,13 +403,16 @@ def cmd_run(tools, args):
 
 
 def collect_specs(paths):
-    files = []
+    specs = []
     for p in paths or [DEFAULT_TESTS]:
         if os.path.isdir(p):
-            files += sorted(glob.glob(os.path.join(p, "*.toml")))
+            for f in sorted(glob.glob(os.path.join(p, "**", "*.toml"), recursive=True)):
+                spec = load_spec(f)
+                spec.name = os.path.splitext(os.path.relpath(f, p))[0]
+                specs.append(spec)
         else:
-            files.append(p)
-    return [load_spec(f) for f in files]
+            specs.append(load_spec(p))
+    return specs
 
 
 def cmd_test(tools, args):
@@ -422,11 +430,14 @@ def cmd_test(tools, args):
         try:
             program = spec.program
             if program is None:
-                program = os.path.join(workdir, spec.name + ".pp")
+                program = os.path.join(workdir, os.path.basename(spec.name) + ".pp")
                 with open(program, "w") as f:
                     f.write(spec.inline)
-            ex = execute(tools, program, workdir, spec.start)
-            failures = check(spec, ex)
+            try:
+                ex = execute(tools, program, workdir, spec.start)
+                failures = check(spec, ex)
+            except EncodeError as e:
+                ex, failures = None, [f"encode: {e}"]
         except HarnessError as e:
             ex, failures = None, [f"harness error: {e}"]
             outcome = "ERROR"

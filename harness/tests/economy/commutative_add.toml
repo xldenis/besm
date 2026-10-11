@@ -1,0 +1,21 @@
+# a + b and b + a are recognised as equal.
+
+xfail = "block K starts with an untranslated word instead of instructions"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+2, 3, a, b, c, d
+
+4. Logical Scheme
+
+2 => a; 3 => b; a + b => c; b + a => d; stop
+'''
+
+[expect.values]
+c = 5
+d = 5

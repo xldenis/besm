@@ -1,0 +1,25 @@
+# P with [5, ∞): 5 and 6 are inside.
+
+xfail = "pp-besm: RightImproperInterval ranges are not yet implemented in Lower.hs (the parser also swaps [a, ∞) and (a, ∞))"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+0, 1, 4, 5, 6, x, p, q, r
+
+4. Logical Scheme
+
+4 => x; P(x, 0012; 0011 / [5, ∞)); L0011 1 => p; /0013; L0012 0 => p; L0013
+5 => x; P(x, 0022; 0021 / [5, ∞)); L0021 1 => q; /0023; L0022 0 => q; L0023
+6 => x; P(x, 0032; 0031 / [5, ∞)); L0031 1 => r; /0033; L0032 0 => r; L0033
+stop
+'''
+
+[expect.values]
+p = 0
+q = 1
+r = 1

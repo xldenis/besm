@@ -1,0 +1,22 @@
+# The 10th Fibonacci number by iteration.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+i : i_in = 0, i_fin = 9
+
+3. List of Constants and Variable Quantities
+
+0, 1, 9, a, b, c
+
+4. Logical Scheme
+
+0 => a; 1 => b; [i a + b => c; b => a; c => b]; stop
+'''
+
+[expect.values]
+b = 55

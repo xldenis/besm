@@ -1,0 +1,22 @@
+# Leaving a loop with a jump before it finishes.
+
+xfail = "pp-besm: RightImproperInterval ranges are not yet implemented in Lower.hs (the parser also swaps [a, ∞) and (a, ∞))"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+i : i_in = 0, i_fin = 10
+
+3. List of Constants and Variable Quantities
+
+0, 1, 3, 10, c
+
+4. Logical Scheme
+
+0 => c; [i P(i, 0101; 0102 / [3, ∞)); L0101 c + 1 => c]; L0102 stop
+'''
+
+[expect.values]
+c = 3

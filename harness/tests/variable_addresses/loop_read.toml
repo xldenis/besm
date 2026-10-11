@@ -1,0 +1,30 @@
+# Reading a block in a loop (examples/variable_address.pp, extended).
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+(a) Block a (4 cells)
+
+<a_i> = 1.i
+<a_0> = 0
+<a_1> = 1
+<a_2> = 2
+<a_3> = 3
+
+2. Parameters
+
+i : i_in = 0, i_fin = 4
+
+3. List of Constants and Variable Quantities
+
+0, 1, 2, 3, 4, s
+
+4. Logical Scheme
+
+1 => a_0; 2 => a_1; 3 => a_2; 4 => a_3; 0 => s; [i s + a_i => s]; stop
+'''
+
+[expect.values]
+s = 10

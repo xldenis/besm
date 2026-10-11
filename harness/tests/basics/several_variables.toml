@@ -1,0 +1,22 @@
+# Independent variables keep independent values.
+
+xfail = "block K starts with an untranslated word instead of instructions"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+1, 2, 3, x, y, z
+
+4. Logical Scheme
+
+1 => x; 2 => y; 3 => z; stop
+'''
+
+[expect.values]
+x = 1
+y = 2
+z = 3

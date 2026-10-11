@@ -1,0 +1,24 @@
+# Both parameters visible in the inner body: s = Σi, t = Σj over 2 x 3.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+i : i_in = 0, i_fin = 2
+j : j_in = 0, j_fin = 3
+
+3. List of Constants and Variable Quantities
+
+0, 2, 3, s, t
+
+4. Logical Scheme
+
+0 => s; 0 => t; [i [j s + i => s; t + j => t]]; stop
+'''
+
+[expect.values]
+s = 3
+t = 6

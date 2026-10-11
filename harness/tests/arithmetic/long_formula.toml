@@ -1,0 +1,20 @@
+# A formula needing several working cells: 2 + 3*4 - 8:2 + 5*6 = 40.
+
+xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+2, 3, 4, 8, 5, 6, x
+
+4. Logical Scheme
+
+2 + 3 * 4 - 8 : 2 + 5 * 6 => x; stop
+'''
+
+[expect.values]
+x = 40

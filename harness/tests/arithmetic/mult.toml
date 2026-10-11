@@ -1,0 +1,20 @@
+# Multiplication.
+
+xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+6, 7, x
+
+4. Logical Scheme
+
+6 * 7 => x; stop
+'''
+
+[expect.values]
+x = 42

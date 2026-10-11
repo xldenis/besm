@@ -1,0 +1,24 @@
+# Statements in the outer body before and after the inner loop.
+
+xfail = "loop markers (open-parenthesis words) left in block K; executing one traps"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+i : i_in = 0, i_fin = 2
+j : j_in = 0, j_fin = 3
+
+3. List of Constants and Variable Quantities
+
+0, 1, 2, 3, a, b
+
+4. Logical Scheme
+
+0 => a; 0 => b; [i a + 1 => a; [j b + 1 => b]; a + 1 => a]; stop
+'''
+
+[expect.values]
+a = 4
+b = 6

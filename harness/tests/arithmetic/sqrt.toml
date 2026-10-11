@@ -1,0 +1,24 @@
+# Square root (standard sub-routine).
+
+xfail = "block K starts with an untranslated word instead of instructions"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+16, 2, x, y
+
+4. Logical Scheme
+
+sqrt 16 => x; sqrt 2 => y; stop
+'''
+
+[expect]
+tolerance = 1e-6
+
+[expect.values]
+x = 4
+y = 1.4142135623730951

@@ -1,0 +1,20 @@
+# Range bounds may be variable quantities.
+
+xfail = "pp-besm crashes in BitLayout.hs:63 encoding logical operators"
+
+program = '''
+1. Variable Addresses
+
+2. Parameters
+
+3. List of Constants and Variable Quantities
+
+1, 2, 6, 7, x, y, r
+
+4. Logical Scheme
+
+7 => y; 6 => x; P(x, 0102; 0101 / (-∞, y)); L0101 1 => r; /0103; L0102 2 => r; L0103 stop
+'''
+
+[expect.values]
+r = 1
