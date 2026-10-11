@@ -665,7 +665,7 @@ pp3_2 = do
   m1 <- local "M1" Cell          -- M^(1)
   o  <- local "O" Cell           -- 03E5
 
-  deltaC <- local "deltaC" Cell  -- 03F7
+  deltaC <- global "deltaC" Cell  -- 03F7
   deltaK <- global "deltaK" Cell  -- 03F8
   deltaGamma <- global "deltaGamma" Cell  -- 03F9
   deltaRPD <- extern "deltaR"      -- 03FA
@@ -702,7 +702,7 @@ pp3_2 = do
   let r0final = var "final-header" `offAddr` 5 -- 03EE
   let rffinal = var "final-header" `offAddr` 6 -- 03EF
 
-  local "const_0337" (Raw 0x0337)  -- Value 31 for comparison (2^5,F8)
+  local "const_0337" (Val 31)  -- Value 31 for comparison (2^5,F8)
   local "0x3FF" (Raw 0x03FF)  -- Value 03F0 for comparison
   local "const_033A" (Raw 0x033A)  -- Forward address shift info mask (-2^0,000000FF)??
   local "const_033C" (Raw 0x033C)  -- Old RPD end (2^1,11111111)???
@@ -1473,8 +1473,12 @@ pp3_4 = do
   const_035e <- local "const_035e" (Raw 0x0) -- 2^8,88888888
 
   checksum <- local "checksum" Cell
+  -- TODO: 03f1 / 03f2 are the I/O cells of DS 10A2 (and 1120) in the undated draft listing (9_391).
+  -- The published book's convention (PP1) is argument in 0001, result in 0002. DS routines are ROM
+  -- and can't be repointed, so these relocatable locals will never line up with a real 10A2.
+  -- Switch the calls in ops 22 / 30 to pass via 0001 and read 0002 once the DS routine exists.
   cell_03f1 <- local "cell_03f1" Cell
-  cell_03f2 <- local "cell_03f2" Cell  
+  cell_03f2 <- local "cell_03f2" Cell
   cell_0001 <- local "cell_0001" Cell
 
   let addr_0344 = var "addr_0344"
