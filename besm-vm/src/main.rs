@@ -83,15 +83,23 @@ fn trace_execution(
     mem_breakpoint: Option<u16>,
     op_breakpoint: Option<OpBreakpoint>,
     no_trace: bool,
+    max_steps: Option<u64>,
 ) {
     let mut back_jumps = HashMap::new();
 
     let mut previous_operator = OpMetadata::default();
     let mut current_instr = 0;
+    let mut steps = 0u64;
     loop {
         if vm.stopped {
+            eprintln!("Stopped at address {}", vm.next_instr());
             break;
         }
+        if max_steps.is_some_and(|max| steps >= max) {
+            eprintln!("Step limit reached at address {} after {} steps", vm.next_instr(), steps);
+            break;
+        }
+        steps += 1;
         let instr_word = vm.memory.get(vm.next_instr()).unwrap();
         let current_operator = extract_op_metadata(instr_word);
 
@@ -125,6 +133,10 @@ fn trace_execution(
 
         match vm.step() {
             Ok(step_result) => {
+                if let Some(ref output) = step_result.printer_output {
+                    println!("PN {}", output);
+                }
+
                 // Check memory write breakpoint
                 if let Some(mem_bp) = mem_breakpoint {
                     if let Some(ref write) = step_result.write {
@@ -233,6 +245,7 @@ fn main() {
             opt.mem_breakpoint,
             op_breakpoint,
             opt.no_trace,
+            opt.max_steps,
         ),
     }
 

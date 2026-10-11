@@ -84,6 +84,9 @@ pub struct Opts {
 
     #[arg(long = "no-trace", help = "Suppress trace output, only show memory dump")]
     pub no_trace: bool,
+
+    #[arg(long = "max-steps", help = "Abort the trace after executing this many instructions")]
+    pub max_steps: Option<u64>,
 }
 
 use crate::vm::mag::MagDrive;

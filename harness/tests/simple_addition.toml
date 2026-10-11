@@ -1,0 +1,5 @@
+source = "../../examples/simple_addition.pp"
+xfail = "PP-3 never stops when compiling a programme without loops (I-PP-3 ops 41-44)"
+
+[expect.values]
+a = 14  # ((0 + 10) + 5) - 1

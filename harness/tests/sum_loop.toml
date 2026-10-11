@@ -1,0 +1,7 @@
+source = "../../examples/sum_loop.pp"
+xfail = "compiled programme starts on an invalid word and addresses quantities outside block C"
+
+# The loop runs a = 1, ..., 9: as in chapter1.pp (10-cell blocks indexed by
+# parameters with in = 0, fin = 10) the final value is exclusive.
+[expect.values]
+b = 45
