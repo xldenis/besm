@@ -1,0 +1,2 @@
+* You are not to make changes to `compile-pp/` apart from infrastructure or general bugfixes.
+* Trace bugs and explain the high-level divergence that occurs. Most bugs are sourced in 1 or two instructions but can have strange consequences due to self-mutating code.
