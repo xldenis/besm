@@ -341,7 +341,7 @@ pp3_1 = do
     bitAnd currentInstr (var "all-but-first") currentInstr
     ai currentInstr cellA currentInstr
     bitAnd currentInstr secondAddr cellA
-    shift cellA (left 11) cellA
+    shift cellA (right 11) cellA
     chain (op 20)
   {-
 

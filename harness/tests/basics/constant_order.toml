@@ -1,7 +1,5 @@
 # Constants and variables interleaved in section 3 get the right cells.
 
-xfail = "block K starts with an untranslated word instead of instructions"
-
 program = '''
 1. Variable Addresses
 

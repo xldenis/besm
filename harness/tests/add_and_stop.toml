@@ -1,5 +1,4 @@
 source = "../../examples/add_and_stop.pp"
-xfail = "PP-3 never stops when compiling a programme without loops (I-PP-3 ops 41-44)"
 
 [expect.values]
 a = 11

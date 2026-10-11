@@ -1,7 +1,5 @@
 # A machine instruction (Add, a, b, c) with quantities as addresses.
 
-xfail = "block K starts with an untranslated word instead of instructions"
-
 program = '''
 1. Variable Addresses
 

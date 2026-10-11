@@ -43,8 +43,9 @@ impl Float {
         Float { mant, exp, overflow: false, sign: false }
     }
 
-    // For now lets not worry about negative numbers
-    pub fn from_int(mut x: u32) -> Float {
+    // Normalized float for a signed integer: the magnitude goes in the mantissa, the sign in bit 32.
+    pub fn from_int(n: i32) -> Float {
+        let mut x = n.unsigned_abs();
         let mut exp = 0;
         let mut mant = 0 << 31;
 
@@ -56,7 +57,9 @@ impl Float {
             x /= 2;
         }
 
-        Float::new(mant, exp)
+        let mut float = Float::new(mant, exp);
+        float.sign = n < 0;
+        float
     }
 
     pub fn to_bytes(&mut self) -> u64 {
@@ -155,6 +158,14 @@ mod tests {
         assert_eq!(Float::from_int(4).to_float(), 4f64);
         assert_eq!(Float::from_int(16).to_float(), 16f64);
         assert_eq!(Float::from_int(17).to_float(), 17f64);
+    }
+
+    #[test]
+    fn from_int_negative() {
+        // ↓ of a `,+` instruction: П = -31 is -0.96875 · 2^5
+        assert_eq!(Float::from_int(-31).to_bytes(), 0x0bf8000000);
+        assert_eq!(Float::from_int(-32).to_bytes(), 0x0d80000000);
+        assert_eq!(Float::from_int(31).to_bytes(), 0x0af8000000);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # Division giving fractions (negative exponents).
 
-xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+xfail = "* and : compile to DS sub-routine calls (Sub 0101 x 0001; CLCC 04E0) instead of × / : instructions; the DS cell is empty"
 
 program = '''
 1. Variable Addresses

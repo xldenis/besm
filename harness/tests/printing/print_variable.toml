@@ -1,6 +1,6 @@
 # Printing a variable.
 
-xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+xfail = "the print instruction is missing from block K: the programme stops without printing"
 
 program = '''
 1. Variable Addresses

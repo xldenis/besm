@@ -1,6 +1,6 @@
 # Several printouts appear in programme order.
 
-xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+xfail = "the print instruction comes out as TN x 02Ax 0000 instead of PN (TN x 0200 0000); writing cell 0 traps"
 
 program = '''
 1. Variable Addresses

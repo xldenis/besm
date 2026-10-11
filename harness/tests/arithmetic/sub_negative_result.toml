@@ -1,6 +1,6 @@
 # Subtraction giving a negative result (sign bit).
 
-xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+xfail = "VM: Float add/sub ignore operand signs and do not negate on borrow (3 - 5 = -6, 0 - 5 = -3)"
 
 program = '''
 1. Variable Addresses

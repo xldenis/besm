@@ -1,6 +1,6 @@
 # 'mod' applies to its operand only: mod x + 1 = |x| + 1.
 
-xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+xfail = "mod (|x|) compiles to an untranslated word (0 x 0 w) instead of an instruction"
 
 program = '''
 1. Variable Addresses

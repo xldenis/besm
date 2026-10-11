@@ -1,7 +1,5 @@
 # Copying one variable into another.
 
-xfail = "block K starts with an untranslated word instead of instructions"
-
 program = '''
 1. Variable Addresses
 

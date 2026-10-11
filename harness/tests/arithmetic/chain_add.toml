@@ -1,6 +1,6 @@
 # A long chain of additions.
 
-xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
+xfail = "a chained operation writes its intermediate result to cell 0 (Sub 1 2 0000), which traps"
 
 program = '''
 1. Variable Addresses

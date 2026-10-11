@@ -1,7 +1,5 @@
 # Independent variables keep independent values.
 
-xfail = "block K starts with an untranslated word instead of instructions"
-
 program = '''
 1. Variable Addresses
 

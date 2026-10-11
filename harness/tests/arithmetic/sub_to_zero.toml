@@ -1,7 +1,5 @@
 # Subtraction giving exactly zero (normalizing a zero mantissa).
 
-xfail = "PP-3 never stops (I-PP-3 ops 41-44), as for simple_addition"
-
 program = '''
 1. Variable Addresses
 

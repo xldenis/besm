@@ -1,5 +1,5 @@
 source = "../../examples/simple_addition.pp"
-xfail = "PP-3 never stops when compiling a programme without loops (I-PP-3 ops 41-44)"
+xfail = "the print instruction comes out as TN x 02Ax 0000 instead of PN (TN x 0200 0000); writing cell 0 traps"
 
 [expect.values]
 a = 14  # ((0 + 10) + 5) - 1

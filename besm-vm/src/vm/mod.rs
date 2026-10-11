@@ -362,7 +362,7 @@ impl<'a> VM<'a> {
                 warn!("Transferring exponent {} from {}", val.exp, val);
 
                 let mut res = if needs_norm {
-                    Float::from_int(val.exp as u32)
+                    Float::from_int(val.exp.into())
                 } else {
                     Float::from_bytes(val.exp as u64)
                 };
@@ -517,7 +517,7 @@ impl<'a> VM<'a> {
                 let left = Float::from_bytes(self.memory.get(a)?);
                 let right = Float::from_bytes(self.memory.get(b)?);
 
-                let branch = match left.exp.abs().cmp(&right.exp.abs()) {
+                let branch = match left.exp.cmp(&right.exp) {
                     Ordering::Less => right.mant != 0,
                     Ordering::Equal => left.mant < right.mant,
                     _ => false,
