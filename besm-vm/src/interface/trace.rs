@@ -5,7 +5,7 @@ use crate::interface::OpMetadata;
 use crate::vm::{ActiveIC, StepResult, VMError, mag::DriveOperation};
 use bit_field::BitField;
 
-const TRACE_CAPACITY: usize = 20_000;
+pub const TRACE_CAPACITY: usize = 20_000;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Patch {
@@ -29,6 +29,7 @@ pub struct TraceEntry {
     pub op: OpMetadata,
     // Ignores detours through DS routines.
     pub op_changed: bool,
+    pub write: Option<u16>,
     pub instr: String,
     pub effect: String,
     pub kind: EntryKind,
@@ -42,6 +43,7 @@ impl TraceEntry {
         local: bool,
         op: OpMetadata,
         op_changed: bool,
+        write: Option<u16>,
         instr: String,
         effect: String,
         kind: EntryKind,
@@ -52,7 +54,7 @@ impl TraceEntry {
             op_label(op)
         )
         .to_lowercase();
-        TraceEntry { step, addr, local, op, op_changed, instr, effect, kind, haystack }
+        TraceEntry { step, addr, local, op, op_changed, write, instr, effect, kind, haystack }
     }
 }
 
@@ -65,6 +67,13 @@ pub struct PendingStep {
     ic: ActiveIC,
     op: OpMetadata,
     word: u64,
+}
+
+#[derive(Clone)]
+pub struct TraceCheckpoint {
+    pub steps: u64,
+    patches: HashMap<u16, Patch>,
+    last_op: OpMetadata,
 }
 
 pub struct Trace {
@@ -82,6 +91,19 @@ impl Trace {
             patches: HashMap::new(),
             last_op: OpMetadata::default(),
         }
+    }
+
+    pub fn checkpoint(&self) -> TraceCheckpoint {
+        TraceCheckpoint { steps: self.steps, patches: self.patches.clone(), last_op: self.last_op }
+    }
+
+    pub fn rewind(&mut self, cp: &TraceCheckpoint) {
+        while self.entries.back().is_some_and(|e| e.step > cp.steps) {
+            self.entries.pop_back();
+        }
+        self.steps = cp.steps;
+        self.patches = cp.patches.clone();
+        self.last_op = cp.last_op;
     }
 
     pub fn begin(&self, addr: u16, ic: ActiveIC, word: u64) -> PendingStep {
@@ -169,6 +191,7 @@ impl Trace {
             ic == ActiveIC::Local,
             op,
             op_changed,
+            result.as_ref().ok().and_then(|r| r.write).map(|w| w.address),
             instr,
             effects.join("  "),
             kind,
@@ -240,6 +263,7 @@ mod tests {
             false,
             OpMetadata::default(),
             false,
+            None,
             instr.into(),
             effect.into(),
             EntryKind::Normal,

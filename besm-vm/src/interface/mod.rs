@@ -1,3 +1,4 @@
+pub mod history;
 pub mod input;
 pub mod terminal;
 pub mod trace;
@@ -6,8 +7,8 @@ pub mod tui;
 pub use crate::interface::input::*;
 pub use crate::interface::tui::*;
 
-use crate::interface::trace::Trace;
-use crate::vm::VM;
+use crate::interface::{history::History, trace::Trace};
+use crate::vm::{StepResult, VM, VMError};
 use log::{error, warn};
 use ratatui::layout::Size;
 
@@ -47,6 +48,7 @@ pub fn extract_op_metadata(instr_word: u64) -> OpMetadata {
 pub struct Interface {
     pub size: Size,
     pub trace: Trace,
+    history: History,
     pub trace_filter: String,
     pub step_mode: StepMode,
     pub input_mode: InputMode,
@@ -69,6 +71,7 @@ impl Interface {
         Interface {
             size: Size::default(),
             trace: Trace::new(),
+            history: History::new(),
             trace_filter: String::new(),
             step_mode: StepMode::Step,
             input_mode: InputMode::Normal,
@@ -164,6 +167,11 @@ impl Interface {
                     self.pause();
                 }
             }
+            StepBack => {
+                let target = self.trace.steps.saturating_sub(1);
+                self.seek(vm, target);
+            }
+            ReverseContinue => self.reverse_continue(vm),
             ScrollDown => self.scroll(false, 1),
             ScrollUp => self.scroll(true, 1),
             PageDown => self.scroll(false, PAGE),
@@ -195,6 +203,13 @@ impl Interface {
                     if kind == PromptKind::Filter {
                         self.trace_filter = buf;
                         self.tabs.offsets[0] = 0;
+                        return;
+                    }
+                    if kind == PromptKind::Seek {
+                        match buf.trim().parse() {
+                            Ok(target) => self.seek(vm, target),
+                            Err(_) => warn!("Invalid {} input: {:?}", kind.label(), buf),
+                        }
                         return;
                     }
                     match parse_prompt(kind, &buf) {
@@ -230,19 +245,7 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
         }
     }
 
-    // Track operator transitions for breakpoint edge detection
-    if let Ok(instr_word) = vm.memory.get(vm.next_instr()) {
-        app.previous_op = extract_op_metadata(instr_word);
-    }
-
-    let addr = vm.next_instr();
-    let pending = vm.memory.get(addr).ok().map(|word| app.trace.begin(addr, vm.active_ic, word));
-    let result = vm.step();
-    if let Some(pending) = pending {
-        app.trace.finish(pending, &result, vm.next_instr(), vm.active_ic, vm.stopped);
-    }
-
-    let step_result = match result {
+    let step_result = match advance(vm, app) {
         Ok(res) => res,
         Err(e) => {
             error!("{:?}", e);
@@ -251,22 +254,6 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
             return;
         }
     };
-
-    // Update write tracking
-    if let Some(write) = step_result.write {
-        app.recent_writes.insert(write.address, (0, write.old_value));
-    }
-
-    // Capture printer output
-    if let Some(output) = step_result.printer_output {
-        app.printer_output.push(output);
-    }
-
-    // Age existing writes and remove old ones
-    app.recent_writes.retain(|_, (age, _)| {
-        *age += 1;
-        *age <= WRITE_DECAY_STEPS
-    });
 
     if let Some(b) = app.mem_breakpoint {
         if let Some(out) = step_result.write
@@ -305,4 +292,41 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
     if vm.stopped {
         app.halt();
     }
+}
+
+// Runs and records one step without checking breakpoints.
+pub(crate) fn advance(vm: &mut VM, app: &mut Interface) -> Result<StepResult, VMError> {
+    app.checkpoint(vm);
+
+    // Track operator transitions for breakpoint edge detection
+    if let Ok(instr_word) = vm.memory.get(vm.next_instr()) {
+        app.previous_op = extract_op_metadata(instr_word);
+    }
+
+    let addr = vm.next_instr();
+    let pending = vm.memory.get(addr).ok().map(|word| app.trace.begin(addr, vm.active_ic, word));
+    let result = vm.step();
+    if let Some(pending) = pending {
+        app.trace.finish(pending, &result, vm.next_instr(), vm.active_ic, vm.stopped);
+    }
+
+    if let Ok(step_result) = &result {
+        // Update write tracking
+        if let Some(write) = step_result.write {
+            app.recent_writes.insert(write.address, (0, write.old_value));
+        }
+
+        // Capture printer output
+        if let Some(output) = &step_result.printer_output {
+            app.printer_output.push(output.clone());
+        }
+    }
+
+    // Age existing writes and remove old ones
+    app.recent_writes.retain(|_, (age, _)| {
+        *age += 1;
+        *age <= WRITE_DECAY_STEPS
+    });
+
+    result
 }

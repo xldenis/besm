@@ -20,6 +20,7 @@ pub enum PromptKind {
     MemBreakpoint,
     OpBreakpoint,
     Filter,
+    Seek,
 }
 
 impl PromptKind {
@@ -30,6 +31,7 @@ impl PromptKind {
             PromptKind::MemBreakpoint => "MEM BREAK",
             PromptKind::OpBreakpoint => "OP BREAK (p-s-o)",
             PromptKind::Filter => "FILTER",
+            PromptKind::Seek => "TO STEP",
         }
     }
 }
@@ -46,6 +48,8 @@ pub enum Action {
     ToggleRun,
     Step,
     RunBurst,
+    StepBack,
+    ReverseContinue,
     PrevTab,
     NextTab,
     ScrollUp,
@@ -80,6 +84,9 @@ impl Interface {
                 Char(' ') => Some(ToggleRun),
                 Char('s') => Some(Step),
                 Char('r') => Some(RunBurst),
+                Char('S') => Some(StepBack),
+                Char('R') => Some(ReverseContinue),
+                Char('t') => Some(OpenPrompt(PromptKind::Seek)),
                 Char('<') | Char(',') => Some(PrevTab),
                 Char('>') | Char('.') => Some(NextTab),
                 Up => Some(ScrollUp),
@@ -108,7 +115,7 @@ pub fn parse_prompt(kind: PromptKind, buf: &str) -> Option<Action> {
         PromptKind::MemBreakpoint => addr_or_none(buf).map(Action::SetMemBreakpoint),
         PromptKind::OpBreakpoint => parse_op_breakpoint(buf).map(Action::SetOpBreakpoint),
         // Handled in `Interface::update`.
-        PromptKind::Filter => None,
+        PromptKind::Filter | PromptKind::Seek => None,
     }
 }
 

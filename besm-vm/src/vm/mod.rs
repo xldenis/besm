@@ -17,6 +17,17 @@ pub struct VM<'a> {
     pub mag_system: MagSystem<'a>,
 }
 
+#[derive(Clone)]
+pub struct VMState {
+    is: [u64; 1023],
+    drives: [MagDrive; 5],
+    tapes: [MagTape; 4],
+    local_ic: u16,
+    global_ic: u16,
+    active_ic: ActiveIC,
+    stopped: bool,
+}
+
 pub struct Memory<'a> {
     is: &'a mut [u64; 1023],
     ds: &'a [u64; 384],
@@ -555,6 +566,28 @@ impl<'a> VM<'a> {
         }
 
         Ok(StepResult { instruction: instr, write: memory_write, printer_output, drum_transfer })
+    }
+
+    pub fn snapshot(&self) -> VMState {
+        VMState {
+            is: *self.memory.is,
+            drives: *self.mag_system.mag_drives,
+            tapes: self.mag_system.mag_tapes.clone(),
+            local_ic: self.local_ic,
+            global_ic: self.global_ic,
+            active_ic: self.active_ic,
+            stopped: self.stopped,
+        }
+    }
+
+    pub fn restore(&mut self, state: &VMState) {
+        *self.memory.is = state.is;
+        *self.mag_system.mag_drives = state.drives;
+        self.mag_system.mag_tapes.clone_from(&state.tapes);
+        self.local_ic = state.local_ic;
+        self.global_ic = state.global_ic;
+        self.active_ic = state.active_ic;
+        self.stopped = state.stopped;
     }
 
     pub fn next_instr(&self) -> u16 {
