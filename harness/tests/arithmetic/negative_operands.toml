@@ -1,7 +1,5 @@
 # Arithmetic on a negative quantity.
 
-xfail = "VM: Float add/sub ignore operand signs and do not negate on borrow (3 - 5 = -6, 0 - 5 = -3)"
-
 program = '''
 1. Variable Addresses
 

@@ -1,6 +1,6 @@
 # 'Form' converts to decimal (DS sub-routine 10A2) before printing; checks it returns.
 
-xfail = "block K starts with an untranslated word instead of instructions"
+xfail = "the symbol after Form is lost when it ends a tape word (VM CCCC saves the active counter; PP-1-2 ops 6/7 order differs from 8_407); the DS argument cell 0001 also overlaps block C"
 
 program = '''
 1. Variable Addresses

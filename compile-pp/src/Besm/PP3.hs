@@ -1393,21 +1393,21 @@ pp3_3 = do
   todo: is cellC + deltaC safe? 
    -}
   operator 37 $ do
-    ai cellC deltaC cellC
+    add' cellC deltaC cellC
     jcc
 
   {-
   Op. 38 obtains the true address of the quantity from block gamma according to the formula Y = y + Delta gamma.
   -}
   operator 38 $ do
-    ai cellC deltaGamma cellC
+    add' cellC deltaGamma cellC
     jcc
 
   {-
   Op. 39 obtains the true address of the working cell according to the formula Y = y + Delta R.
   -}
   operator 39 $ do
-    ai cellC deltaR cellC
+    add' cellC deltaR cellC
     jcc
 
   {-
@@ -1431,7 +1431,7 @@ pp3_3 = do
   Op. 42 obtains the true address of the isntruction according to the formula Y = k' + Delta K.
   -}
   operator 42 $ do
-    ai k' deltaK cellC
+    add' k' deltaK cellC
     jcc
 
 

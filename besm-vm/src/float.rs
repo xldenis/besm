@@ -33,7 +33,9 @@ macro_rules! equalize_exponents_shift_mant {
 
 impl Float {
     pub fn from_bytes(word: u64) -> Float {
-        let exp = (0xFF & word.get_bits(33..39)) as i8;
+        // The exponent is 6-bit two's complement (-32..=31).
+        let e = word.get_bits(33..39) as i8;
+        let exp = if e >= 32 { e - 64 } else { e };
         let mant = word.get_bits(0..33) as u32;
         let sign = word.get_bit(32);
         Float { mant, exp, sign: sign, overflow: false }
@@ -43,7 +45,7 @@ impl Float {
         Float { mant, exp, overflow: false, sign: false }
     }
 
-    // Normalized float for a signed integer: the magnitude goes in the mantissa, the sign in bit 32.
+    // Normalized float for a signed integer.
     pub fn from_int(n: i32) -> Float {
         let mut x = n.unsigned_abs();
         let mut exp = 0;
@@ -92,29 +94,36 @@ impl Float {
         }
     }
 
+    // Sign-magnitude addition (p. 154)
     pub fn add_unnormalized(&self, other: &Float) -> Float {
         equalize_exponents_shift_mant!(self, other, left_mant, right_mant, exp);
 
-        let (res_mant, overflow) = left_mant.overflowing_add(right_mant);
-        let res_sign = match left_mant.cmp(&right_mant) {
-            Ordering::Less => other.sign,
-            Ordering::Greater => self.sign,
-            Ordering::Equal => false,
-        };
+        if self.sign == other.sign {
+            let (mant, overflow) = left_mant.overflowing_add(right_mant);
+            return Float { mant, overflow, sign: self.sign, exp };
+        }
 
-        Float { mant: res_mant, overflow: overflow, sign: res_sign, exp }
+        match left_mant.cmp(&right_mant) {
+            Ordering::Greater => Float { mant: left_mant - right_mant, overflow: false, sign: self.sign, exp },
+            Ordering::Less => Float { mant: right_mant - left_mant, overflow: false, sign: other.sign, exp },
+            Ordering::Equal => Float { mant: 0, overflow: false, sign: false, exp },
+        }
     }
 
     pub fn sub_unnormalized(&self, other: &Float) -> Float {
-        equalize_exponents_shift_mant!(self, other, left_mant, right_mant, exp);
+        let mut negated = *other;
+        negated.sign = !other.sign;
+        self.add_unnormalized(&negated)
+    }
 
-        let (res_mant, overflow) = left_mant.overflowing_sub(right_mant);
-        let res_sign = match overflow {
-            true => !other.sign,
-            false => self.sign,
-        };
-
-        Float { mant: res_mant, overflow: false, sign: res_sign, exp }
+    /// Whole and fractional parts of |x| as 32-bit mantissas, for E (013).
+    pub fn integer_and_fraction(&self) -> (u32, u32) {
+        if self.exp <= 0 {
+            (0, self.mant.checked_shr((-(self.exp as i32)) as u32).unwrap_or(0))
+        } else {
+            let e = self.exp as u32; // 1..=31
+            (self.mant >> (32 - e), self.mant << e)
+        }
     }
 
     // what is un normalized floating point multiplication?
@@ -158,6 +167,31 @@ mod tests {
         assert_eq!(Float::from_int(4).to_float(), 4f64);
         assert_eq!(Float::from_int(16).to_float(), 16f64);
         assert_eq!(Float::from_int(17).to_float(), 17f64);
+    }
+
+    #[test]
+    fn exponent_is_twos_complement() {
+        // 9_214: `,+ 0200 0000 0001` is 2^-31 (2^-1 + 2^-32), exponent field 100001 = -31
+        assert_eq!(Float::from_bytes(0x4280000001).exp, -31);
+        assert_eq!(Float::from_bytes(0x4000000000).exp, -32); // normalized zero
+        assert_eq!(Float::from_bytes(0x3e00000000).exp, 31);
+        assert_eq!(Float::from_bytes(0x7e00000000).exp, -1);
+        // round trip
+        assert_eq!(Float::from_bytes(0x4280000001).to_bytes(), 0x4280000001);
+    }
+
+    #[test]
+    fn signed_addition() {
+        let int = |n: i32| {
+            let mut f = Float::new(n.unsigned_abs(), 0);
+            f.sign = n < 0;
+            f
+        };
+        assert_eq!(int(3).sub_unnormalized(&int(5)).to_bytes(), int(-2).to_bytes());
+        assert_eq!(int(0).sub_unnormalized(&int(5)).to_bytes(), int(-5).to_bytes());
+        assert_eq!(int(-3).add_unnormalized(&int(2)).to_bytes(), int(-1).to_bytes());
+        assert_eq!(int(-3).sub_unnormalized(&int(2)).to_bytes(), int(-5).to_bytes());
+        assert_eq!(int(4).add_unnormalized(&int(-4)).to_bytes(), 0);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # Printing a variable.
 
-xfail = "the print instruction is missing from block K: the programme stops without printing"
+xfail = "the code after ,=> is lost when it ends a tape word (VM CCCC saves the active counter, Table 1 says central; PP-1-2 ops 6/7 order differs from 8_407); printing itself is a known gap in the book (see print_constant)"
 
 program = '''
 1. Variable Addresses

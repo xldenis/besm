@@ -15,6 +15,8 @@ pub struct VM<'a> {
     pub active_ic: ActiveIC,
     pub stopped: bool,
     pub mag_system: MagSystem<'a>,
+    /// Low half of the last ×а product, picked up by the ×б that must follow it.
+    mult_low: Option<Float>,
 }
 
 #[derive(Clone)]
@@ -82,7 +84,8 @@ impl<'a> Memory<'a> {
 
     fn set(&mut self, ix: u16, val: u64) -> Result<u64, VMError> {
         if ix == 0 {
-            return Err(VMError::OutOfBounds {});
+            // Writes to cell 0000 are discarded (p. 66)
+            return Ok(0);
         } else if ix <= 1023 {
             let old_value = self.is[(ix - 1) as usize];
             self.is[(ix - 1) as usize].set_bits(0..39, val.get_bits(0..39));
@@ -150,6 +153,8 @@ pub enum VMError {
     BadDriveOperation,
     InvalidInstruction(u64),
     NotYetImplemented(Instruction),
+    /// ×б executed without the ×а that forms its operand
+    UnpairedXb,
     DriveErr(mag::DriveError),
 }
 
@@ -169,6 +174,7 @@ impl<'a> VM<'a> {
             active_ic: ActiveIC::Global,
             stopped: false,
             mag_system: MagSystem { mag_drives: drives, mag_tapes: tapes },
+            mult_low: None,
         }
     }
 
@@ -304,16 +310,53 @@ impl<'a> VM<'a> {
                 memory_write = Some(MemoryWrite { address: target, old_value, new_value });
                 self.increment_ic();
             }
+            // E: П(y) = П(z) = 0, M(y) = {x}, M(z) = 2^-32 [x] (Table 1, 013)
+            // ×а / ×б: double-length product, always issued as a pair (Table 1, 008/009)
+            Xa { a: x, b: y, c: z, normalize: needs_norm } => {
+                let lfloat = Float::from_bytes(self.memory.get(x)?);
+                let rfloat = Float::from_bytes(self.memory.get(y)?);
+                let product = u64::from(lfloat.mant) * u64::from(rfloat.mant);
+                let exp = lfloat.exp + rfloat.exp;
+                let sign = lfloat.sign ^ rfloat.sign;
+
+                let mut high = Float::new((product >> 32) as u32, exp);
+                high.sign = sign;
+                let mut low = Float::new(product as u32, exp);
+                low.sign = sign;
+                self.mult_low = Some(low);
+
+                if needs_norm {
+                    high.normalize()
+                };
+
+                let new_value = high.to_bytes();
+                let old_value = self.memory.set(z, new_value)?;
+                memory_write = Some(MemoryWrite { address: z, old_value, new_value });
+                self.increment_ic();
+            }
+            Xb { c: u, normalize: needs_norm } => {
+                let mut low = self.mult_low.take().ok_or(VMError::UnpairedXb)?;
+
+                if needs_norm {
+                    low.normalize()
+                };
+
+                let new_value = low.to_bytes();
+                let old_value = self.memory.set(u, new_value)?;
+                memory_write = Some(MemoryWrite { address: u, old_value, new_value });
+                self.increment_ic();
+            }
             I { a, b, c } => {
-                let float = Float::from_bytes(self.memory.get(a)?);
+                let x = Float::from_bytes(self.memory.get(a)?);
+                let (int, frac) = x.integer_and_fraction();
 
-                let mut mant = Float::new(float.mant, 0);
-                mant.sign = float.sign;
+                let mut y = Float::new(frac, 0);
+                y.sign = x.sign;
+                let mut z = Float::new(int, 0);
+                z.sign = x.sign;
 
-                let mut exp = Float::new(0, float.exp);
-
-                self.memory.set(b, mant.to_bytes())?;
-                let new_value = exp.to_bytes();
+                self.memory.set(b, y.to_bytes())?;
+                let new_value = z.to_bytes();
                 let old_value = self.memory.set(c, new_value)?;
                 memory_write = Some(MemoryWrite { address: c, old_value, new_value });
                 self.increment_ic();
@@ -403,13 +446,12 @@ impl<'a> VM<'a> {
             TMin { a: source, c: target, normalize: needs_norm } => {
                 let mut val = Float::from_bytes(self.memory.get(source)?);
 
-                let new_value = if needs_norm {
+                // z = -x (Table 1, 003): only the sign of the number changes
+                val.sign = !val.sign;
+                if needs_norm {
                     val.normalize();
-                    val.sign = !val.sign;
-                    val.to_bytes()
-                } else {
-                    val.to_bytes().wrapping_neg()
-                };
+                }
+                let new_value = val.to_bytes();
 
                 debug!(
                     "{}: tmin {source} {target} {needs_norm} {}",
@@ -421,7 +463,10 @@ impl<'a> VM<'a> {
             }
             CCCC { b: cell, c: addr } => {
                 if cell != 0 {
-                    let new_value = self.next_instr() as u64;
+                    // Stores the central counter in the third address of cell a (Table 1, 01C)
+                    let old_value = self.memory.get(cell)?;
+                    let mut new_value = old_value;
+                    new_value.set_bits(0..11, self.global_ic as u64);
                     let old_value = self.memory.set(cell, new_value)?;
                     memory_write = Some(MemoryWrite { address: cell, old_value, new_value });
                 }

@@ -1,6 +1,6 @@
 # Several printouts appear in programme order.
 
-xfail = "the print instruction comes out as TN x 02Ax 0000 instead of PN (TN x 0200 0000); writing cell 0 traps"
+xfail = "known gap in the book: III-PP-3 relocates the print instruction's second address 0200 as a relative address (ops 30/32 to 40/41) and has no exemption for ПЧ; III-PP-1 also takes 0200 for a working-cell code (Economy.hs:39 bound is unsourced)"
 
 program = '''
 1. Variable Addresses

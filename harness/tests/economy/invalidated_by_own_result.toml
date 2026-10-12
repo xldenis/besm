@@ -1,7 +1,5 @@
 # A formula overwriting its own operand invalidates the subexpression.
 
-xfail = "block K starts with an untranslated word instead of instructions"
-
 program = '''
 1. Variable Addresses
 
