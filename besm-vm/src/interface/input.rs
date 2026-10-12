@@ -1,108 +1,123 @@
-use std::sync::mpsc::*;
-use termion::event;
+use crate::interface::{Interface, OpBreakpoint};
 
-#[derive(Debug)]
-pub enum Event {
-    Key(event::Key),
-    Tick,
-    Command(char, usize),
-    OpCommand(u16, u16, u16), // (pass, procedure, operator)
+// Drivers convert their native key events into this.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Key {
+    Char(char),
+    Enter,
+    Esc,
+    Backspace,
+    Up,
+    Down,
 }
 
-pub use self::Event::*;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PromptKind {
+    Goto,
+    Breakpoint,
+    MemBreakpoint,
+    OpBreakpoint,
+}
 
-pub fn setup_input_stream() -> Receiver<Event> {
-    use std::{io, thread, time};
-
-    let (tx, rx) = channel();
-
-    let tx2 = tx.clone();
-    thread::spawn(move || {
-        let speed = time::Duration::from_millis(25);
-        loop {
-            tx2.send(Event::Tick).unwrap();
-            thread::sleep(speed);
+impl PromptKind {
+    pub fn label(&self) -> &'static str {
+        match self {
+            PromptKind::Goto => "GOTO",
+            PromptKind::Breakpoint => "BREAK",
+            PromptKind::MemBreakpoint => "MEM BREAK",
+            PromptKind::OpBreakpoint => "OP BREAK (p-s-o)",
         }
-    });
+    }
+}
 
-    thread::spawn(move || {
-        use termion::{event::Key::*, input::TermRead};
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InputMode {
+    Normal,
+    Prompt { kind: PromptKind, buf: String },
+}
 
-        let stdin = io::stdin();
+#[derive(Debug, Clone, Copy)]
+pub enum Action {
+    Quit,
+    ToggleRun,
+    Step,
+    RunBurst,
+    PrevTab,
+    NextTab,
+    ScrollUp,
+    ScrollDown,
+    Goto(u16),
+    SetBreakpoint(Option<u16>),
+    SetMemBreakpoint(Option<u16>),
+    SetOpBreakpoint(Option<OpBreakpoint>),
+    OpenPrompt(PromptKind),
+    PromptInput(char),
+    PromptBackspace,
+    PromptSubmit,
+    PromptCancel,
+}
 
-        for e in stdin.keys() {
-            let evt = e.unwrap();
-            match evt {
-                Char(x @ 'g') | Char(x @ 'b') | Char(x @ 'm') => {
-                    if let Ok(off) = read_address() {
-                        tx.send(Event::Command(x, off as usize)).unwrap();
-                    };
-                }
-                Char('o') => {
-                    if let Ok((pass, proc, op)) = read_operator_breakpoint() {
-                        tx.send(Event::OpCommand(pass, proc, op)).unwrap();
-                    };
-                }
-                e => tx.send(Event::Key(e)).unwrap(),
+impl Interface {
+    pub fn map_key(&self, key: Key) -> Option<Action> {
+        use self::{Action::*, Key::*};
+
+        match self.input_mode {
+            InputMode::Prompt { .. } => match key {
+                Enter => Some(PromptSubmit),
+                Esc => Some(PromptCancel),
+                Backspace => Some(PromptBackspace),
+                Char(c) => Some(PromptInput(c)),
+                _ => None,
+            },
+            InputMode::Normal => match key {
+                Char('q') => Some(Quit),
+                Char(' ') => Some(ToggleRun),
+                Char('s') => Some(Step),
+                Char('r') => Some(RunBurst),
+                Char('<') | Char(',') => Some(PrevTab),
+                Char('>') | Char('.') => Some(NextTab),
+                Up => Some(ScrollUp),
+                Down => Some(ScrollDown),
+                Char('g') => Some(OpenPrompt(PromptKind::Goto)),
+                Char('b') => Some(OpenPrompt(PromptKind::Breakpoint)),
+                Char('m') => Some(OpenPrompt(PromptKind::MemBreakpoint)),
+                Char('o') => Some(OpenPrompt(PromptKind::OpBreakpoint)),
+                _ => None,
+            },
+        }
+    }
+}
+
+/// Parse a submitted prompt into the action it requests. An address of 0 clears a breakpoint.
+pub fn parse_prompt(kind: PromptKind, buf: &str) -> Option<Action> {
+    let buf = buf.trim();
+    let addr_or_none = |s: &str| s.parse::<u16>().ok().map(|a| if a == 0 { None } else { Some(a) });
+
+    match kind {
+        PromptKind::Goto => buf.parse::<u16>().ok().map(Action::Goto),
+        PromptKind::Breakpoint => addr_or_none(buf).map(Action::SetBreakpoint),
+        PromptKind::MemBreakpoint => addr_or_none(buf).map(Action::SetMemBreakpoint),
+        PromptKind::OpBreakpoint => parse_op_breakpoint(buf).map(Action::SetOpBreakpoint),
+    }
+}
+
+// Format: "pass-procedure-operator" or "pass procedure operator". "0" clears the breakpoint.
+fn parse_op_breakpoint(buf: &str) -> Option<Option<OpBreakpoint>> {
+    let parts: Vec<&str> =
+        if buf.contains('-') { buf.split('-').collect() } else { buf.split_whitespace().collect() };
+
+    match parts[..] {
+        [pass, procedure, operator] => {
+            let pass = pass.trim().parse().ok()?;
+            let procedure = procedure.trim().parse().ok()?;
+            let operator = operator.trim().parse().ok()?;
+            if pass == 0 && procedure == 0 && operator == 0 {
+                Some(None)
+            } else {
+                Some(Some(OpBreakpoint { pass, procedure, operator }))
             }
         }
-    });
-    return rx;
-}
-
-use std::num::ParseIntError;
-
-fn read_address() -> Result<u16, ParseIntError> {
-    use std::io;
-    use termion::{event::Key::*, input::TermRead};
-
-    let key_evs: String = io::stdin()
-        .keys()
-        .take_while(|ev| match ev {
-            Ok(Char('\n')) => false,
-            Ok(Char(_)) => true,
-            _ => false,
-        })
-        .map(|ev| match ev.unwrap() {
-            Char(c) => c,
-            _ => panic!("found non-char in series of chars"),
-        })
-        .collect();
-    key_evs.parse::<u16>()
-}
-
-fn read_operator_breakpoint() -> Result<(u16, u16, u16), ParseIntError> {
-    use std::io;
-    use termion::{event::Key::*, input::TermRead};
-
-    let key_evs: String = io::stdin()
-        .keys()
-        .take_while(|ev| match ev {
-            Ok(Char('\n')) => false,
-            Ok(Char(_)) => true,
-            _ => false,
-        })
-        .map(|ev| match ev.unwrap() {
-            Char(c) => c,
-            _ => panic!("found non-char in series of chars"),
-        })
-        .collect();
-
-    // Parse format: "pass-procedure-operator" or "pass procedure operator"
-    let parts: Vec<&str> = if key_evs.contains('-') {
-        key_evs.split('-').collect()
-    } else {
-        key_evs.split_whitespace().collect()
-    };
-
-    if parts.len() == 3 {
-        let pass = parts[0].parse::<u16>()?;
-        let procedure = parts[1].parse::<u16>()?;
-        let operator = parts[2].parse::<u16>()?;
-        Ok((pass, procedure, operator))
-    } else if parts.len() == 1 && parts[0] == "0" {
-        Ok((0, 0, 0))
-    } else {
-        "invalid".parse::<u16>().map(|_| (0, 0, 0))
+        ["0"] => Some(None),
+        _ => None,
     }
 }

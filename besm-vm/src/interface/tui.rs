@@ -23,7 +23,7 @@ pub enum StepMode {
     Step,
 }
 
-use crate::interface::Interface;
+use crate::interface::{InputMode, Interface};
 
 pub struct TabInfo {
     titles: Vec<&'static str>,
@@ -312,11 +312,18 @@ fn render_status_line(t: &mut Buffer, app: &Interface, active_ic: &ActiveIC, rec
         .alignment(Alignment::Center)
         .render(chunks[1], t);
 
-    Tabs::default()
-        .titles(app.tabs.titles.clone())
-        .select(app.tabs.selection)
-        .highlight_style(Style::default().fg(Color::Yellow))
-        .render(chunks[2], t);
+    match &app.input_mode {
+        InputMode::Normal => Tabs::default()
+            .titles(app.tabs.titles.clone())
+            .select(app.tabs.selection)
+            .highlight_style(Style::default().fg(Color::Yellow))
+            .render(chunks[2], t),
+        InputMode::Prompt { kind, buf } => Paragraph::new(Text::styled(
+            format!("{}: {}_", kind.label(), buf),
+            Style::default().fg(Color::Yellow),
+        ))
+        .render(chunks[2], t),
+    }
 
     if let Some(b) = app.breakpoint {
         Paragraph::new(Text::styled(

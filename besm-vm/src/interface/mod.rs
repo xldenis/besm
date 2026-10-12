@@ -1,17 +1,16 @@
 pub mod input;
+pub mod terminal;
 pub mod tui;
 
-use crate::interface::input::*;
+pub use crate::interface::input::*;
 pub use crate::interface::tui::*;
 
 use crate::vm::{VM, instruction::Instruction};
-use ::ratatui::{Terminal, layout::Rect};
 use arraydeque::{behavior::Wrapping, *};
-use log::error;
+use log::{error, warn};
 use ratatui::layout::Size;
 
-use ::ratatui::backend::Backend;
-use std::{collections::HashMap, sync::mpsc::*};
+use std::collections::HashMap;
 
 const WRITE_DECAY_STEPS: u32 = 5;
 
@@ -42,11 +41,12 @@ pub fn extract_op_metadata(instr_word: u64) -> OpMetadata {
     }
 }
 
-// This should be split into two structures, so that input can fully happen in a separate thread.
+// Key events are turned into actions by `map_key` and applied by `update`.
 pub struct Interface {
     pub size: Size,
     pub past_instrs: ArrayDeque<[Instruction; 100], Wrapping>,
     pub step_mode: StepMode,
+    pub input_mode: InputMode,
     pub tabs: TabInfo,
     pub breakpoint: Option<u16>,
     pub recent_writes: HashMap<u16, (u32, u64)>, // address -> (age, old_value)
@@ -67,6 +67,7 @@ impl Interface {
             size: Size::default(),
             past_instrs: ArrayDeque::new(),
             step_mode: StepMode::Step,
+            input_mode: InputMode::Normal,
             tabs: TabInfo::default(),
             breakpoint,
             recent_writes: HashMap::new(),
@@ -95,116 +96,84 @@ impl Interface {
         self.step_mode = StepMode::Step;
     }
 
-    pub fn run<T: Backend>(&mut self, terminal: &mut Terminal<T>, vm: &mut VM) {
-        let rx = setup_input_stream();
-
-        terminal.clear().unwrap();
-        terminal.hide_cursor().unwrap();
-        draw(terminal, &vm, &self);
-
-        while !self.exiting {
-            let size = terminal.size().unwrap();
-
-            if size != self.size {
-                terminal.resize(Rect::new(0, 0, size.width, size.height)).unwrap();
-                self.size = size;
-                draw(terminal, &vm, &self);
-            }
-
-            let need_draw = self.handle_input(vm, &rx);
-
-            if need_draw {
-                draw(terminal, &vm, &self);
-            }
-        }
-
-        terminal.show_cursor().unwrap();
+    pub fn exiting(&self) -> bool {
+        self.exiting
     }
 
-    fn handle_input(&mut self, vm: &mut VM, rx: &Receiver<Event>) -> bool {
-        use self::StepMode::*;
-        use termion::event::Key::*;
+    /// Advance the VM by one step if running. Returns whether a redraw is needed.
+    pub fn tick(&mut self, vm: &mut VM) -> bool {
+        if self.step_mode == StepMode::Run {
+            step_vm(vm, self);
+            true
+        } else {
+            false
+        }
+    }
 
-        let evt = match rx.recv() {
-            Err(_) => {
-                self.exiting = true;
-                return false;
-            }
-            Ok(e) => e,
-        };
+    pub fn update(&mut self, vm: &mut VM, action: Action) {
+        use self::Action::*;
 
-        match evt {
-            Key(Char('q')) => {
-                self.exiting = true;
-            }
-            Key(Char(' ')) if self.step_mode == Step => {
+        match action {
+            Quit => self.exiting = true,
+            ToggleRun if self.step_mode == StepMode::Step => {
                 self.toggle_step();
                 step_vm(vm, self);
             }
-            Key(Char(' ')) => self.toggle_step(),
-            Key(Char('<')) | Key(Char(',')) => {
-                if self.tabs.prev_tab() {
-                    self.pause();
-                }
-            }
-            Key(Char('>')) | Key(Char('.')) => {
-                if self.tabs.next_tab() {
-                    self.pause();
-                }
-            }
-            Key(Down) => {
-                self.tabs.offsets[self.tabs.selection] += 1;
-            }
-            Key(Up) => {
-                if self.tabs.offsets[self.tabs.selection] > 0 {
-                    self.tabs.offsets[self.tabs.selection] -= 1;
-                }
-            }
-            Command('g', off) => {
-                self.tabs.offsets[self.tabs.selection] = off;
-            }
-            Command('b', off) => {
-                if off == 0 {
-                    self.breakpoint = None;
-                } else {
-                    self.breakpoint = Some(off as u16);
-                }
-            }
-            Command('m', off) => {
-                if off == 0 {
-                    self.mem_breakpoint = None;
-                } else {
-                    self.mem_breakpoint = Some(off as u16);
-                }
-            }
-            OpCommand(pass, procedure, operator) => {
-                if pass == 0 && procedure == 0 && operator == 0 {
-                    self.op_breakpoint = None;
-                } else {
-                    self.op_breakpoint = Some(OpBreakpoint { pass, procedure, operator });
-                }
-            }
-            Tick if self.step_mode == Run => {
-                step_vm(vm, self);
-            }
-
-            Key(Char('s')) if self.step_mode == Step => {
-                step_vm(vm, self);
-            }
-            Key(Char('r')) => {
+            ToggleRun => self.toggle_step(),
+            Step if self.step_mode == StepMode::Step => step_vm(vm, self),
+            Step => {}
+            RunBurst => {
                 let old_mode = std::mem::replace(&mut self.step_mode, StepMode::Run);
                 for _ in 0..1000 {
                     step_vm(vm, self);
                     if vm.stopped || self.step_mode == StepMode::Step {
-                        return true;
+                        return;
                     }
                 }
                 self.step_mode = old_mode;
             }
-            _ => return false,
+            PrevTab => {
+                if self.tabs.prev_tab() {
+                    self.pause();
+                }
+            }
+            NextTab => {
+                if self.tabs.next_tab() {
+                    self.pause();
+                }
+            }
+            ScrollDown => self.tabs.offsets[self.tabs.selection] += 1,
+            ScrollUp => {
+                let offset = &mut self.tabs.offsets[self.tabs.selection];
+                *offset = offset.saturating_sub(1);
+            }
+            Goto(addr) => self.tabs.offsets[self.tabs.selection] = addr as usize,
+            SetBreakpoint(b) => self.breakpoint = b,
+            SetMemBreakpoint(b) => self.mem_breakpoint = b,
+            SetOpBreakpoint(b) => self.op_breakpoint = b,
+            OpenPrompt(kind) => self.input_mode = InputMode::Prompt { kind, buf: String::new() },
+            PromptInput(c) => {
+                if let InputMode::Prompt { buf, .. } = &mut self.input_mode {
+                    buf.push(c);
+                }
+            }
+            PromptBackspace => {
+                if let InputMode::Prompt { buf, .. } = &mut self.input_mode {
+                    buf.pop();
+                }
+            }
+            PromptCancel => self.input_mode = InputMode::Normal,
+            PromptSubmit => {
+                if let InputMode::Prompt { kind, buf } =
+                    std::mem::replace(&mut self.input_mode, InputMode::Normal)
+                {
+                    match parse_prompt(kind, &buf) {
+                        Some(action) => self.update(vm, action),
+                        None => warn!("Invalid {} input: {:?}", kind.label(), buf),
+                    }
+                }
+            }
         }
-
-        return true;
     }
 }
 
