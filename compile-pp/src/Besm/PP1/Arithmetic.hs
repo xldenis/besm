@@ -418,7 +418,7 @@ arithCoder = do
   -}
 
   operator 29 $ do
-    sub cellB four' cellB
+    sub' cellB four' cellB
     chain (op 30)
 
   {-
