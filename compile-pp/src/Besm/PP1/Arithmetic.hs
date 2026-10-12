@@ -1125,7 +1125,7 @@ arithCoder = do
   -}
 
   operator 88 $ do
-    shift cellD (right 22) formedInstruction
+    shift cellD (left 22) formedInstruction
     chain (op 89)
 
   {-
