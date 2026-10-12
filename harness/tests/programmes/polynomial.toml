@@ -1,7 +1,5 @@
 # Horner evaluation of 2x^2 + 3x + 4 at x = 5.
 
-xfail = "block K starts with an untranslated word instead of instructions"
-
 program = '''
 1. Variable Addresses
 

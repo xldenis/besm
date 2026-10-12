@@ -1,6 +1,6 @@
 # ':' binds tighter than '-'.
 
-xfail = "* and : compile to DS sub-routine calls (Sub 0101 x 0001; CLCC 04E0) instead of × / : instructions; the DS cell is empty"
+xfail = "needs VM division: Div is not implemented"
 
 program = '''
 1. Variable Addresses

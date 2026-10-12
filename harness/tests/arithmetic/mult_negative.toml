@@ -1,7 +1,5 @@
 # Multiplication by a negative quantity.
 
-xfail = "* and : compile to DS sub-routine calls (Sub 0101 x 0001; CLCC 04E0) instead of × / : instructions; the DS cell is empty"
-
 program = '''
 1. Variable Addresses
 
