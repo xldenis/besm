@@ -1,9 +1,11 @@
 # 'mod' takes the absolute value.
 
-xfail = "mod (|x|) compiles to an untranslated word (0 x 0 w) instead of an instruction"
-
 program = '''
 1. Variable Addresses
+
+(w) Block w (1 cells)
+
+<w_0> = 0
 
 2. Parameters
 

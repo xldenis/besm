@@ -168,7 +168,7 @@ def quantity_names(source):
     m = re.search(r"^\s*3\.[^\n]*\n(.*?)^\s*4\.", source, re.S | re.M)
     if not m:
         return []
-    body = "\n".join(line for line in m.group(1).splitlines() if not line.lstrip().startswith("#"))
+    body = "\n".join(line.split("#", 1)[0] for line in m.group(1).splitlines())
     return [item.strip() for item in body.split(",") if item.strip()]
 
 

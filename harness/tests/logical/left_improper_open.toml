@@ -5,6 +5,10 @@ xfail = "pp-besm crashes in BitLayout.hs:63 encoding logical operators"
 program = '''
 1. Variable Addresses
 
+(w) Block w (1 cells)
+
+<w_0> = 0
+
 2. Parameters
 
 3. List of Constants and Variable Quantities
@@ -13,9 +17,9 @@ program = '''
 
 4. Logical Scheme
 
-4 => x; P(x, 0012; 0011 / (-∞, 5)); L0011 1 => p; /0013; L0012 0 => p; L0013
-5 => x; P(x, 0022; 0021 / (-∞, 5)); L0021 1 => q; /0023; L0022 0 => q; L0023
-6 => x; P(x, 0032; 0031 / (-∞, 5)); L0031 1 => r; /0033; L0032 0 => r; L0033
+4 => x; P(x, 0112; 0111 / (-∞, 5)); L0111 1 => p; /0113; L0112 0 => p; L0113
+5 => x; P(x, 0122; 0121 / (-∞, 5)); L0121 1 => q; /0123; L0122 0 => q; L0123
+6 => x; P(x, 0132; 0131 / (-∞, 5)); L0131 1 => r; /0133; L0132 0 => r; L0133
 stop
 '''
 

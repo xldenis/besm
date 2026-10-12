@@ -1,9 +1,13 @@
 # Printing a variable.
 
-xfail = "the code after ,=> is lost when it ends a tape word (VM CCCC saves the active counter, Table 1 says central; PP-1-2 ops 6/7 order differs from 8_407); printing itself is a known gap in the book (see print_constant)"
+xfail = "known gap in the book: III-PP-3 relocates the print instruction's second address 0200 as a relative address (ops 30/32 to 40/41) and has no exemption for ПЧ; III-PP-1 also takes 0200 for a working-cell code (Economy.hs:39 bound is unsourced)"
 
 program = '''
 1. Variable Addresses
+
+(w) Block w (1 cells)
+
+<w_0> = 0
 
 2. Parameters
 

@@ -1,4 +1,9 @@
 1. Variable Addresses
+
+(w) Block w (1 cells)
+
+<w_0> = 0
+
 2. Parameters
 3. List of Constants and Variable Quantities
 

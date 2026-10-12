@@ -5,6 +5,10 @@ xfail = "known gap in the book: III-PP-3 relocates the print instruction's secon
 program = '''
 1. Variable Addresses
 
+(w) Block w (1 cells)
+
+<w_0> = 0
+
 2. Parameters
 
 3. List of Constants and Variable Quantities

@@ -1,7 +1,5 @@
 # Variable addresses with constant subscripts are distinct cells of the block.
 
-xfail = "a_0 => p compiles to a call into the DS (CLCC 1168) that runs into an empty word"
-
 program = '''
 1. Variable Addresses
 

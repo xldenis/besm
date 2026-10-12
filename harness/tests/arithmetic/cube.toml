@@ -5,6 +5,10 @@ xfail = "x^3 compiles to nothing: block K starts with an empty word"
 program = '''
 1. Variable Addresses
 
+(w) Block w (1 cells)
+
+<w_0> = 0
+
 2. Parameters
 
 3. List of Constants and Variable Quantities

@@ -1,9 +1,13 @@
 # 'Form' converts to decimal (DS sub-routine 10A2) before printing; checks it returns.
 
-xfail = "the symbol after Form is lost when it ends a tape word (VM CCCC saves the active counter; PP-1-2 ops 6/7 order differs from 8_407); the DS argument cell 0001 also overlaps block C"
+xfail = "Form leaves x = 2: the DS argument cell 0001 overlaps block C (inferred, not traced); printing itself is a known gap in the book (see print_constant)"
 
 program = '''
 1. Variable Addresses
+
+(w) Block w (1 cells)
+
+<w_0> = 0
 
 2. Parameters
 

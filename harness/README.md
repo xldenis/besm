@@ -42,6 +42,8 @@ b = 45
 "5" = 10.0
 ```
 
+A spec that has neither variable addresses nor parameters declares a one-cell dummy block, `(w) Block w (1 cells)` with `<w_0> = 0`. II-PP-3 ops 3-17 process block V as a do-while (book and draft 9_380-9_381), so they always process cell 0010. If V and P are both empty, that cell holds the first instruction of block K, which gets overwritten.
+
 Named values work for the entries of section 3 ("List of Constants and Variable Quantities"). PP-3 lays block C out in that order right after the parameter counters, so entry *i* is at C0\* + 1 + *i*. Use `[expect.memory]` for anything else, such as variable-address blocks.
 
 The suite exits non-zero on any FAIL, XPASS or harness ERROR. A programme that `pp-besm` refuses to encode is a test failure (`encode: ...`), not a harness error, so it can be marked `xfail`.

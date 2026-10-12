@@ -1,9 +1,12 @@
 # Comments are allowed before, between and inside the sections.
 
-xfail = "block K starts with an untranslated word instead of instructions"
 
 program = '''
 1. Variable Addresses
+
+(w) Block w (1 cells)
+
+<w_0> = 0
 
 2. Parameters
 
