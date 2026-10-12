@@ -278,7 +278,7 @@ logicalOperator = lexeme $ (*>) (char 'P') $ parens $ do
       ("[", Left "-∞", _, _) -> fail "Can't have an left-inclusive interval with -∞"
       ("(", Left "-∞", Right a, ")") -> return $ LeftImproperInterval a
       ("(", Left "-∞", Right a, "]") -> return $ LeftImproperSemiInterval a
-      (_, _, Left "∞", "]") -> fail "Can't have an left-inclusive interval with -∞"
+      (_, _, Left "∞", "]") -> fail "Can't have a right-inclusive interval with ∞"
       ("[", Right a, Left "∞", ")") -> return $ RightImproperInterval a
       ("(", Right a, Left "∞", ")") -> return $ RightImproperSemiInterval a
       ("[", Right a, Right b, "]") -> return $ Segment a b
@@ -296,7 +296,7 @@ stop :: Parser LogicalSchema
 stop = symbol "stop" Data.Functor.$> NS NS.Stop (Abs 0) (Abs 0) (Abs 0)
 
 goto :: Parser LogicalSchema
-goto = cccc2 <|> cccc <|> rtc <|> clcc <|> jcc
+goto = cccc2 <|> clcc <|> cccc <|> rtc <|> jcc
  where
   cccc = char '/' *> (CCCC <$> operatorNumber)
   cccc2 = try $ do

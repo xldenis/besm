@@ -282,6 +282,8 @@ lowerVariableAddresses (S.VA blocks) =
       ((slopes, vars), off) = unzipLeft $ splitConstant $ unwrapVA eq
       unzipLeft (vars, c) = (unzip $ map vaConstant vars, c)
       vaConstant (S.STimes (S.SConstant c) (S.SExpVar v)) = (c, v)
+      vaConstant (S.STimes (S.SExpVar v) (S.SConstant c)) = (c, v)
+      vaConstant (S.SExpVar v) = (1, v)
 
     unwrapVA :: S.SimpleExpr Char -> [S.SimpleExpr Char]
     unwrapVA (S.SAdd l r) = unwrapVA l ++ unwrapVA r
@@ -304,8 +306,9 @@ lowerSchema (S.NS op a b c) = [NS op a b c]
 lowerSchema S.Semicolon = []
 lowerSchema (S.CCCC v) = [NS NS.CCCC (S.Abs 0) (S.Abs 0) (S.Abs $ S.fromOperatorSign v)]
 lowerSchema (S.CCCC2 w v) = [NS NS.CCCC (S.Abs 0) (S.Abs $ S.fromOperatorSign v) (S.Abs $ S.fromOperatorSign v)]
-lowerSchema (S.RTC v) = [NS NS.AI (S.Abs 0x110F) (S.Abs 0) (S.Abs $ S.fromOperatorSign v), Empty]
+lowerSchema (S.RTC v) = [NS NS.AI (S.Abs 0x50F) (S.Abs 0) (S.Abs $ S.fromOperatorSign v), Empty] -- 0x50F is DS 110F
 lowerSchema (S.CLCC v) = [NS NS.CLCC (S.Abs 0) (S.Abs 0) (S.Abs $ S.fromOperatorSign v)]
+lowerSchema S.JCC = [NS NS.JCC (S.Abs 0) (S.Abs 0) (S.Abs 0)]
 
 lowerVariable = QA . S.unVar
 
@@ -339,7 +342,7 @@ lowerExp (S.Primitive var) = [Parameter $ lowerQuantity var]
 lowerExp (S.Form v) = [Arith TransformToDecimal, Parameter (lowerQuantity v)]
 lowerExp (S.Mod v) = Arith Mod : lowerExp v
 lowerExp (S.Sqrt v) = Arith SquareRoot : lowerExp v
-lowerExp (S.Cube v) = Arith Cube : lowerExp v
+lowerExp (S.Cube v) = lowerExp v ++ [Arith Cube] -- x^3 is written after its operand
 
 lowerConstants = map lowerConstant
  where

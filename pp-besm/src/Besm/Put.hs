@@ -150,7 +150,7 @@ calculateQuantityAddresses (PP{..}) =
     {- The address of the last cell of block C should not exceed 00EF. p25 -}
    in
     if offC > 0xEF
-      then error "The last constant can't exceed 0x45"
+      then error "The last constant can't exceed 0x00EF"
       else vMap ++ pMap ++ cMap
  where
   offsetsInV :: BlockV -> Word8 -> (Word8, [(Text, Word8)])
@@ -606,7 +606,6 @@ numberToBesmFloating :: Int -> BV 39
 numberToBesmFloating num =
   let
     bits = (== 1) <$> digits 2 (Prelude.abs num)
-    exp = (== 1) <$> digits 2 (length bits) -- this is soooo wrong for negative numbers...
     sBit = fromEnum $ num < 0
    in
     buildNumber (bitVector' $ length bits) (BV.bool $ sBit == 1) (toBitVector bits)

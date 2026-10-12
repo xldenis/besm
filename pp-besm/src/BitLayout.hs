@@ -58,9 +58,11 @@ extractChunk sRepr sStart (Some (Chunk chunkRepr chunkStart)) tVec =
   BV.ashr knownNat extractedChunk sStart
  where
   extractedChunk =
-    case decideLeq (incNat chunkRepr) sRepr of
-      Left LeqProof -> BV.zext sRepr (BV.select' chunkStart chunkRepr tVec)
-      Right _ -> error ""
+    case testEquality chunkRepr sRepr of
+      Just Refl -> BV.select' chunkStart chunkRepr tVec
+      Nothing -> case decideLeq (incNat chunkRepr) sRepr of
+        Left LeqProof -> BV.zext sRepr (BV.select' chunkStart chunkRepr tVec)
+        Right _ -> error "chunk wider than output"
 
 extractAll ::
   (1 <= s, KnownNat s) =>
