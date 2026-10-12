@@ -108,7 +108,7 @@ arithCoder = do
       , Template (CLCC . Absolute $ fromAddr "10C0")
       , Template (I zero zero zero)
       , Template (TExp zero zero UnNormalized)
-      , Raw 0
+      , Template (TMod zero zero UnNormalized)
       , Template (Ce zero zero zero UnNormalized)
       , Template (Shift zero zero zero)
       , Template (TSign (Absolute $ fromAddr "1081") zero zero UnNormalized)
@@ -212,6 +212,8 @@ arithCoder = do
 
     Op. 7 clears the symbol counter
 
+    NOTE: it appears that the book has swapped the meanings of ops 6 and 7.
+    In the book order the routine conflicts between CCCC or CLCC.
   -}
 
   mdo
@@ -219,12 +221,11 @@ arithCoder = do
 
     operator 5 $ comp symbolCounter four joinP (op 6)
     operator 6 $ do
-      callRtc mp_1_17 (Procedure "MP-1" (op 20))
-
+      tN' zero symbolCounter
       chain (op 7)
 
     operator 7 $ do
-      tN' zero symbolCounter
+      callRtc mp_1_17 (Procedure "MP-1" (op 20))
       chain joinP
 
     joinP <- block $ do
