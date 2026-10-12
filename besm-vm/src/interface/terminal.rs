@@ -23,6 +23,8 @@ fn convert_key(key: event::Key) -> Option<Key> {
         Backspace => Some(Key::Backspace),
         Up => Some(Key::Up),
         Down => Some(Key::Down),
+        PageUp => Some(Key::PageUp),
+        PageDown => Some(Key::PageDown),
         _ => None,
     }
 }

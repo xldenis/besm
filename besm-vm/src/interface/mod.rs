@@ -1,18 +1,20 @@
 pub mod input;
 pub mod terminal;
+pub mod trace;
 pub mod tui;
 
 pub use crate::interface::input::*;
 pub use crate::interface::tui::*;
 
-use crate::vm::{VM, instruction::Instruction};
-use arraydeque::{behavior::Wrapping, *};
+use crate::interface::trace::Trace;
+use crate::vm::VM;
 use log::{error, warn};
 use ratatui::layout::Size;
 
 use std::collections::HashMap;
 
 const WRITE_DECAY_STEPS: u32 = 5;
+const PAGE: usize = 20;
 
 // Operator breakpoint: (pass, procedure, operator)
 #[derive(Debug, Clone, Copy)]
@@ -44,7 +46,8 @@ pub fn extract_op_metadata(instr_word: u64) -> OpMetadata {
 // Key events are turned into actions by `map_key` and applied by `update`.
 pub struct Interface {
     pub size: Size,
-    pub past_instrs: ArrayDeque<[Instruction; 100], Wrapping>,
+    pub trace: Trace,
+    pub trace_filter: String,
     pub step_mode: StepMode,
     pub input_mode: InputMode,
     pub tabs: TabInfo,
@@ -65,7 +68,8 @@ impl Interface {
     ) -> Interface {
         Interface {
             size: Size::default(),
-            past_instrs: ArrayDeque::new(),
+            trace: Trace::new(),
+            trace_filter: String::new(),
             step_mode: StepMode::Step,
             input_mode: InputMode::Normal,
             tabs: TabInfo::default(),
@@ -98,6 +102,24 @@ impl Interface {
 
     pub fn exiting(&self) -> bool {
         self.exiting
+    }
+
+    pub fn active_filter(&self) -> &str {
+        match &self.input_mode {
+            InputMode::Prompt { kind: PromptKind::Filter, buf } => buf,
+            _ => &self.trace_filter,
+        }
+    }
+
+    // The trace scrolls back from its newest entry.
+    fn scroll(&mut self, older: bool, by: usize) {
+        let trace = self.tabs.selection == 0;
+        let offset = &mut self.tabs.offsets[self.tabs.selection];
+        *offset =
+            if older == trace { offset.saturating_add(by) } else { offset.saturating_sub(by) };
+        if trace {
+            *offset = (*offset).min(self.trace.entries.len().saturating_sub(1));
+        }
     }
 
     /// Advance the VM by one step if running. Returns whether a redraw is needed.
@@ -142,15 +164,18 @@ impl Interface {
                     self.pause();
                 }
             }
-            ScrollDown => self.tabs.offsets[self.tabs.selection] += 1,
-            ScrollUp => {
-                let offset = &mut self.tabs.offsets[self.tabs.selection];
-                *offset = offset.saturating_sub(1);
-            }
+            ScrollDown => self.scroll(false, 1),
+            ScrollUp => self.scroll(true, 1),
+            PageDown => self.scroll(false, PAGE),
+            PageUp => self.scroll(true, PAGE),
             Goto(addr) => self.tabs.offsets[self.tabs.selection] = addr as usize,
             SetBreakpoint(b) => self.breakpoint = b,
             SetMemBreakpoint(b) => self.mem_breakpoint = b,
             SetOpBreakpoint(b) => self.op_breakpoint = b,
+            OpenPrompt(PromptKind::Filter) => {
+                let buf = self.trace_filter.clone();
+                self.input_mode = InputMode::Prompt { kind: PromptKind::Filter, buf };
+            }
             OpenPrompt(kind) => self.input_mode = InputMode::Prompt { kind, buf: String::new() },
             PromptInput(c) => {
                 if let InputMode::Prompt { buf, .. } = &mut self.input_mode {
@@ -167,6 +192,11 @@ impl Interface {
                 if let InputMode::Prompt { kind, buf } =
                     std::mem::replace(&mut self.input_mode, InputMode::Normal)
                 {
+                    if kind == PromptKind::Filter {
+                        self.trace_filter = buf;
+                        self.tabs.offsets[0] = 0;
+                        return;
+                    }
                     match parse_prompt(kind, &buf) {
                         Some(action) => self.update(vm, action),
                         None => warn!("Invalid {} input: {:?}", kind.label(), buf),
@@ -205,7 +235,14 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
         app.previous_op = extract_op_metadata(instr_word);
     }
 
-    let step_result = match vm.step() {
+    let addr = vm.next_instr();
+    let pending = vm.memory.get(addr).ok().map(|word| app.trace.begin(addr, vm.active_ic, word));
+    let result = vm.step();
+    if let Some(pending) = pending {
+        app.trace.finish(pending, &result, vm.next_instr(), vm.active_ic, vm.stopped);
+    }
+
+    let step_result = match result {
         Ok(res) => res,
         Err(e) => {
             error!("{:?}", e);
@@ -214,8 +251,6 @@ fn step_vm(vm: &mut VM, app: &mut Interface) {
             return;
         }
     };
-
-    app.past_instrs.push_front(step_result.instruction);
 
     // Update write tracking
     if let Some(write) = step_result.write {

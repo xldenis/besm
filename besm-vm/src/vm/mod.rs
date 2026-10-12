@@ -1,6 +1,6 @@
 use crate::float::*;
 use bit_field::BitField;
-use log::{info, warn};
+use log::{debug, warn};
 use std::hash::Hasher;
 
 mod ds;
@@ -35,6 +35,7 @@ pub struct StepResult {
     pub instruction: Instruction,
     pub write: Option<MemoryWrite>,
     pub printer_output: Option<String>,
+    pub drum_transfer: Option<DriveOperation>,
 }
 
 impl<'a> Memory<'a> {
@@ -126,6 +127,7 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveIC {
     Global,
     Local,
@@ -164,6 +166,7 @@ impl<'a> VM<'a> {
         let instr = Instruction::from_bytes(opcode)?;
         let mut memory_write: Option<MemoryWrite> = None;
         let mut printer_output: Option<String> = None;
+        let mut drum_transfer: Option<DriveOperation> = None;
 
         match instr {
             Ma { a, b, c } => {
@@ -171,12 +174,11 @@ impl<'a> VM<'a> {
 
                 match mb {
                     Mb { b: b2 } => {
+                        let op = DriveOperation::from_ma(a, b, c, b2).map_err(VMError::DriveErr)?;
                         self.mag_system
-                            .perform_operation(
-                                &DriveOperation::from_ma(a, b, c, b2).map_err(VMError::DriveErr)?,
-                                &mut self.memory,
-                            )
+                            .perform_operation(&op, &mut self.memory)
                             .map_err(VMError::DriveErr)?;
+                        drum_transfer = Some(op);
                         self.increment_ic();
                     }
                     _ => {
@@ -196,7 +198,7 @@ impl<'a> VM<'a> {
                     val.normalize()
                 };
 
-                info!("{lfloat} + {rfloat} = {val}");
+                debug!("{lfloat} + {rfloat} = {val}");
 
                 let new_value = val.to_bytes();
                 let old_value = self.memory.set(res, new_value)?;
@@ -208,7 +210,7 @@ impl<'a> VM<'a> {
                 let rfloat = Float::from_bytes(self.memory.get(r)?);
                 let mut val = lfloat.sub_unnormalized(&rfloat);
 
-                info!("{lfloat} - {rfloat} = {val}");
+                debug!("{lfloat} - {rfloat} = {val}");
                 if needs_norm {
                     val.normalize()
                 };
@@ -236,7 +238,7 @@ impl<'a> VM<'a> {
                 let lfloat = Float::from_bytes(self.memory.get(x)?);
                 let rfloat = Float::from_bytes(self.memory.get(y)?);
 
-                info!("+E {:032b}", lfloat.mant);
+                debug!("+E {:032b}", lfloat.mant);
                 let mut result = Float::new(lfloat.mant, lfloat.exp + rfloat.exp);
                 result.sign = lfloat.sign;
 
@@ -398,7 +400,7 @@ impl<'a> VM<'a> {
                     val.to_bytes().wrapping_neg()
                 };
 
-                info!(
+                debug!(
                     "{}: tmin {source} {target} {needs_norm} {}",
                     self.global_ic, new_value as i64
                 );
@@ -486,12 +488,12 @@ impl<'a> VM<'a> {
                 };
 
                 if left.to_float() < 0.0001 {
-                    info!("CMP' {} < {} = {}", left.mant, right.mant, branch);
+                    debug!("CMP' {} < {} = {}", left.mant, right.mant, branch);
                 } else {
-                    info!("CMP {:10.5} < {:10.5} = {}", left, right, branch);
+                    debug!("CMP {:10.5} < {:10.5} = {}", left, right, branch);
                 }
                 if branch {
-                    info!("Branching: {} -> {}", self.next_instr(), c);
+                    debug!("Branching: {} -> {}", self.next_instr(), c);
                     self.set_ic(c);
                 } else {
                     self.increment_ic();
@@ -511,7 +513,7 @@ impl<'a> VM<'a> {
                 };
 
                 if branch {
-                    info!("Branching: {} -> {}", self.next_instr(), c);
+                    debug!("Branching: {} -> {}", self.next_instr(), c);
                     self.set_ic(c);
                 } else {
                     self.increment_ic();
@@ -521,14 +523,14 @@ impl<'a> VM<'a> {
                 let left = self.memory.get(a)?.get_bits(0..39);
                 let right = self.memory.get(b)?.get_bits(0..39);
 
-                info!(
+                debug!(
                     "CMPWD {:?} {:?}",
                     Instruction::from_bytes(left),
                     Instruction::from_bytes(right)
                 );
                 if left != right {
-                    info!("{left} != {right}");
-                    info!("Branching {} -> {}", self.next_instr(), c);
+                    debug!("{left} != {right}");
+                    debug!("Branching {} -> {}", self.next_instr(), c);
                     self.set_ic(c);
                 } else {
                     self.increment_ic();
@@ -552,7 +554,7 @@ impl<'a> VM<'a> {
             }
         }
 
-        Ok(StepResult { instruction: instr, write: memory_write, printer_output })
+        Ok(StepResult { instruction: instr, write: memory_write, printer_output, drum_transfer })
     }
 
     pub fn next_instr(&self) -> u16 {

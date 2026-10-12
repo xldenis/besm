@@ -23,7 +23,10 @@ pub enum StepMode {
     Step,
 }
 
-use crate::interface::{InputMode, Interface};
+use crate::interface::{
+    InputMode, Interface,
+    trace::{EntryKind, Filter, TraceEntry, op_label},
+};
 
 pub struct TabInfo {
     titles: Vec<&'static str>,
@@ -83,8 +86,10 @@ pub fn draw<T: Backend>(t: &mut Terminal<T>, vm: &VM, app: &Interface) {
 }
 
 fn render_main_panel(t: &mut Buffer, app: &Interface, vm: &VM, rect: Rect) {
-    let chunks =
-        Layout::default().direction(Vertical).constraints(vec![Length(3), Min(20)]).split(rect);
+    let chunks = Layout::default()
+        .direction(Vertical)
+        .constraints(vec![Length(3), Min(8), Length(8)])
+        .split(rect);
 
     render_current_instruction_box(
         t,
@@ -93,19 +98,76 @@ fn render_main_panel(t: &mut Buffer, app: &Interface, vm: &VM, rect: Rect) {
         chunks[0],
     );
 
-    let inner_chunks = Layout::default()
-        .constraints(vec![Min(20), Length(24)])
-        .direction(Horizontal)
-        .split(chunks[1]);
+    render_trace(t, app, chunks[1]);
 
     TuiLoggerWidget::default()
         .output_file(false)
         .output_line(false)
         .output_target(false)
         .block(Block::default().title("Log").borders(Borders::ALL))
-        .render(inner_chunks[0], t);
+        .render(chunks[2], t);
+}
 
-    render_past_instructions(t, app.past_instrs.iter(), inner_chunks[1]);
+fn render_trace(t: &mut Buffer, app: &Interface, rect: Rect) {
+    use ratatui::widgets::Row;
+
+    let filter = Filter::parse(app.active_filter());
+    let entries = &app.trace.entries;
+    let shown = |e: &&TraceEntry| filter.as_ref().is_none_or(|f| f.matches(e));
+
+    let height = rect.height.saturating_sub(3) as usize; // borders and header
+    let total = entries.iter().filter(shown).count();
+    let offset = app.tabs.offsets[0].min(total.saturating_sub(1));
+
+    let mut rows = Vec::with_capacity(height);
+    for e in entries.iter().rev().filter(shown).skip(offset) {
+        if rows.len() >= height {
+            break;
+        }
+        let style = match e.kind {
+            EntryKind::Normal => Style::default(),
+            EntryKind::Patched => Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            EntryKind::Halt | EntryKind::Error => Style::default().fg(Color::Red),
+        };
+        rows.push(
+            Row::new(vec![
+                Cell::from(format!("{:>7}", e.step)),
+                Cell::from(if e.local { "L" } else { "" }).fg(Color::Cyan),
+                Cell::from(format!("{:04}", e.addr)),
+                Cell::from(op_label(e.op)).fg(Color::DarkGray),
+                Cell::from(e.instr.clone()),
+                Cell::from(e.effect.clone()),
+            ])
+            .style(style),
+        );
+        if e.op_changed && filter.is_none() && rows.len() < height {
+            rows.push(
+                Row::new(vec![
+                    Cell::from(""),
+                    Cell::from(""),
+                    Cell::from(""),
+                    Cell::from("─────────"),
+                    Cell::from(format!("── {} ──────", op_label(e.op))),
+                ])
+                .fg(Color::Blue),
+            );
+        }
+    }
+    rows.reverse();
+
+    let mut title = format!("Trace ({} steps)", app.trace.steps);
+    if filter.is_some() {
+        title += &format!("  /{}  {} of {}", app.active_filter(), total, entries.len());
+    }
+    if offset > 0 {
+        title += &format!("  ↑{offset}");
+    }
+
+    Table::new(rows, [Length(7), Length(1), Length(4), Length(9), Length(20), Fill(1)])
+        .header(Row::new(["   step", "", "addr", "op", "instruction", "effect"]).fg(Color::Yellow))
+        .column_spacing(1)
+        .block(Block::default().title(title).borders(Borders::ALL))
+        .render(rect, t);
 }
 
 // Highlights the diff between two instructions
@@ -344,25 +406,6 @@ fn render_status_line(t: &mut Buffer, app: &Interface, active_ic: &ActiveIC, rec
             Style::default().fg(Color::Yellow),
         ))
         .render(chunks[3], t);
-    }
-}
-
-fn render_past_instructions<'a, I>(t: &mut Buffer, app: I, rect: Rect)
-where
-    I: Iterator<Item = &'a Instruction>,
-{
-    Block::default().borders(Borders::ALL).title("Past Instructions").render(rect, t);
-
-    let chunks = Layout::default()
-        .margin(1)
-        .direction(Vertical)
-        .constraints(vec![Length(1); rect.height as usize])
-        .split(rect);
-
-    for (instr, chunk) in app.zip(chunks.iter()) {
-        Paragraph::new(Text::raw(format!("{} ", instr)))
-            .alignment(Alignment::Center)
-            .render(*chunk, t);
     }
 }
 

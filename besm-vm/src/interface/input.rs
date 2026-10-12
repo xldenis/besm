@@ -9,6 +9,8 @@ pub enum Key {
     Backspace,
     Up,
     Down,
+    PageUp,
+    PageDown,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,6 +19,7 @@ pub enum PromptKind {
     Breakpoint,
     MemBreakpoint,
     OpBreakpoint,
+    Filter,
 }
 
 impl PromptKind {
@@ -26,6 +29,7 @@ impl PromptKind {
             PromptKind::Breakpoint => "BREAK",
             PromptKind::MemBreakpoint => "MEM BREAK",
             PromptKind::OpBreakpoint => "OP BREAK (p-s-o)",
+            PromptKind::Filter => "FILTER",
         }
     }
 }
@@ -46,6 +50,8 @@ pub enum Action {
     NextTab,
     ScrollUp,
     ScrollDown,
+    PageUp,
+    PageDown,
     Goto(u16),
     SetBreakpoint(Option<u16>),
     SetMemBreakpoint(Option<u16>),
@@ -78,10 +84,13 @@ impl Interface {
                 Char('>') | Char('.') => Some(NextTab),
                 Up => Some(ScrollUp),
                 Down => Some(ScrollDown),
+                Key::PageUp => Some(Action::PageUp),
+                Key::PageDown => Some(Action::PageDown),
                 Char('g') => Some(OpenPrompt(PromptKind::Goto)),
                 Char('b') => Some(OpenPrompt(PromptKind::Breakpoint)),
                 Char('m') => Some(OpenPrompt(PromptKind::MemBreakpoint)),
                 Char('o') => Some(OpenPrompt(PromptKind::OpBreakpoint)),
+                Char('/') => Some(OpenPrompt(PromptKind::Filter)),
                 _ => None,
             },
         }
@@ -98,6 +107,8 @@ pub fn parse_prompt(kind: PromptKind, buf: &str) -> Option<Action> {
         PromptKind::Breakpoint => addr_or_none(buf).map(Action::SetBreakpoint),
         PromptKind::MemBreakpoint => addr_or_none(buf).map(Action::SetMemBreakpoint),
         PromptKind::OpBreakpoint => parse_op_breakpoint(buf).map(Action::SetOpBreakpoint),
+        // Handled in `Interface::update`.
+        PromptKind::Filter => None,
     }
 }
 

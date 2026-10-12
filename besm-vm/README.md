@@ -27,6 +27,7 @@ The VM includes multiple kinds of breakpoints to make debugging programs simpler
 - Address breakpoints: `B <ADDR>` in the TUI. `--breakpoint` in the cli
 - Write breakpoints: `M <ADDR>` in the TUI. `--mem-breakpoint` in the cli
 - Operator breakpoints `O <PHASE>-<ROUTINE>-<OP>` in the TUI. `--op-breakpoint=<PHASE>:<ROUTINE>:<OP>` in the cli.
+- Trace filter: `/ <TERMS>` in the TUI. Shows steps containing every term.
 
 There is a `trace` command available that runs the VM in headless mode and prints a trace of the source operators executed. This command will stop whenever a programmed breakpoint is hit, and can be made to print memory using `--print-mem=start:end`.
 
